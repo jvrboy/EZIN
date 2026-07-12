@@ -1,0 +1,59 @@
+name: EZIN
+options:
+  bundleIdPrefix: com.ezin
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGNING_ALLOWED: "NO"
+targets:
+  EZIN:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: EZIN
+    info:
+      path: EZIN/Info.plist
+      properties:
+        CFBundleDisplayName: EZIN
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Expose the app's own directory inside the Files app
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        # Declare imported LLM file types so users can import .gguf / .safetensors
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.ezin.gguf
+            UTTypeDescription: GGUF Model
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [gguf]
+          - UTTypeIdentifier: com.ezin.safetensors
+            UTTypeDescription: SafeTensors Model
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [safetensors]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ezin.app
+        GENERATE_INFOPLIST_FILE: "NO"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"

@@ -1,0 +1,56 @@
+name: Build EZIN (unsigned iOS)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build unsigned .ipa
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (Debug, no signing)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project EZIN.xcodeproj \
+            -scheme EZIN \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            clean build
+
+      - name: Package unsigned .ipa
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find build/Build/Products -maxdepth 2 -name "*.app" -type d | head -1)
+          echo "App: $APP_PATH"
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qr EZIN-unsigned.ipa Payload
+          ls -lh EZIN-unsigned.ipa
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EZIN-unsigned-ipa
+          path: EZIN-unsigned.ipa
+          if-no-files-found: error

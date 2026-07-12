@@ -1,0 +1,14 @@
+# Xcode / build
+build/
+DerivedData/
+*.xcodeproj
+!project.yml
+*.xcworkspace
+*.ipa
+Payload/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+# Swift PM
+.build/
+Package.resolved
