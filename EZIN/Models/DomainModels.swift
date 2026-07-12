@@ -76,12 +76,3 @@ struct Pipeline: Codable, Identifiable, Hashable {
     }
 }
 
-// MARK: - Backend bot descriptor (agents run hidden; this is just status metadata)
-
-struct BotDescriptor: Identifiable {
-    let id = UUID()
-    let name: String
-    let role: String
-    var active: Bool
-    var lastVote: String
-}

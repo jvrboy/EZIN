@@ -36,4 +36,22 @@ enum DerivSymbols {
         if commodity.contains(symbol) { return .commodity }
         return .synthetic
     }
+
+    /// Price value of one point/pip for stop conversion.
+    static func pointSize(_ symbol: String) -> Double {
+        if symbol.hasPrefix("frx") {
+            return symbol.contains("JPY") ? 0.01 : 0.0001    // forex pip
+        }
+        if symbol.contains("XAU") || symbol.contains("XAG") { return 0.01 }
+        if symbol.contains("BTC") || symbol.contains("ETH") { return 1.0 }
+        return 0.01                                          // synthetic index point
+    }
+
+    /// All tradable instruments grouped for the picker.
+    static let groups: [(String, [String])] = [
+        ("Synthetic Indices", synthetic),
+        ("Forex", forex),
+        ("Commodities", commodity),
+        ("Crypto", crypto),
+    ]
 }

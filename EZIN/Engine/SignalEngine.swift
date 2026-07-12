@@ -52,18 +52,4 @@ final class SignalEngine {
             expiresAt: Date().addingTimeInterval(TimeInterval(expiryMinutes * 60))
         )
     }
-
-    /// Snapshot of agent states for the (hidden) Bot dashboard.
-    func botDescriptors(lastVotes: [AgentVote]) -> [BotDescriptor] {
-        agents.map { a in
-            let v = lastVotes.first { $0.agentName == a.name }
-            let label: String
-            switch v?.direction {
-            case .strongBullish, .bullish: label = "BULL"
-            case .strongBearish, .bearish: label = "BEAR"
-            default: label = "FLAT"
-            }
-            return BotDescriptor(name: a.name, role: a.role, active: a.isActive, lastVote: label)
-        }
-    }
 }

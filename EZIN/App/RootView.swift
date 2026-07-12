@@ -29,14 +29,9 @@ struct RootView: View {
 
     private var header: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("EZIN")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("Live market intelligence · glass edition")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.45))
-            }
+            Text("EZIN")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
             Spacer()
             ConnectionPill(state: app.connectionState)
         }

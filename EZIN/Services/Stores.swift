@@ -19,18 +19,10 @@ final class SettingsStore: ObservableObject {
     @Published var pushAlerts: Bool = UserDefaults.standard.object(forKey: "pushAlerts") as? Bool ?? true {
         didSet { d.set(pushAlerts, forKey: "pushAlerts") }
     }
-    @Published var autoTrade: Bool = UserDefaults.standard.bool(forKey: "autoTrade") {
-        didSet { d.set(autoTrade, forKey: "autoTrade") }
-    }
-    @Published var riskPerTrade: Double = UserDefaults.standard.object(forKey: "riskPerTrade") as? Double ?? 2.0 {
-        didSet { d.set(riskPerTrade, forKey: "riskPerTrade") }
-    }
-    @Published var defaultStrategy: String = UserDefaults.standard.string(forKey: "defaultStrategy") ?? "Council Consensus" {
-        didSet { d.set(defaultStrategy, forKey: "defaultStrategy") }
-    }
 
+    /// Symbols scanned for the Signals tab when the bot is not actively trading.
     var watchlist: [String] {
-        get { (d.array(forKey: "watchlist") as? [String]) ?? Array(DerivSymbols.all.prefix(6)) }
+        get { (d.array(forKey: "watchlist") as? [String]) ?? Array(DerivSymbols.synthetic.prefix(4) + DerivSymbols.forex.prefix(2)) }
         set { d.set(newValue, forKey: "watchlist") }
     }
 }
@@ -69,24 +61,4 @@ final class PipelineStore: ObservableObject {
     }
     func remove(_ p: Pipeline) { pipelines.removeAll { $0.id == p.id }; save() }
     func save() { FileStore.shared.write(pipelines, to: file, in: FileStore.shared.pipelinesDir) }
-}
-
-/// Signal history registry.
-final class HistoryStore {
-    static let shared = HistoryStore()
-    private let file = "history.json"
-    func load() -> [SignalOutcome] {
-        FileStore.shared.read([SignalOutcome].self, from: file, in: FileStore.shared.dataDir) ?? Self.seed
-    }
-    func save(_ items: [SignalOutcome]) {
-        FileStore.shared.write(items, to: file, in: FileStore.shared.dataDir)
-    }
-    static let seed: [SignalOutcome] = [
-        .init(displayPair: "EUR/USD", type: .buy, win: true, pips: 42, closedAt: Date().addingTimeInterval(-86400)),
-        .init(displayPair: "XAU/USD", type: .sell, win: true, pips: 128, closedAt: Date().addingTimeInterval(-90000)),
-        .init(displayPair: "GBP/USD", type: .buy, win: false, pips: -18, closedAt: Date().addingTimeInterval(-172800)),
-        .init(displayPair: "V75", type: .sell, win: true, pips: 210, closedAt: Date().addingTimeInterval(-176400)),
-        .init(displayPair: "BTC/USD", type: .buy, win: false, pips: -35, closedAt: Date().addingTimeInterval(-259200)),
-        .init(displayPair: "USD/JPY", type: .sell, win: true, pips: 27, closedAt: Date().addingTimeInterval(-262800)),
-    ]
 }

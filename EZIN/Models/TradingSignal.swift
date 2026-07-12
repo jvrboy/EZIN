@@ -23,14 +23,3 @@ struct TradingSignal: Codable, Identifiable {
     }
 }
 
-/// Closed-signal result shown in History.
-struct SignalOutcome: Codable, Identifiable {
-    var id = UUID()
-    let displayPair: String
-    let type: SignalType
-    let win: Bool
-    let pips: Double
-    let closedAt: Date
-
-    var isBuy: Bool { type == .buy || type == .strongBuy }
-}
