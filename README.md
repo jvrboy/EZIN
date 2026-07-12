@@ -38,6 +38,27 @@ EZIN/
 └── Views/          Signals, History, Bot, Settings + sub-screens
 ```
 
+## Real-time & production (v1.1.0)
+
+- **No mock data.** All data is live from the Deriv WebSocket API (`wss://ws.derivws.com`).
+- **Live client:** authorize, `balance` (subscribed), `ticks`, `ticks_history` candles, `proposal`,
+  `buy`, `proposal_open_contract` (live P&L), `sell`, `profit_table` (real closed-trade history).
+- **Trading Bot (perpetual scalper):** runs 24/7 on your chosen instruments, evaluates **all** agents
+  and indicators on every scan (no single strategy), and places **real Deriv Multiplier trades**
+  respecting your config. Big liquid-glass **Start/Stop** control on the Bot tab.
+- **Bot config (Settings → Trading Bot):** fixed lot size (stake), multiplier, instruments to trade
+  (multi-select), max open positions, and stops (**Points / Pips / Profit / Bot Choice**).
+- **PAT:** add your Deriv Personal Access Token in Settings → Deriv API (works with the public app id
+  or your own). Stored in the Keychain.
+- **History:** real closed trades pulled from `profit_table`.
+
+> Live order execution requires your Deriv PAT. Validate on a **demo** account first — standard practice
+> before going live.
+
+## Download build
+
+Every push to `main` publishes the latest unsigned `.ipa` to the **`build-latest`** GitHub Release.
+
 ## Build
 
 The project is defined with **XcodeGen** (`project.yml`). CI builds an **unsigned `.ipa`** on every push.
