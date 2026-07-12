@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-ios:
     name: Build unsigned .ipa
@@ -51,9 +54,22 @@ jobs:
           zip -qr EZIN-unsigned.ipa Payload
           ls -lh EZIN-unsigned.ipa
 
-      - name: Upload .ipa artifact
+      - name: Publish unsigned .ipa to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release delete build-latest -y --cleanup-tag 2>/dev/null || true
+          gh release create build-latest EZIN-unsigned.ipa \
+            --title "EZIN — latest unsigned iOS build" \
+            --notes "Unsigned .ipa built from commit ${{ github.sha }}." \
+            --target main
+
+      - name: Upload .ipa artifact (best-effort; may hit account storage quota)
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: EZIN-unsigned-ipa
           path: EZIN-unsigned.ipa
-          if-no-files-found: error
+          retention-days: 5
+          if-no-files-found: warn
