@@ -108,9 +108,73 @@ struct StructureAgent: SignalAgent {
     }
 }
 
+/// Ichimoku agent — Tenkan/Kijun cross + Kumo cloud position.
+struct IchimokuAgent: SignalAgent {
+    let name = "Ichimoku"; let role = "Kumo Cloud / TK Cross"; let weight = 1.1; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        let price = md.closes.last ?? 0
+        var s = 0.0
+        if ind.ichimokuTenkan > ind.ichimokuKijun { s += 0.8 } else { s -= 0.8 }
+        let cloudTop = max(ind.ichimokuSenkouA, ind.ichimokuSenkouB)
+        let cloudBot = min(ind.ichimokuSenkouA, ind.ichimokuSenkouB)
+        if price > cloudTop { s += 0.9 } else if price < cloudBot { s -= 0.9 }
+        return vote(name, weight, s, 0.72, "TK \(ind.ichimokuTenkan > ind.ichimokuKijun ? "up" : "down")")
+    }
+}
+
+/// Breakout agent — Keltner + Donchian channel breaks.
+struct BreakoutAgent: SignalAgent {
+    let name = "Breakout"; let role = "Keltner / Donchian"; let weight = 0.9; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        let price = md.closes.last ?? 0
+        var s = 0.0
+        if price > ind.donchianUpper * 0.999 { s += 1.0 } else if price < ind.donchianLower * 1.001 { s -= 1.0 }
+        if price > ind.keltnerUpper { s += 0.6 } else if price < ind.keltnerLower { s -= 0.6 }
+        return vote(name, weight, s, 0.66, "Donchian break")
+    }
+}
+
+/// VWAP / money-flow agent — price vs VWAP + Chaikin Money Flow.
+struct VWAPFlowAgent: SignalAgent {
+    let name = "VWAPFlow"; let role = "VWAP / CMF"; let weight = 0.8; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        let price = md.closes.last ?? 0
+        var s = 0.0
+        if price > ind.vwap { s += 0.7 } else { s -= 0.7 }
+        if ind.cmf > 0.05 { s += 0.6 } else if ind.cmf < -0.05 { s -= 0.6 }
+        return vote(name, weight, s, 0.64, "CMF \(String(format: "%.2f", ind.cmf))")
+    }
+}
+
+/// Oscillator agent — TRIX + Ultimate Oscillator + Chande Momentum.
+struct OscillatorAgent: SignalAgent {
+    let name = "Oscillator"; let role = "TRIX / UO / CMO"; let weight = 0.85; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        var s = 0.0
+        if ind.trix > 0 { s += 0.6 } else { s -= 0.6 }
+        if ind.ultimateOsc > 60 { s += 0.5 } else if ind.ultimateOsc < 40 { s -= 0.5 }
+        if ind.cmo > 20 { s += 0.5 } else if ind.cmo < -20 { s -= 0.5 }
+        return vote(name, weight, s, 0.67, "UO \(Int(ind.ultimateOsc))")
+    }
+}
+
+/// Hull-trend agent — Hull MA cross + Heikin Ashi + linreg slope + PSAR.
+struct HullTrendAgent: SignalAgent {
+    let name = "HullTrend"; let role = "Hull MA / Heikin / PSAR"; let weight = 1.0; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        var s = 0.0
+        if ind.hullFast > ind.hullSlow { s += 0.8 } else { s -= 0.8 }
+        if ind.heikinBullish { s += 0.4 } else { s -= 0.4 }
+        if ind.linRegSlope > 0 { s += 0.4 } else { s -= 0.4 }
+        if ind.psarUp { s += 0.4 } else { s -= 0.4 }
+        return vote(name, weight, s, 0.7, "Hull \(ind.hullFast > ind.hullSlow ? "up" : "down")")
+    }
+}
+
 enum AgentFactory {
     static func standardCouncil() -> [SignalAgent] {
         [TrendAgent(), MomentumAgent(), MeanReversionAgent(),
-         VolumeAgent(), DivergenceAgent(), VolatilityAgent(), StructureAgent()]
+         VolumeAgent(), DivergenceAgent(), VolatilityAgent(), StructureAgent(),
+         IchimokuAgent(), BreakoutAgent(), VWAPFlowAgent(), OscillatorAgent(), HullTrendAgent()]
     }
 }
