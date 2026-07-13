@@ -7,9 +7,11 @@ final class AppState: ObservableObject {
     // Stores
     let settings = SettingsStore.shared
     let credentials = CredentialStore.shared
+    let apiKeys = APIKeyStore.shared
     let models = LLMModelStore.shared
     let pipelines = PipelineStore.shared
     let botConfig = BotConfigStore.shared
+    let signalHistory = SignalHistoryStore.shared
 
     // Runtime
     let deriv = DerivClient()
@@ -31,7 +33,10 @@ final class AppState: ObservableObject {
         deriv.$connectionState.receive(on: RunLoop.main).assign(to: &$connectionState)
 
         bot.onSignals = { [weak self] signals in
-            Task { @MainActor in self?.signals = signals }
+            Task { @MainActor in
+                self?.signals = signals
+                self?.signalHistory.record(signals)
+            }
         }
 
         await connect()

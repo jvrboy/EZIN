@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var app: AppState
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var apiKeys = APIKeyStore.shared
 
     var body: some View {
         NavigationView {
@@ -18,6 +19,13 @@ struct SettingsView: View {
                             }.buttonStyle(.plain)
                         }
 
+                        GlassSection(title: "Appearance") {
+                            NavigationLink { AppearanceView() } label: {
+                                GlassNavRow(icon: "paintbrush.fill", title: "Theme & motion",
+                                            value: ThemeStore.shared.theme.title)
+                            }.buttonStyle(.plain)
+                        }
+
                         GlassSection(title: "Configuration") {
                             NavigationLink { DerivConfigView() } label: {
                                 GlassNavRow(icon: "antenna.radiowaves.left.and.right", title: "Deriv API & Token (PAT)",
@@ -26,7 +34,7 @@ struct SettingsView: View {
                             Divider().overlay(Color.white.opacity(0.08))
                             NavigationLink { APIKeysView() } label: {
                                 GlassNavRow(icon: "key.fill", title: "AI API Keys",
-                                            value: "\(app.credentials.configured.filter { $0.isAIProvider }.count)")
+                                            value: "\(apiKeys.totalKeys) key\(apiKeys.totalKeys == 1 ? "" : "s")")
                             }.buttonStyle(.plain)
                             Divider().overlay(Color.white.opacity(0.08))
                             NavigationLink { LLMModelsView() } label: {
