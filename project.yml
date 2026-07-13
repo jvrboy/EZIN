@@ -36,8 +36,6 @@ targets:
         # Expose the app's own directory inside the Files app
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
-        NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
         # Declare imported LLM file types so users can import .gguf / .safetensors
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: com.ezin.gguf

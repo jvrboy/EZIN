@@ -49,6 +49,7 @@ enum DerivError: Error, LocalizedError {
 /// Production Deriv WebSocket client (v3 API).
 /// Real-time: authorize, balance, ticks, candles, proposal, buy, portfolio,
 /// proposal_open_contract (live P&L), sell, profit_table. No mock data.
+/// Includes automatic reconnect with backoff so live trading/signals survive drops.
 final class DerivClient: NSObject, ObservableObject {
     static let defaultAppID = 1089
     static let endpoint = "wss://ws.derivws.com/websockets/v3"
@@ -66,6 +67,11 @@ final class DerivClient: NSObject, ObservableObject {
     private var appID = DerivClient.defaultAppID
     private var token: String?
     private var reqID = 0
+    private var subscribedSymbols = Set<String>()
+
+    // Reconnection
+    private var shouldReconnect = true
+    private var reconnectAttempts = 0
 
     /// One-shot request/response continuations keyed by req_id.
     private var waiters: [Int: CheckedContinuation<[String: Any], Error>] = [:]
@@ -76,6 +82,7 @@ final class DerivClient: NSObject, ObservableObject {
     func connect(appID: Int?, token: String?) async {
         self.appID = appID ?? DerivClient.defaultAppID
         self.token = token
+        self.shouldReconnect = true
         await MainActor.run { self.connectionState = .connecting; self.authorized = false }
 
         guard let url = URL(string: "\(DerivClient.endpoint)?app_id=\(self.appID)") else {
@@ -85,7 +92,10 @@ final class DerivClient: NSObject, ObservableObject {
         task = session.webSocketTask(with: url)
         task?.resume()
         receiveLoop()
-        await MainActor.run { self.connectionState = .connected }
+        await MainActor.run { self.connectionState = .connected; self.reconnectAttempts = 0 }
+
+        // Re-subscribe any symbols that were active before a reconnect.
+        for s in subscribedSymbols { send(["ticks": s, "subscribe": 1]) }
 
         if let token = token, !token.isEmpty {
             do {
@@ -105,6 +115,7 @@ final class DerivClient: NSObject, ObservableObject {
     }
 
     func disconnect() {
+        shouldReconnect = false
         send(["forget_all": ["ticks", "candles", "balance", "proposal_open_contract"]])
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
@@ -112,12 +123,24 @@ final class DerivClient: NSObject, ObservableObject {
         authorized = false
     }
 
+    private func scheduleReconnect() {
+        guard shouldReconnect else { return }
+        reconnectAttempts += 1
+        let delay = min(Double(reconnectAttempts) * 2.0, 30.0)
+        DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self = self, self.shouldReconnect else { return }
+            Task { await self.connect(appID: self.appID, token: self.token) }
+        }
+    }
+
     // MARK: - Market data
 
-    func candles(symbol: String, timeframe: Timeframe, count: Int = 200) async throws -> [Candle] {
+    /// Fetch candles. Pass endEpoch to page backwards through history (unlimited backfill).
+    func candles(symbol: String, timeframe: Timeframe, count: Int = 200, endEpoch: Int? = nil) async throws -> [Candle] {
         let resp = try await request([
             "ticks_history": symbol, "adjust_start_time": 1, "count": count,
-            "end": "latest", "granularity": timeframe.granularity, "style": "candles"
+            "end": endEpoch.map { String($0) } ?? "latest",
+            "granularity": timeframe.granularity, "style": "candles"
         ])
         guard let arr = resp["candles"] as? [[String: Any]] else {
             if let err = resp["error"] as? [String: Any] { throw DerivError.api(err["message"] as? String ?? "candles error") }
@@ -126,7 +149,7 @@ final class DerivClient: NSObject, ObservableObject {
         return arr.compactMap(Self.parseCandle)
     }
 
-    func subscribeTicks(_ symbol: String) { send(["ticks": symbol, "subscribe": 1]) }
+    func subscribeTicks(_ symbol: String) { subscribedSymbols.insert(symbol); send(["ticks": symbol, "subscribe": 1]) }
 
     // MARK: - Trading (Deriv Multipliers)
 
@@ -224,7 +247,11 @@ final class DerivClient: NSObject, ObservableObject {
     private func send(_ dict: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
               let str = String(data: data, encoding: .utf8) else { return }
-        task?.send(.string(str)) { _ in }
+        task?.send(.string(str)) { [weak self] err in
+            if let err = err {
+                DispatchQueue.main.async { self?.lastError = err.localizedDescription }
+            }
+        }
     }
 
     private func receiveLoop() {
@@ -233,6 +260,7 @@ final class DerivClient: NSObject, ObservableObject {
             switch result {
             case .failure(let err):
                 DispatchQueue.main.async { self.connectionState = .error(err.localizedDescription) }
+                self.scheduleReconnect()
             case .success(let message):
                 if case let .string(text) = message { self.route(text) }
                 self.receiveLoop()
