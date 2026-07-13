@@ -19,12 +19,18 @@ final class BotRuntime: ObservableObject {
     private let configStore = BotConfigStore.shared
 
     @Published var running = false
+    @Published var sessionLabel = TradingSession.label()
     private var scanTask: Task<Void, Never>?
 
     var onSignals: (([TradingSignal]) -> Void)?
     var lastVotes: [AgentVote] = []
-    var scanSeconds: UInt64 = 10          // fast cadence for a scalper
-    private var placing = Set<String>()   // symbols with an in-flight order
+    private var placing = Set<String>()          // symbols with an in-flight order
+
+    // Multi-timeframe scanning state.
+    private lazy var mtf = MultiTimeframeEngine(deriv: deriv, engine: engine)
+    private var rotationIndex = 0
+    private let scanBatchSize = 4                 // symbols analysed per tick (bounded latency)
+    private var liveSignals: [String: TradingSignal] = [:]
 
     init(deriv: DerivClient, engine: SignalEngine) {
         self.deriv = deriv
@@ -34,18 +40,41 @@ final class BotRuntime: ObservableObject {
     var config: BotConfig { configStore.config }
 
     /// Always-on signal scanning (does NOT place trades).
+    /// Cadence is session-aware: synthetics are hunted 24/7; FX/crypto scan faster in
+    /// the quiet 23:00–05:00 SAST window. Signals are multi-timeframe confirmed.
     func startScanning() {
         guard scanTask == nil else { return }
         scanTask = Task { [weak self] in
             guard let self = self else { return }
             while !Task.isCancelled {
                 await self.scan()
-                try? await Task.sleep(nanoseconds: self.scanSeconds * 1_000_000_000)
+                let secs = TradingSession.globalScanSeconds(for: self.scanSymbolUniverse())
+                self.sessionLabel = TradingSession.label()
+                try? await Task.sleep(nanoseconds: max(3, secs) * 1_000_000_000)
             }
         }
     }
 
     func stopScanning() { scanTask?.cancel(); scanTask = nil }
+
+    /// The full set of symbols to scan. When idle, synthetics are always included so
+    /// they produce signals around the clock, alongside the user's watchlist.
+    func scanSymbolUniverse() -> [String] {
+        if running { return config.instruments }
+        var set = SettingsStore.shared.watchlist
+        let alwaysOn = DerivSymbols.volatility + DerivSymbols.boom + DerivSymbols.crash + DerivSymbols.jump
+        for s in alwaysOn where !set.contains(s) { set.append(s) }
+        return set
+    }
+
+    private func nextBatch(from universe: [String]) -> [String] {
+        guard !universe.isEmpty else { return [] }
+        if rotationIndex >= universe.count { rotationIndex = 0 }
+        let end = min(rotationIndex + scanBatchSize, universe.count)
+        let slice = Array(universe[rotationIndex..<end])
+        rotationIndex = end
+        return slice
+    }
 
     /// Switch the trading bot ON — begins executing trades on scans.
     func startBot() {
@@ -58,28 +87,45 @@ final class BotRuntime: ObservableObject {
     // MARK: - Core scan
 
     private func scan() async {
-        let symbols = running ? config.instruments : SettingsStore.shared.watchlist
-        var signals: [TradingSignal] = []
+        let universe = scanSymbolUniverse()
+        let batch = nextBatch(from: universe)
+        guard !batch.isEmpty else { onSignals?(sortedLiveSignals()); return }
 
-        for symbol in symbols {
-            guard let candles = try? await deriv.candles(symbol: symbol, timeframe: .m1, count: 150),
-                  candles.count > 40 else { continue }
-            var md = MarketData(symbol: symbol, assetClass: DerivSymbols.assetClass(symbol),
-                                timeframe: .m1, candles: candles)
-            md.currentPrice = deriv.prices[symbol] ?? candles.last?.close ?? 0
+        var newSignals: [TradingSignal] = []
+        for symbol in batch {
+            let asset = DerivSymbols.assetClass(symbol)
+            let pol = TradingSession.policy(for: asset)
 
-            guard let sig = engine.generate(for: md, strategyName: "Perpetual Scalper") else { continue }
-            signals.append(sig)
-            lastVotes = engine.agents.filter { $0.isActive }.map { $0.analyze(md, engine.analyzer.analyze(md)) }
+            // Deep multi-timeframe confirmation (not a single-1m read).
+            guard let report = await mtf.analyze(symbol: symbol, requested: pol.baseTimeframe, candleCount: 160) else { continue }
+            lastVotes = report.requestedFocus.topVotes
 
-            // Execute only when bot is ON, authorized, and the signal is high-probability.
+            guard let sig = report.toSignal(strategy: pol.aggressive ? "MTF · Overnight Hunt" : "MTF Confluence"),
+                  sig.confidence >= pol.minConfidence else { continue }
+            newSignals.append(sig)
+
+            // Execute only when bot is ON, authorized, and the signal clears the user's gate.
             if running, deriv.authorized, sig.confidence >= config.minConfidence * 100 {
+                var md = MarketData(symbol: symbol, assetClass: asset, timeframe: pol.baseTimeframe, candles: [])
+                md.currentPrice = report.verdict.entry
                 await maybeTrade(signal: sig, md: md)
             }
         }
 
-        signals.sort { $0.confidence > $1.confidence }
-        onSignals?(signals)
+        mergeSignals(newSignals)
+    }
+
+    /// Merge freshly-scanned signals into the rolling live set (one per symbol),
+    /// dropping expired entries, then publish the sorted list.
+    private func mergeSignals(_ new: [TradingSignal]) {
+        for s in new { liveSignals[s.symbol] = s }
+        let now = Date()
+        liveSignals = liveSignals.filter { $0.value.expiresAt > now }
+        onSignals?(sortedLiveSignals())
+    }
+
+    private func sortedLiveSignals() -> [TradingSignal] {
+        liveSignals.values.sorted { $0.confidence > $1.confidence }
     }
 
     // MARK: - Trade execution

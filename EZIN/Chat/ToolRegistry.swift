@@ -28,30 +28,24 @@ struct ToolRegistry {
         return s
     }
 
-    private func resolveTF(_ s: String) -> Timeframe { Timeframe(rawValue: s) ?? .m1 }
+    private func resolveTF(_ s: String) -> Timeframe { Timeframe(rawValue: s) ?? .m5 }
 
     // MARK: tools
+
+    /// Deep multi-timeframe analysis. Never a single-timeframe snapshot: this walks the
+    /// full timeframe ladder, deep-analyses each timeframe (direction, bias, momentum,
+    /// volume, levels, order flow, volatility regime, speed), reads the 1-minute
+    /// execution timing, computes cross-timeframe confluence, deep-dives the requested
+    /// timeframe, then merges everything into a single buy/sell verdict.
     private func analyze(_ args: [String: Any]) async -> String {
         let sym = resolveSymbol(str(args, "symbol"))
         let tf = resolveTF(str(args, "timeframe"))
         guard !sym.isEmpty else { return "Please specify a symbol." }
-        guard let candles = try? await app.deriv.candles(symbol: sym, timeframe: tf, count: 200), candles.count > 40 else {
-            return "No market data available for \(sym)."
+        let mtf = MultiTimeframeEngine(deriv: app.deriv, engine: app.engine)
+        guard let report = await mtf.analyze(symbol: sym, requested: tf) else {
+            return "No market data available for \(DerivSymbols.display(sym)). Open it on the Chart tab to subscribe, or check the connection."
         }
-        var md = MarketData(symbol: sym, assetClass: DerivSymbols.assetClass(sym), timeframe: tf, candles: candles)
-        md.currentPrice = app.deriv.prices[sym] ?? candles.last?.close ?? 0
-        let ind = app.engine.analyzer.analyze(md)
-        let votes = app.engine.agents.filter { $0.isActive }.map { $0.analyze(md, ind) }
-        let decision = app.engine.council.deliberate(symbol: sym, timeframe: tf, votes: votes)
-        var out = "Analysis \(DerivSymbols.display(sym)) [\(tf.rawValue)] price \(String(format: "%.4f", md.currentPrice))\n"
-        out += String(format: "RSI14 %.0f, MACD %.4f, ADX %.0f, StochK %.0f, CCI %.0f\n", ind.rsi14, ind.macdHistogram, ind.adx, ind.stochK, ind.cci20)
-        out += "EMA12\(ind.ema12 > ind.ema26 ? ">" : "<")EMA26, Supertrend \(ind.supertrendUp ? "up" : "down"), Ichimoku \(ind.ichimokuTenkan > ind.ichimokuKijun ? "bull" : "bear"), VWAP \(md.currentPrice > ind.vwap ? "above" : "below")\n"
-        if let d = decision {
-            out += "Council: \(d.direction) · confidence \(Int(d.consensusRatio * 100))% · strength \(d.strength) (\(votes.count) agents)."
-        } else {
-            out += "Council: no consensus yet."
-        }
-        return out
+        return report.markdown()
     }
 
     private func signals() -> String {
