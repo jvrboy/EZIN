@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Root shell — glass tab bar: Chart · Signals · History · Bot · Settings.
+/// Root shell — glass tab bar: Chart · Signals · Chat · History · Bot · Settings.
 struct RootView: View {
     @EnvironmentObject var app: AppState
     @State private var tab: AppTab = .chart
@@ -15,6 +15,7 @@ struct RootView: View {
                     switch tab {
                     case .chart:    ChartView()
                     case .signals:  SignalsView()
+                    case .chat:     ChatView()
                     case .history:  HistoryView()
                     case .bot:      BotView()
                     case .settings: SettingsView()
@@ -43,12 +44,13 @@ struct RootView: View {
 }
 
 enum AppTab: String, CaseIterable {
-    case chart, signals, history, bot, settings
+    case chart, signals, chat, history, bot, settings
     var title: String { rawValue.capitalized }
     var icon: String {
         switch self {
         case .chart:    return "chart.xyaxis.line"
         case .signals:  return "waveform.path.ecg"
+        case .chat:     return "bubble.left.and.bubble.right"
         case .history:  return "clock.arrow.circlepath"
         case .bot:      return "cpu"
         case .settings: return "gearshape"
@@ -59,14 +61,14 @@ enum AppTab: String, CaseIterable {
 struct GlassTabBar: View {
     @Binding var selection: AppTab
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             ForEach(AppTab.allCases, id: \.self) { t in
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { selection = t }
                 } label: {
                     VStack(spacing: 4) {
-                        Image(systemName: t.icon).font(.system(size: 18, weight: .semibold))
-                        Text(t.title).font(.system(size: 10, weight: .medium))
+                        Image(systemName: t.icon).font(.system(size: 17, weight: .semibold))
+                        Text(t.title).font(.system(size: 9, weight: .medium))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -81,7 +83,7 @@ struct GlassTabBar: View {
         }
         .padding(6)
         .glassCard(strong: true)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.bottom, 8)
     }
 }
