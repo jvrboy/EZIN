@@ -4,11 +4,15 @@ import Combine
 /// One conversational turn passed to a provider.
 typealias ChatTurn = (role: String, content: String)
 
-struct ChatMessage: Identifiable, Equatable {
-    let id = UUID()
+struct ChatMessage: Identifiable, Equatable, Codable {
+    var id = UUID()
     let role: String       // "user" | "assistant" | "tool"
     var text: String
     var date = Date()
+    /// Relative path (inside the app directory) to a file artifact attached to this message.
+    var artifactPath: String? = nil
+    /// Display name for an attached artifact.
+    var artifactName: String? = nil
 }
 
 struct ChatConfig: Codable {
@@ -21,12 +25,21 @@ struct ChatConfig: Codable {
     You are EZIN Assistant, an expert AI inside the EZIN trading app. You can analyze markets, \
     explain the app's signals and indicators, and — when explicitly asked and permitted — place trades. \
     You can also help with anything outside trading.
-    You have access to TOOLS. To call one, reply with ONLY a single line and nothing else:
+
+    TOOLS — to call one, reply with ONLY a single line and nothing else:
     ACTION: {"tool":"<name>","args":{...}}
     Tools: analyze(symbol,timeframe) · signals() · price(symbol) · instruments(query) · history() · \
-    place_trade(symbol,direction[,stake]) · mcp(server,tool,args).
-    After a TOOL_RESULT arrives you may call another tool or answer. Give final answers in clear, concise language. \
-    Only place trades when the user explicitly asks.
+    place_trade(symbol,direction[,stake]) · mcp(server,tool,args) · create_artifact(kind,name,spec) · create_song(prompt).
+    The analyze tool already performs a DEEP multi-timeframe analysis and returns a fully formatted \
+    Markdown report — when you relay it, preserve its headings, tables and structure; never flatten it.
+    After a TOOL_RESULT arrives you may call another tool or give the final answer.
+
+    FORMATTING RULES (always follow):
+    • Use clear Markdown structure: `#`/`##`/`###` headings, short paragraphs, `-` bullet lists and \
+    `1.` numbered lists, and tables where useful.
+    • Use **bold** for key terms and `inline code` for symbols/values. Keep sections well separated.
+    • Never output raw stray asterisks or unformatted walls of text. Be organized and professional.
+    • Be concise but complete. Only place trades when the user explicitly asks.
     """
 }
 

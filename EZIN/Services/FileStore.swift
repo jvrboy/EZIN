@@ -17,10 +17,13 @@ final class FileStore {
     var dataDir: URL { root.appendingPathComponent("Data", isDirectory: true) }
     var pipelinesDir: URL { root.appendingPathComponent("Pipelines", isDirectory: true) }
     var logsDir: URL { root.appendingPathComponent("Logs", isDirectory: true) }
+    var chatDir: URL { root.appendingPathComponent("Chat", isDirectory: true) }
+    var projectsDir: URL { root.appendingPathComponent("Projects", isDirectory: true) }
+    var artifactsDir: URL { root.appendingPathComponent("Artifacts", isDirectory: true) }
 
     /// Create the directory structure on first launch.
     func bootstrap() {
-        for dir in [modelsDir, dataDir, pipelinesDir, logsDir] {
+        for dir in [modelsDir, dataDir, pipelinesDir, logsDir, chatDir, projectsDir, artifactsDir] {
             try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         }
         // Drop a readme so the folder is obvious inside Files.
@@ -40,6 +43,42 @@ final class FileStore {
         let url = dir.appendingPathComponent(name)
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(type, from: data)
+    }
+
+    // MARK: - Generic data / artifacts
+
+    /// Absolute URL for a path relative to the app root (e.g. "Artifacts/song.wav").
+    func url(forRelative rel: String) -> URL { root.appendingPathComponent(rel) }
+
+    /// Write raw data into a directory, returning the created file URL.
+    @discardableResult
+    func saveData(_ data: Data, name: String, in dir: URL) -> URL {
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(name)
+        try? data.write(to: url)
+        return url
+    }
+
+    /// Relative path (from app root) for a URL, for compact persistence.
+    func relativePath(_ url: URL) -> String {
+        url.path.replacingOccurrences(of: root.path + "/", with: "")
+    }
+
+    /// Ensure a project's folder exists and return it.
+    @discardableResult
+    func projectFolder(_ project: ChatProject) -> URL {
+        let dir = projectsDir.appendingPathComponent(project.folderName, isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    func deleteProjectFolder(_ project: ChatProject) {
+        try? fm.removeItem(at: projectsDir.appendingPathComponent(project.folderName, isDirectory: true))
+    }
+
+    func fileSize(atRelative rel: String) -> Int64 {
+        let attrs = try? fm.attributesOfItem(atPath: url(forRelative: rel).path)
+        return (attrs?[.size] as? NSNumber)?.int64Value ?? 0
     }
 
     /// Copy an imported file (security-scoped) into the Models directory. No size limit.
