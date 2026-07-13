@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "module": "spikeDetection",
+    "version": "1.0.0",
+    "description": "Spike detection and probability model for Deriv Boom and Crash indices."
+  },
+  "spikeBasics": {
+    "definition": "A spike is a sudden large one-directional candle unique to Boom (spikes UP) and Crash (spikes DOWN) indices.",
+    "frequencyDesign": {
+      "BOOM1000": "on average 1 spike per 1000 ticks (upward)",
+      "BOOM500": "on average 1 spike per 500 ticks (upward)",
+      "BOOM300": "on average 1 spike per 300 ticks (upward)",
+      "CRASH1000": "on average 1 spike per 1000 ticks (downward)",
+      "CRASH500": "on average 1 spike per 500 ticks (downward)",
+      "CRASH300": "on average 1 spike per 300 ticks (downward)"
+    },
+    "keyTruth": "Averages are statistical, NOT schedules. A spike can come early or very late. Never trade on tick-count alone."
+  },
+  "detectionAlgorithm": {
+    "spikeCandle": "A candle is a spike if its range > 3 x ATR(14) AND it moves in the spike direction of the index.",
+    "steps": [
+      "1. Compute ATR(14) on M1.",
+      "2. Track ticks/candles elapsed since last detected spike.",
+      "3. Compute drift strength: consecutive counter-drift candles (down-drift on Boom, up-drift on Crash).",
+      "4. Compute proximity to key demand (Boom) or supply (Crash) zones on M5/M15.",
+      "5. Score spike probability using the factors below."
+    ],
+    "probabilityFactors": [
+      { "factor": "ticksSinceLastSpike >= design average", "weight": 25, "note": "statistically overdue" },
+      { "factor": "price at strong HTF demand zone (Boom) / supply zone (Crash)", "weight": 25 },
+      { "factor": "RSI(14) M1 oversold on Boom / overbought on Crash", "weight": 15 },
+      { "factor": "drift momentum slowing (shrinking candle bodies)", "weight": 15 },
+      { "factor": "price at round number / psych level", "weight": 10 },
+      { "factor": "M5 divergence forming", "weight": 10 }
+    ],
+    "thresholds": {
+      "low": "0-39: no spike edge, avoid spike trades",
+      "moderate": "40-64: watch, prepare",
+      "high": "65-84: spike zone active, valid for spike strategies",
+      "extreme": "85-100: multiple exhaustion factors aligned"
+    }
+  },
+  "spikeStrategies": {
+    "boomSpikeCatching": {
+      "goal": "Catch upward spikes on Boom indices.",
+      "rules": [
+        "Trade direction: BUY only.",
+        "Wait for spike probability >= 65.",
+        "Enter buy at strong M5/M15 demand zone during down-drift.",
+        "SL below the demand zone (structure-based, ~1.5 x ATR).",
+        "TP: spike usually covers many drift candles; take profit immediately after spike prints or use trailing stop.",
+        "Exit if 2x average tick count passes with no spike and structure breaks down."
+      ]
+    },
+    "crashSpikeCatching": {
+      "goal": "Catch downward spikes on Crash indices.",
+      "rules": [
+        "Trade direction: SELL only.",
+        "Wait for spike probability >= 65.",
+        "Enter sell at strong M5/M15 supply zone during up-drift.",
+        "SL above the supply zone.",
+        "TP immediately after spike prints or trail."
+      ]
+    },
+    "trendRiding": {
+      "goal": "Trade the drift BETWEEN spikes.",
+      "rules": [
+        "On Boom: the drift is DOWN. Sell the drift only right AFTER a spike (fresh cycle, spike unlikely soon).",
+        "On Crash: the drift is UP. Buy the drift only right after a spike.",
+        "Hard exit before tick count approaches the average — never hold a counter-spike position into an overdue zone.",
+        "Use M1 EMA9/21 alignment with the drift for entries.",
+        "Small targets, strict stops: one spike can erase many drift wins."
+      ]
+    },
+    "postSpikeScalp": {
+      "goal": "Trade continuation right after a spike.",
+      "rules": [
+        "After a Boom spike, price typically resumes down-drift: scalp sells on M1 rejection patterns.",
+        "After a Crash spike, price typically resumes up-drift: scalp buys.",
+        "Only in the first portion of a new cycle."
+      ]
+    }
+  },
+  "riskWarnings": [
+    "Never SELL Boom or BUY Crash near an overdue spike window — a single spike can blow the stop massively.",
+    "Spread and slippage widen around spikes; account for it in SL placement.",
+    "Spike catching without a zone confluence is gambling; the tick average alone is not an edge."
+  ],
+  "dataNeeded": {
+    "ticks": "Live tick stream from Deriv WebSocket API (see realtime-data.json).",
+    "candles": "M1, M5, M15 OHLC for zone and ATR calculations.",
+    "state": "Persist lastSpikeTimestamp, ticksSinceSpike, and rolling ATR per symbol."
+  }
+}

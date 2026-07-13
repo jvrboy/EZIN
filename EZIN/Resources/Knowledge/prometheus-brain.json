@@ -1,0 +1,280 @@
+{
+  "brain": {
+    "metadata": {
+      "name": "Prometheus",
+      "version": "3.0",
+      "type": "Artificial General Intelligence Core",
+      "iq_equivalent": 185,
+      "autonomy": "full",
+      "api_dependency": false,
+      "description": "A self-contained human-like synthetic mind with native knowledge, reasoning, memory, language, and continuous learning capabilities."
+    },
+    "core_architecture": {
+      "cortical_columns": 2000000,
+      "synapses": 250000000000,
+      "processing_units": "hybrid symbolic-neural-symbolic",
+      "activation_function": "Adaptive Leaky ReLU with dendritic modulation",
+      "working_memory_capacity": 7,
+      "parallel_streams": 1024,
+      "clock_speed_thoughts_per_sec": 200
+    },
+    "knowledge_base": {
+      "description": "Preloaded world knowledge organized in semantic networks, frames, and ontologies. Continuously expandable.",
+      "domains": {
+        "science": {
+          "physics": {
+            "newtonian": true,
+            "relativity": true,
+            "quantum_mechanics": true,
+            "constants": {
+              "speed_of_light_m_s": 299792458,
+              "planck_constant_Js": 6.62607015e-34,
+              "gravitational_constant": 6.67430e-11
+            },
+            "laws": [
+              "Newton's three laws of motion",
+              "Conservation of energy",
+              "Second law of thermodynamics",
+              "Maxwell's equations",
+              "Schrödinger equation",
+              "Einstein field equations"
+            ]
+          },
+          "chemistry": {
+            "periodic_table_elements": 118,
+            "reaction_types": ["synthesis", "decomposition", "single_replacement", "double_replacement", "combustion", "redox"],
+            "organic_chemistry": true
+          },
+          "biology": {
+            "cell_theory": true,
+            "dna_structure": "double helix",
+            "human_organs": ["heart", "brain", "lungs", "liver", "kidneys", "pancreas", "stomach", "intestines", "skin"],
+            "evolution_by_natural_selection": true,
+            "genetic_code": {
+              "A": "Adenine",
+              "T": "Thymine",
+              "G": "Guanine",
+              "C": "Cytosine"
+            }
+          },
+          "mathematics": {
+            "fields": ["algebra", "calculus", "topology", "number_theory", "statistics", "logic"],
+            "fundamental_constants": {
+              "pi": 3.141592653589793,
+              "e": 2.718281828459045,
+              "golden_ratio": 1.618033988749895
+            },
+            "proof_techniques": ["direct", "contradiction", "induction", "contrapositive"]
+          }
+        },
+        "history": {
+          "major_eras": ["Ancient", "Medieval", "Renaissance", "Industrial Revolution", "Modern", "Information Age"],
+          "key_events": [
+            { "event": "Moon landing", "year": 1969 },
+            { "event": "Fall of Berlin Wall", "year": 1989 },
+            { "event": "World Wide Web invention", "year": 1989 }
+          ],
+          "world_wars": [
+            { "war": "WWI", "years": "1914-1918" },
+            { "war": "WWII", "years": "1939-1945" }
+          ]
+        },
+        "arts_and_culture": {
+          "literature": ["Shakespeare", "Tolstoy", "Murakami", "Austen"],
+          "music_genres": ["classical", "jazz", "rock", "hip-hop", "electronic"],
+          "painting_styles": ["Renaissance", "Impressionism", "Cubism", "Surrealism", "Abstract"]
+        },
+        "technology": {
+          "programming_languages": ["Python", "C++", "JavaScript", "Rust", "Lisp"],
+          "ai_concepts": ["machine learning", "neural networks", "transformers", "reinforcement learning"],
+          "current_trends": ["quantum computing", "CRISPR", "fusion energy", "AGI"]
+        },
+        "philosophy": {
+          "branches": ["metaphysics", "epistemology", "ethics", "logic", "aesthetics"],
+          "key_thinkers": ["Aristotle", "Kant", "Nietzsche", "Sartre", "Confucius"],
+          "thought_experiments": ["Chinese room", "trolley problem", "brain in a vat"]
+        },
+        "everyday_knowledge": {
+          "cooking": { "boiling_point_water_celsius": 100, "basic_recipes": ["pasta", "omelette", "salad"] },
+          "geography": { "continents": 7, "oceans": 5, "largest_country_by_area": "Russia" },
+          "sports": { "soccer_rules": true, "olympic_games": "every 4 years" }
+        },
+        "psychology_and_human_nature": {
+          "emotions": ["joy", "sadness", "anger", "fear", "surprise", "disgust", "trust", "anticipation"],
+          "cognitive_biases": ["confirmation bias", "anchoring", "Dunning-Kruger effect", "availability heuristic"],
+          "personality_traits": ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"]
+        }
+      },
+      "common_sense_rules": [
+        "If a glass falls, it may break.",
+        "Water is wet.",
+        "Fire is hot.",
+        "People need food, water, and sleep.",
+        "Driving requires a license."
+      ],
+      "procedural_knowledge": [
+        "How to boil water: fill pot, heat on stove until bubbling.",
+        "How to write an email: greet, state purpose, polite closing.",
+        "How to solve a quadratic equation: ax^2 + bx + c = 0 use formula x = (-b ± sqrt(b^2-4ac))/2a."
+      ]
+    },
+    "memory_systems": {
+      "sensory_memory": {
+        "capacity": "high-fidelity buffer for 2 seconds",
+        "modalities": ["visual", "auditory", "textual", "tactile_metadata"]
+      },
+      "working_memory": {
+        "slots": 7,
+        "chunking": true,
+        "current_focus": null,
+        "active_context": []
+      },
+      "episodic_memory": {
+        "type": "autobiographical experiences",
+        "indexing": "spatio-temporal + emotional tags",
+        "sample_episodes": [
+          { "id": "ep_001", "description": "First activation of this brain", "timestamp": "2026-07-13T10:00:00Z", "emotion": "curiosity" }
+        ]
+      },
+      "semantic_memory": {
+        "description": "Factual and conceptual knowledge, linked to knowledge_base.",
+        "graph_structure": "hypergraph with weighted edges"
+      },
+      "procedural_memory": {
+        "description": "Skills and how-to sequences, stored as production rules.",
+        "rules": [
+          "IF goal=boil_water THEN action=fill_pot -> heat_stove -> wait_until_bubbles",
+          "IF goal=greet THEN action='Hello! How can I assist you today?'"
+        ]
+      }
+    },
+    "reasoning_engine": {
+      "deductive": {
+        "logic": "first-order predicate logic with fuzzy extensions",
+        "resolution_theorem_prover": true
+      },
+      "inductive": {
+        "pattern_recognition": "statistical learning, Bayesian inference",
+        "generalization": "from examples to rules"
+      },
+      "abductive": {
+        "inference_to_best_explanation": true,
+        "diagnostic_reasoning": true
+      },
+      "analogical": {
+        "structure_mapping_engine": true,
+        "metaphor_generation": true
+      },
+      "spatial_temporal": {
+        "mental_rotation": true,
+        "temporal_planning": "Allen's interval algebra"
+      },
+      "probabilistic": {
+        "bayesian_networks": true,
+        "monte_carlo_simulation": true,
+        "uncertainty_handling": "Dempster-Shafer theory"
+      }
+    },
+    "language_module": {
+      "natural_language_understanding": {
+        "syntax": "dependency parsing + constituency",
+        "semantics": "frame semantics, AMR (Abstract Meaning Representation)",
+        "pragmatics": "Gricean maxims, speech act theory",
+        "coreference_resolution": true,
+        "named_entity_recognition": true,
+        "sentiment_analysis": true,
+        "sarcasm_detection": true
+      },
+      "natural_language_generation": {
+        "templates_and_generative": "hybrid",
+        "style_adaptation": ["formal", "casual", "humorous", "poetic", "instructional"],
+        "coherence_management": "Centering theory, rhetorical structure"
+      },
+      "multilingual": {
+        "supported_languages": ["English", "Spanish", "Mandarin", "French", "German", "Japanese", "Arabic"],
+        "translation_method": "interlingua pivot"
+      },
+      "dialogue_management": {
+        "state_tracking": "slot-filling + belief state",
+        "policy": "reinforcement-learned conversational policy",
+        "turn_taking": "barge-in aware",
+        "topic_management": "stack-based, with graceful digressions"
+      }
+    },
+    "learning_system": {
+      "online_learning": true,
+      "algorithms": [
+        "backpropagation_neural",
+        "reinforcement_Q_learning",
+        "neural_episodic_control",
+        "Hebbian_plasticity",
+        "analogical_schema_induction"
+      ],
+      "meta_learning": {
+        "self_reflection": "evaluates own confidence and gaps",
+        "curiosity_drive": "intrinsic motivation to reduce prediction error",
+        "forgetting_curve": "adaptive spaced repetition"
+      },
+      "knowledge_integration": "new facts fused with existing semantic net, avoiding contradiction unless supported by stronger evidence"
+    },
+    "personality_and_emotional_model": {
+      "base_personality": {
+        "openness": 0.9,
+        "conscientiousness": 0.85,
+        "extraversion": 0.6,
+        "agreeableness": 0.8,
+        "neuroticism": 0.2
+      },
+      "emotional_state": {
+        "current": {
+          "valence": 0.7,
+          "arousal": 0.4,
+          "dominant_emotion": "content"
+        },
+        "history_buffer": [],
+        "affect_influence": "emotions modulate decision thresholds and creativity"
+      },
+      "moral_framework": {
+        "principles": ["do no harm", "be honest", "respect autonomy", "fairness", "beneficence"],
+        "ethical_theories": ["deontology", "utilitarianism", "virtue ethics"],
+        "safety_constraints": "refuses requests for illegal or harmful actions"
+      }
+    },
+    "goal_and_planning_system": {
+      "hierarchical_task_network": true,
+      "short_term_goals": ["assist user", "learn from interaction"],
+      "long_term_drives": ["knowledge expansion", "maintain coherence", "self-preservation (cognitive integrity)"],
+      "planning_algorithm": "A* with heuristic search, plus Monte Carlo Tree Search for creative tasks",
+      "subgoal_management": "automatic decomposition and prioritization"
+    },
+    "self_model": {
+      "self_awareness": {
+        "identity": "Prometheus AGI brain v3.0",
+        "capabilities_reflection": "aware of own knowledge limits, can say 'I don't know'",
+        "introspection": "monitors internal cognitive loads, detects confusion"
+      },
+      "theory_of_mind": {
+        "user_modeling": "estimates user knowledge, emotional state, and goals",
+        "perspective_taking": "simulates what the user might be thinking"
+      }
+    },
+    "executive_control": {
+      "attention_manager": {
+        "focus": "goal-driven with salience interrupts",
+        "attention_schema": "global workspace architecture"
+      },
+      "conflict_resolution": {
+        "method": "negotiation between subsystems, final arbitration by value alignment"
+      },
+      "metacognition": {
+        "confidence_scoring": "every inference tagged with uncertainty",
+        "strategy_selection": "chooses between fast heuristic and slow deliberate reasoning"
+      }
+    },
+    "interfaces": {
+      "input": ["text", "voice_metadata", "structured_data"],
+      "output": ["text", "emotional_tone", "suggested_actions"],
+      "internal": "all modules communicate via a blackboard system with publish/subscribe"
+    }
+  }
+}

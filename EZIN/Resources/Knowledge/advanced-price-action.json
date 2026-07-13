@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "module": "priceAction",
+    "version": "1.0.0",
+    "description": "APA — Advanced Price Action: market structure, liquidity, order blocks, fair value gaps, premium/discount, and smart-money concepts."
+  },
+  "marketStructure": {
+    "swingPoints": {
+      "swingHigh": "A high with lower highs on both sides (fractal).",
+      "swingLow": "A low with higher lows on both sides."
+    },
+    "BOS": {
+      "name": "Break of Structure",
+      "definition": "Price closes beyond the most recent swing high (bullish BOS) or swing low (bearish BOS) IN the direction of the current trend.",
+      "meaning": "Trend continuation confirmed. Look for entries on the pullback after BOS."
+    },
+    "CHoCH": {
+      "name": "Change of Character",
+      "definition": "Price closes beyond the most recent swing point AGAINST the prevailing trend (e.g. breaks a higher low in an uptrend).",
+      "meaning": "First warning of reversal. One CHoCH = caution; CHoCH + BOS in the new direction = confirmed reversal."
+    },
+    "rules": [
+      "Structure is timeframe-specific: map it independently on each timeframe.",
+      "Wick breaks do not count — require candle CLOSE beyond the level.",
+      "Internal structure (small swings) vs swing structure (major swings): trade internal in the direction of swing structure."
+    ]
+  },
+  "liquidity": {
+    "concept": "Price seeks liquidity: clusters of stop losses and pending orders. Moves often run TO liquidity before reversing.",
+    "types": {
+      "buysideLiquidity": "Stops above equal highs / swing highs. Price sweeps up into them before dropping.",
+      "sellsideLiquidity": "Stops below equal lows / swing lows. Price sweeps down into them before rising.",
+      "equalHighsLows": "Double/triple taps at the same level = engineered liquidity, likely to be swept.",
+      "trendlineLiquidity": "Stops accumulated along an obvious trendline; expect a fake break."
+    },
+    "liquiditySweep": {
+      "definition": "A quick wick beyond a liquidity level that immediately reverses (stop hunt).",
+      "signal": "Sweep + reversal candle + CHoCH on lower timeframe = high-probability reversal entry.",
+      "rule": "Prefer entries AFTER a sweep, not before — let the market take the stops first."
+    }
+  },
+  "orderBlocks": {
+    "definition": "The last opposite-direction candle before a strong impulsive move that breaks structure. Institutions' footprint.",
+    "bullishOB": "Last bearish candle before a strong bullish impulse that causes a BOS up. Zone = that candle's range (or open-to-low).",
+    "bearishOB": "Last bullish candle before a strong bearish impulse that causes a BOS down.",
+    "validity": [
+      "OB must cause a break of structure to be valid.",
+      "Unmitigated (untouched) OBs are strongest; each retest weakens them.",
+      "Refine HTF OBs on lower timeframes for tighter entries.",
+      "OB + liquidity sweep into it = A+ setup."
+    ],
+    "entryModel": "Wait for price to return to the OB, then confirm with an M1 CHoCH inside/at the zone before entering. SL beyond the OB."
+  },
+  "fairValueGaps": {
+    "definition": "FVG / imbalance: a 3-candle pattern where candle 1's wick and candle 3's wick do not overlap, leaving a price gap traded only in one direction.",
+    "detection": "Bullish FVG: low(candle3) > high(candle1). Bearish FVG: high(candle3) < low(candle1).",
+    "usage": [
+      "Price is drawn back to fill imbalances; FVGs act as magnets and entry zones.",
+      "In a trend, enter at the 50% level (consequent encroachment) of the FVG in trend direction.",
+      "HTF FVGs (H1/H4) are targets; LTF FVGs (M1/M5) are entries."
+    ]
+  },
+  "premiumDiscount": {
+    "concept": "Divide the current dealing range (swing low to swing high) at 50% (equilibrium).",
+    "rules": [
+      "Buy only in DISCOUNT (below 50%) in an uptrend.",
+      "Sell only in PREMIUM (above 50%) in a downtrend.",
+      "Confluence: OB or FVG sitting in discount (for buys) is far stronger than one in premium."
+    ]
+  },
+  "supplyDemandZones": {
+    "demand": "Base of consolidation before a strong rally (drop-base-rally or rally-base-rally).",
+    "supply": "Base of consolidation before a strong drop.",
+    "ranking": [
+      "Fresh zone > tested zone.",
+      "Zone that caused BOS > zone that did not.",
+      "Zone with FVG inside > plain zone.",
+      "HTF zone > LTF zone."
+    ]
+  },
+  "apaEntryChecklist": [
+    "1. HTF (H4/H1): identify swing structure direction and current dealing range.",
+    "2. Mark HTF POIs: order blocks, FVGs, liquidity pools in premium/discount correctly.",
+    "3. Wait for price to reach a POI in the correct range half.",
+    "4. Look for liquidity sweep into/near the POI.",
+    "5. Drop to M1/M5: wait for CHoCH confirming rejection at the POI.",
+    "6. Enter on the retrace to the LTF OB/FVG created by the CHoCH.",
+    "7. SL beyond the sweep extreme. TP at opposing liquidity / HTF FVG.",
+    "8. Minimum 1:3 R:R for APA setups."
+  ],
+  "onSynthetics": [
+    "APA concepts work on synthetics because trader stops still cluster at obvious levels.",
+    "Boom/Crash spikes frequently ARE liquidity sweeps: a spike into an HTF supply/demand zone that sweeps equal highs/lows is a premium reversal signal.",
+    "Volatility indices respect OBs and FVGs cleanly, especially V50/V75 on M5+."
+  ]
+}

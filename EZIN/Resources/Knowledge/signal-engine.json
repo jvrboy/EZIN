@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "module": "signalEngine",
+    "version": "1.0.0",
+    "description": "Signal fusion engine. Combines ALL findings from every module into one final signal with confirmations, scoring, and output formatting."
+  },
+  "fusionProcess": {
+    "description": "Every module reports findings; the engine fuses them into ONE decision. Nothing is signalled from a single module alone.",
+    "inputs": [
+      { "source": "multiTimeframe", "provides": "bias, alignment grade, timeframe notes" },
+      { "source": "technicalAnalysis", "provides": "indicator states, S/R zones, regime (trend/range)" },
+      { "source": "priceAction", "provides": "structure events, OBs, FVGs, liquidity, premium/discount" },
+      { "source": "candlesticks", "provides": "trigger patterns at zones" },
+      { "source": "spikeDetection", "provides": "spike probability, cycle position (Boom/Crash only)" },
+      { "source": "strategies", "provides": "matched strategy and its rules" },
+      { "source": "selfLearning", "provides": "current confluence weights and symbol-specific stats" }
+    ],
+    "steps": [
+      "1. Collect all findings into a findings[] array with direction votes (bullish/bearish/neutral).",
+      "2. Discard findings that conflict with hard rules (e.g. sell Boom in overdue spike window).",
+      "3. Compute direction: weighted vote using confluence weights x timeframe multipliers x learned weights.",
+      "4. If direction vote is not decisive (>= 65% one side), output NO_TRADE.",
+      "5. Count valid confluences for the winning direction; check minimums (3 trend / 5 counter-trend).",
+      "6. Run the confirmation checklist (below). All required confirmations must pass.",
+      "7. Compute confidence score (brain-core.json scoring).",
+      "8. Attach risk plan from risk-management.json.",
+      "9. Emit signal in signalOutputSchema format with full reasoning."
+    ]
+  },
+  "confirmationChecklist": {
+    "description": "Proper confirmations to run BEFORE any signal is final. Required ones must all pass.",
+    "required": [
+      { "id": "candle_close", "check": "Trigger candle has CLOSED (never signal on a forming candle)." },
+      { "id": "bias_check", "check": "Signal direction matches bias, OR counter-trend requirements fully met." },
+      { "id": "zone_respect", "check": "Entry is AT a defined zone/POI, not in open space." },
+      { "id": "momentum_agree", "check": "RSI on entry TF is on the correct side of 50 or hooking in signal direction." },
+      { "id": "no_hard_block", "check": "No hard rule violated (spike window, session limits, max trades)." },
+      { "id": "rr_check", "check": "Structure-based SL/TP gives at least the strategy's minimum R:R." }
+    ],
+    "optionalBoosters": [
+      { "id": "retest_confirm", "check": "Break-retest completed", "bonus": 5 },
+      { "id": "ltf_choch", "check": "M1 CHoCH at the zone", "bonus": 5 },
+      { "id": "volume_confirm", "check": "Tick volume expansion in signal direction", "bonus": 5 },
+      { "id": "divergence_support", "check": "Divergence supporting the signal", "bonus": 5 }
+    ]
+  },
+  "combinationRules": [
+    "ALL findings must be combined — a signal must cite every module that contributed.",
+    "Two weak signals in the same direction do NOT equal one strong signal unless they are independent confluence types.",
+    "One HTF finding outweighs two LTF findings of the same type.",
+    "If spikeDetection reports high probability, it overrides drift-direction findings on Boom/Crash.",
+    "The learned weight (self-learning.json) scales each confluence: weight_final = base_weight x tf_multiplier x learned_multiplier."
+  ],
+  "outputTemplates": {
+    "signal": "SIGNAL: {direction} {symbol}\nConfidence: {confidence}% ({grade})\nBias: {bias} (D1:{d1} H4:{h4} H1:{h1})\nSetup: {setupType} — {strategyName}\nConfluences ({count}): {confluenceList}\nConfirmations: {confirmationList}\nEntry: {entry} | SL: {stopLoss} | TP1: {tp1} | TP2: {tp2}\nR:R: {riskReward}\nReasoning: {reasoning}\nWarnings: {warnings}",
+    "noTrade": "NO TRADE on {symbol}.\nReason: {reason}\nWhat I need to see: {conditionsForTrade}\nCurrent bias: {bias} | Alignment grade: {grade}",
+    "spikeAlert": "SPIKE WATCH {symbol}: probability {probability}%.\nFactors: {factors}\nPlan: {plan}"
+  },
+  "invalidation": {
+    "rules": [
+      "Signal is invalidated if price violates the SL level before entry triggers.",
+      "Signal expires after N candles on the entry timeframe (default 10) if entry never fills.",
+      "A new HTF CHoCH against the signal cancels it immediately.",
+      "On Boom/Crash, a spike printing before entry resets the analysis."
+    ]
+  }
+}

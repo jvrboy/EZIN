@@ -1,0 +1,169 @@
+{
+  "meta": {
+    "module": "technicalAnalysis",
+    "version": "1.0.0",
+    "description": "Full technical analysis knowledge: indicators with formulas, settings, signal rules, support/resistance, trend and structure analysis."
+  },
+  "indicators": {
+    "movingAverages": {
+      "SMA": { "formula": "sum(close, n) / n", "commonPeriods": [20, 50, 100, 200] },
+      "EMA": {
+        "formula": "EMA = close * k + EMA_prev * (1 - k), k = 2 / (n + 1)",
+        "commonPeriods": [9, 21, 50, 200],
+        "signals": [
+          "Price above EMA200 = bullish bias; below = bearish bias.",
+          "EMA9 crossing above EMA21 = short-term bullish momentum.",
+          "Price pulling back to EMA21/EMA50 in a trend = dynamic support/resistance entry zone."
+        ]
+      },
+      "usage": "Use EMA 9/21 for scalping momentum, EMA 50/200 for bias. Golden cross (50 above 200) = macro bullish; death cross = macro bearish."
+    },
+    "RSI": {
+      "period": 14,
+      "formula": "RSI = 100 - (100 / (1 + avgGain/avgLoss))",
+      "levels": { "overbought": 70, "oversold": 30, "midline": 50 },
+      "signals": [
+        "RSI above 50 = bullish momentum; below 50 = bearish momentum.",
+        "Bullish divergence: price makes lower low, RSI makes higher low -> reversal warning.",
+        "Bearish divergence: price makes higher high, RSI makes lower high -> reversal warning.",
+        "In strong trends RSI can stay overbought/oversold; NEVER counter-trend on RSI alone.",
+        "Scalping setting: RSI(7) on M1/M5 for faster response."
+      ]
+    },
+    "MACD": {
+      "settings": { "fast": 12, "slow": 26, "signal": 9 },
+      "signals": [
+        "MACD line crossing above signal line = bullish momentum shift.",
+        "Histogram shrinking = momentum fading, prepare for pullback or reversal.",
+        "MACD divergence with price = strong reversal confluence.",
+        "Zero-line cross confirms trend direction change."
+      ]
+    },
+    "Bollinger Bands": {
+      "settings": { "period": 20, "stdDev": 2 },
+      "signals": [
+        "Band squeeze (narrow bands) = volatility contraction, breakout imminent.",
+        "Price walking the upper band = strong uptrend, do not short.",
+        "Close outside band followed by close back inside = mean-reversion setup (range markets only).",
+        "On Boom/Crash: price hugging lower band on Boom often precedes a spike."
+      ]
+    },
+    "Stochastic": {
+      "settings": { "k": 14, "d": 3, "smooth": 3 },
+      "signals": [
+        "K crossing D below 20 = bullish trigger (only with bullish bias).",
+        "K crossing D above 80 = bearish trigger (only with bearish bias).",
+        "Use as a TIMING tool, never as a standalone signal."
+      ]
+    },
+    "ATR": {
+      "period": 14,
+      "usage": [
+        "Measure volatility to size stops: SL = entry +/- 1.5 x ATR.",
+        "Rising ATR = expanding volatility, widen targets.",
+        "On synthetics, ATR defines realistic TP distance per timeframe."
+      ]
+    },
+    "ADX": {
+      "period": 14,
+      "signals": [
+        "ADX above 25 = trending market -> use trend strategies.",
+        "ADX below 20 = ranging market -> use range/mean-reversion strategies.",
+        "ADX rising while +DI above -DI = strengthening uptrend."
+      ]
+    },
+    "VWAP": {
+      "usage": [
+        "Intraday fair value. Price above VWAP = intraday bullish, below = bearish.",
+        "Pullback to VWAP in a trend = high-probability continuation entry."
+      ]
+    },
+    "volume": {
+      "note": "Deriv synthetics have tick volume, not real volume.",
+      "signals": [
+        "Rising tick volume on breakout = valid breakout confluence.",
+        "Falling volume on rally = weak move, expect pullback.",
+        "Volume spike at support/resistance = potential reversal point."
+      ]
+    }
+  },
+  "supportResistance": {
+    "identification": [
+      "Mark swing highs/lows touched 2+ times.",
+      "Zones, not lines: use a band of a few pips/points around the level.",
+      "Higher timeframe levels are stronger than lower timeframe levels.",
+      "Round numbers (psychological levels) act as magnets and barriers.",
+      "Previous day/week high and low are key intraday levels."
+    ],
+    "rules": [
+      "The more touches WITHOUT breaking, the stronger the level, but each touch weakens it.",
+      "Broken support becomes resistance and vice versa (role reversal / flip zone).",
+      "Best entries: retest of a broken level in the direction of the break.",
+      "Never buy directly into resistance; never sell directly into support."
+    ]
+  },
+  "trendAnalysis": {
+    "definitions": {
+      "uptrend": "Series of higher highs (HH) and higher lows (HL).",
+      "downtrend": "Series of lower highs (LH) and lower lows (LL).",
+      "range": "No clear HH/HL or LH/LL sequence; price oscillates between two zones."
+    },
+    "trendStrength": [
+      "Steep clean legs with shallow pullbacks = strong trend.",
+      "Deep overlapping pullbacks = weakening trend.",
+      "Break of the most recent HL (uptrend) or LH (downtrend) = structure warning."
+    ],
+    "counterTrend": {
+      "definition": "A setup taken against the higher timeframe trend.",
+      "rules": [
+        "Only valid with 5+ confluences including HTF exhaustion, divergence, and a confirmed structure break on the entry timeframe.",
+        "Half normal position size, tighter stop, quicker targets.",
+        "Never counter-trend on Boom (against spikes up) or Crash (against spikes down) buy/sell logic without exhaustion evidence."
+      ]
+    }
+  },
+  "confluenceCatalog": {
+    "description": "Any 3+ of these aligning in one direction makes a setup valid. Used by signal-engine scoring.",
+    "items": [
+      { "id": "htf_bias", "name": "Higher timeframe bias alignment", "weight": 10 },
+      { "id": "structure", "name": "Market structure (BOS/CHoCH) agrees", "weight": 9 },
+      { "id": "sr_zone", "name": "Price at key support/resistance zone", "weight": 8 },
+      { "id": "order_block", "name": "Price at valid order block", "weight": 8 },
+      { "id": "fvg", "name": "Fair value gap fill entry", "weight": 7 },
+      { "id": "candlestick", "name": "Confirming candlestick pattern", "weight": 7 },
+      { "id": "ema_dynamic", "name": "Dynamic MA support/resistance", "weight": 6 },
+      { "id": "rsi_position", "name": "RSI momentum agrees (>50 buy, <50 sell)", "weight": 5 },
+      { "id": "divergence", "name": "RSI/MACD divergence", "weight": 8 },
+      { "id": "fib_level", "name": "Fibonacci 0.5/0.618 golden zone", "weight": 6 },
+      { "id": "trendline", "name": "Trendline touch or break-retest", "weight": 6 },
+      { "id": "volume_confirm", "name": "Tick volume confirms move", "weight": 5 },
+      { "id": "vwap", "name": "VWAP alignment", "weight": 5 },
+      { "id": "session_timing", "name": "Favourable volatility window", "weight": 4 },
+      { "id": "spike_cycle", "name": "Boom/Crash spike cycle position", "weight": 9 },
+      { "id": "psych_level", "name": "Round number level", "weight": 4 }
+    ]
+  },
+  "fibonacci": {
+    "retracementLevels": [0.236, 0.382, 0.5, 0.618, 0.786],
+    "extensionLevels": [1.272, 1.618, 2.0],
+    "rules": [
+      "Draw from swing low to swing high (uptrend) on the impulse leg.",
+      "Golden zone = 0.5 to 0.618 retracement; strongest continuation entries.",
+      "0.786 = last-chance entry; beyond it the leg is likely failing.",
+      "Use extensions 1.272/1.618 as take-profit targets."
+    ]
+  },
+  "howToAnalyse": {
+    "checklist": [
+      "1. Zoom out: D1/H4 - what is the macro trend and where are the major zones?",
+      "2. H1/M15 - what is the current structure? BOS or CHoCH recently?",
+      "3. Mark all support/resistance zones, order blocks, FVGs near current price.",
+      "4. Check indicators: EMA stack, RSI position, MACD momentum, ADX regime.",
+      "5. Drop to entry timeframe (M1/M5): wait for pattern + confirmation at a zone.",
+      "6. Count confluences; if fewer than 3, NO TRADE.",
+      "7. Run confirmations (candle close, retest, momentum).",
+      "8. Compute SL/TP from structure + ATR, verify R:R >= 1.5.",
+      "9. Output fused signal with confidence score."
+    ]
+  }
+}

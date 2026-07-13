@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "module": "selfLearning",
+    "version": "1.0.0",
+    "description": "Self-learning and self-training system. Logs every signal and outcome, adjusts confluence weights, tracks per-symbol/per-strategy stats, and runs training routines — all without external AI."
+  },
+  "journalSchema": {
+    "trade": {
+      "id": "uuid",
+      "timestamp": "ISO datetime",
+      "symbol": "string",
+      "direction": "BUY | SELL",
+      "strategyId": "string (from strategies.json)",
+      "setupType": "trend | counter-trend | range | spike",
+      "timeframes": "object of notes per timeframe",
+      "confluencesUsed": ["confluence ids"],
+      "confirmationsPassed": ["confirmation ids"],
+      "confidenceAtEntry": "number",
+      "entry": "number",
+      "stopLoss": "number",
+      "takeProfit": "number",
+      "outcome": "WIN | LOSS | BREAKEVEN | EXPIRED | PENDING",
+      "rMultiple": "realized R (e.g. +2, -1)",
+      "notes": "string"
+    }
+  },
+  "weightAdjustment": {
+    "description": "Each confluence has a learned multiplier starting at 1.0. It adapts with outcomes.",
+    "algorithm": {
+      "onWin": "for each confluence used: learnedWeight = min(1.5, learnedWeight + 0.02)",
+      "onLoss": "for each confluence used: learnedWeight = max(0.5, learnedWeight - 0.03)",
+      "decay": "weekly: move every weight 10% back toward 1.0 to prevent overfitting",
+      "scope": "weights are stored PER SYMBOL and globally; symbol weight = 0.7 x symbolLearned + 0.3 x globalLearned"
+    },
+    "minimumSample": "Do not trust adjusted weights until 30+ logged trades for that confluence."
+  },
+  "statsTracking": {
+    "perStrategy": ["winRate", "avgR", "expectancy", "profitFactor", "maxConsecutiveLosses", "sampleSize"],
+    "perSymbol": ["winRate", "avgR", "bestSession", "bestTimeframe", "avgSpikeCycleAccuracy (Boom/Crash)"],
+    "perConfluence": ["appearanceCount", "winRateWhenPresent", "learnedWeight"],
+    "actions": [
+      "Strategy expectancy < 0 after 30 trades -> flag strategy as UNDERPERFORMING, require manual review, halve its selection priority.",
+      "Confluence winRateWhenPresent < 40% after 30 samples -> reduce its base contribution.",
+      "Symbol winRate < 35% after 30 trades -> suggest dropping that symbol."
+    ]
+  },
+  "selfTrainingRoutines": {
+    "backtestLoop": {
+      "description": "Train on historical candles fetched via realtime-data.json.",
+      "steps": [
+        "1. Fetch N historical candles for a symbol (e.g. 5000 M5 candles).",
+        "2. Replay candle-by-candle through the full analysis pipeline (no lookahead).",
+        "3. Record every signal the engine WOULD have given and simulate SL/TP outcomes.",
+        "4. Feed simulated outcomes into weightAdjustment with a 0.5 learning-rate factor (live trades teach harder than backtests).",
+        "5. Store the backtest report: winRate, expectancy, worst drawdown per strategy."
+      ]
+    },
+    "patternMining": {
+      "description": "Discover new symbol-specific tendencies.",
+      "steps": [
+        "Track conditional stats, e.g. 'on R_75, after 3 consecutive M5 bearish candles at EMA50, bounce rate = X%'.",
+        "Promote a mined pattern into a usable confluence when sample >= 100 and edge >= 60%.",
+        "Demote/remove it if live performance drops below 50% over the next 50 samples."
+      ]
+    },
+    "spikeCycleCalibration": {
+      "description": "Continuously refine Boom/Crash spike statistics from live ticks.",
+      "steps": [
+        "Record actual tick counts between spikes per symbol.",
+        "Maintain rolling distribution (median, p25, p75) and use it instead of the theoretical average in spike probability scoring."
+      ]
+    },
+    "errorAnalysis": {
+      "description": "After every loss, auto-classify the failure.",
+      "categories": ["bad_bias_read", "entered_mid_range", "counter_trend_undersized_confluence", "spike_window_violation", "news_of_nothing (pure variance)", "late_entry_chase"],
+      "rule": "If one category exceeds 30% of recent losses, surface a coaching alert to the user with the matching rulebook section."
+    }
+  },
+  "memoryPersistence": {
+    "storage": "Persist learned weights, journal, and mined patterns to the app's database or local storage layer.",
+    "files": {
+      "learned-weights.json": "current multipliers per confluence per symbol",
+      "trade-journal.json": "append-only trade log",
+      "mined-patterns.json": "discovered symbol tendencies",
+      "backtest-reports.json": "training run summaries"
+    },
+    "rule": "The brain must load these at startup; if absent, initialize all learned weights to 1.0."
+  }
+}

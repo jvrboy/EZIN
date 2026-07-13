@@ -1,0 +1,1205 @@
+{
+  "meta": {
+    "name": "FOREX ANALYSIS BRAIN",
+    "version": "1.0.0",
+    "author": "Professional Confluence Engine",
+    "description": "A comprehensive knowledge base for professional-grade forex technical analysis. Built around multi-timeframe confluence, smart money concepts, ICT, SMC, price action, divergences, and the 714 Method. Never relies on a single signal or timeframe. Every trade must pass a full confluence checklist.",
+    "core_philosophy": [
+      "NEVER trade from a single timeframe alone",
+      "ALWAYS seek minimum 3 confluence factors before entry",
+      "HIGH timeframe bias ALWAYS overrides lower timeframe signals",
+      "Patience is an edge — wait for the setup to come to you",
+      "Liquidity is the fuel — understand where it sits before trading",
+      "Smart money leaves footprints — learn to read them",
+      "Risk is managed BEFORE the trade, not during",
+      "Context is everything — a pattern without context is noise"
+    ]
+  },
+
+  "timeframe_hierarchy": {
+    "description": "Multi-timeframe analysis is mandatory. Each timeframe has a defined role. Never skip levels.",
+    "levels": {
+      "macro_bias": {
+        "timeframes": ["Monthly", "Weekly"],
+        "role": "Define the long-term trend and major draw on liquidity. Sets the directional bias that everything else must align with.",
+        "questions_to_ask": [
+          "What is the primary trend direction?",
+          "Where is price relative to the weekly range high/low?",
+          "Are there any major weekly/monthly liquidity pools above or below?",
+          "What is the monthly candle character (bullish/bearish/indecision)?",
+          "Is price trading at a premium or discount on the macro level?",
+          "Where are monthly and weekly FVGs (Fair Value Gaps)?",
+          "What is the draw on liquidity for this month/week?"
+        ],
+        "key_tools": ["Weekly Highs/Lows", "Monthly Highs/Lows", "Major S/R from previous months", "Weekly FVG", "Monthly Order Blocks"]
+      },
+      "structural_context": {
+        "timeframes": ["Daily", "H4"],
+        "role": "Confirm the intermediate structure. Define whether price is in an impulse or correction. Identify key POIs (Points of Interest) where price may react.",
+        "questions_to_ask": [
+          "Has there been a BOS (Break of Structure) or CHoCH (Change of Character)?",
+          "Is price in a bullish or bearish market structure phase?",
+          "Where are the daily order blocks, FVGs, and supply/demand zones?",
+          "Is price approaching a daily premium/discount level?",
+          "What does the H4 structure look like — aligned with daily?",
+          "Are there equal highs or lows (liquidity targets)?",
+          "Is there a daily or H4 displacement candle (institutional move)?",
+          "Where did the last impulse originate from (origin candle)?",
+          "Is there confluent S/R from round numbers or weekly opens?"
+        ],
+        "key_tools": ["BOS", "CHoCH", "Daily OB", "H4 OB", "FVG", "Supply/Demand", "Equal Highs/Lows", "Previous Day High/Low", "Fibonacci Retracement"]
+      },
+      "precision_entry": {
+        "timeframes": ["H1", "M30", "M15"],
+        "role": "Fine-tune entry within the POI identified from higher timeframes. Look for LTF confirmation of reversal or continuation.",
+        "questions_to_ask": [
+          "Has price entered the HTF POI zone?",
+          "Is there a CHoCH on H1 or M15 confirming reversal?",
+          "Is there a liquidity sweep at the entry zone (stop hunt)?",
+          "Is there a displacement + FVG forming on M15/H1?",
+          "Does the M15 order block align with the H4 supply/demand?",
+          "Is there volume or momentum confirmation?",
+          "Are oscillators (RSI/MACD) showing divergence at this level?",
+          "Has the price slowed down (reduced candle body size) at POI?"
+        ],
+        "key_tools": ["M15 CHoCH", "H1 OB", "M15 FVG", "LTF displacement", "RSI divergence", "Engulfing candles", "Pin bars"]
+      },
+      "trigger_execution": {
+        "timeframes": ["M5", "M1"],
+        "role": "Final trigger for entry. Only used AFTER HTF bias, structural POI, and LTF confirmation are all aligned. Do not use M5/M1 in isolation.",
+        "questions_to_ask": [
+          "Is there a clear M5 CHoCH or BOS in the direction of the trade?",
+          "Is there a M5 FVG or OB as the entry trigger?",
+          "Has a manipulation wick cleared buy/sell-side liquidity?",
+          "Is spread acceptable for the current session?",
+          "Is the candle close above/below the key level (not just a wick)?"
+        ],
+        "key_tools": ["M5 BOS", "M1 displacement", "Candle close confirmation", "Spread check"]
+      }
+    },
+    "alignment_rule": "For a VALID setup: Monthly/Weekly direction = Daily/H4 structure bias = H1/M15 POI reaction = M5/M1 trigger. If any level contradicts, WAIT or reduce position size."
+  },
+
+  "smart_money_concepts": {
+    "description": "SMC is the foundation of how institutional money moves markets. Understanding these concepts is non-negotiable.",
+    "market_structure": {
+      "bullish_structure": {
+        "definition": "Series of Higher Highs (HH) and Higher Lows (HL). Bullish bias maintained until a HL is broken.",
+        "BOS": "Break of Structure — price breaks above a previous swing high in uptrend. Confirms continuation.",
+        "CHoCH": "Change of Character — price breaks below a previous HL in uptrend. First signal of potential reversal.",
+        "mitigation": "After a CHoCH, wait for price to return to the origin OB before committing to short bias."
+      },
+      "bearish_structure": {
+        "definition": "Series of Lower Lows (LL) and Lower Highs (LH). Bearish bias maintained until a LH is broken.",
+        "BOS": "Price breaks below a previous swing low in downtrend. Confirms continuation.",
+        "CHoCH": "Price breaks above a previous LH in downtrend. First signal of potential reversal.",
+        "mitigation": "After a CHoCH, wait for price to return to the origin OB before committing to long bias."
+      },
+      "ranging_market": {
+        "definition": "No clear HH/HL or LL/LH sequence. Price oscillating between equal highs and lows.",
+        "strategy": "Trade the extremes. Buy near equal lows (BSL), sell near equal highs (SSL). Wait for liquidity sweep + CHoCH before entry.",
+        "trap": "Avoid trading the middle of a range — highest-risk area."
+      },
+      "internal_vs_external": {
+        "external_structure": "Formed by swing highs/lows on the visible chart — major structure points",
+        "internal_structure": "Smaller BOS/CHoCH within the legs of external structure — used for entries",
+        "rule": "External structure sets bias. Internal structure provides entry signals."
+      }
+    },
+    "order_blocks": {
+      "definition": "The last opposing candle before a significant impulse move. Represents institutional order placement.",
+      "bullish_OB": {
+        "identification": "Last bearish (red) candle before a strong bullish impulse that causes a BOS",
+        "quality_factors": ["Large body, small wicks", "Followed by a gap (FVG)", "Located at a structural POI", "Causes a BOS, not just a minor swing"],
+        "entry_rule": "Price returns to the OB, shows reaction (CHoCH on LTF) → Enter long at 50% of OB or OB low"
+      },
+      "bearish_OB": {
+        "identification": "Last bullish (green) candle before a strong bearish impulse that causes a BOS",
+        "quality_factors": ["Large body, small wicks", "Followed by a gap (FVG)", "Located at structural POI", "Causes a BOS"],
+        "entry_rule": "Price returns to the OB, shows reaction → Enter short at 50% of OB or OB high"
+      },
+      "breaker_block": {
+        "definition": "A failed OB — when price sweeps through an OB and it flips polarity. Bullish OB becomes bearish resistance after break, and vice versa.",
+        "signal": "High probability POI. Price often returns to a breaker for a reaction before continuing in the new direction."
+      },
+      "mitigation_block": {
+        "definition": "An OB that has been partially used (mitigated). Price may return to the unmitgated portion.",
+        "rule": "Check if the OB has already been tapped. Untouched OBs have higher probability."
+      }
+    },
+    "fair_value_gaps": {
+      "definition": "A 3-candle pattern where the wicks of candle 1 and candle 3 do not overlap, leaving a price gap (imbalance). Created by institutional orders.",
+      "bullish_FVG": "Gap between high of candle 1 and low of candle 3 in a bullish impulse. Acts as support when revisited.",
+      "bearish_FVG": "Gap between low of candle 1 and high of candle 3 in a bearish impulse. Acts as resistance when revisited.",
+      "inverse_FVG": "When price trades through an FVG and it flips. Former bearish FVG becomes bullish support and vice versa.",
+      "confluence_use": "FVG + OB overlap = highest probability POI. FVG alone = medium probability.",
+      "50_percent_rule": "Price commonly fills to 50% of the FVG then rejects. Place limit orders at the 50% of FVG for precision entry.",
+      "quality_check": [
+        "Is the FVG on a significant timeframe (H4+)?",
+        "Was the impulse that created it strong (institutional)?",
+        "Is the FVG at a structural level?",
+        "Has the FVG already been filled? (If yes, avoid)"
+      ]
+    },
+    "liquidity": {
+      "definition": "Liquidity pools are areas where a large number of stop-loss orders are clustered. Institutional traders TARGET these areas to fill large orders.",
+      "types": {
+        "sell_side_liquidity": {
+          "description": "Stop losses of long traders sitting BELOW swing lows, equal lows, trendlines, and support zones.",
+          "locations": ["Below obvious swing lows", "Below equal lows (double bottom)", "Below trendline support", "Below round numbers (1.3000)", "Below previous day/week low"],
+          "what_happens": "Price sweeps below SSL, hunts stops, then reverses bullish (if bullish bias confirmed)"
+        },
+        "buy_side_liquidity": {
+          "description": "Stop losses of short traders sitting ABOVE swing highs, equal highs, trendlines, and resistance zones.",
+          "locations": ["Above obvious swing highs", "Above equal highs (double top)", "Above trendline resistance", "Above round numbers", "Above previous day/week high"],
+          "what_happens": "Price sweeps above BSL, hunts stops, then reverses bearish (if bearish bias confirmed)"
+        },
+        "inducement": {
+          "definition": "A false POI or minor high/low created specifically to lure retail traders into premature entries before the real move.",
+          "identification": "Look for liquidity build-up at a level that appears obvious — it's likely being used as a trap.",
+          "response": "Do NOT enter at the inducement level. Wait for it to be swept FIRST, then look for entry at the real POI behind it."
+        }
+      },
+      "liquidity_sweep_checklist": [
+        "Did price sharply pierce through a known liquidity pool?",
+        "Did price close BACK inside the range (wick only)?",
+        "Is there a LTF CHoCH after the sweep?",
+        "Is the sweep happening at a HTF POI?",
+        "Is there an FVG or OB immediately above/below the sweep point?",
+        "Did volume spike during the sweep?"
+      ]
+    },
+    "premium_discount": {
+      "tool": "Fibonacci grid from swing low to swing high",
+      "premium_zone": "Above 0.5 (50%) — Area where sellers offer price. Look for shorts here.",
+      "discount_zone": "Below 0.5 (50%) — Area where buyers absorb. Look for longs here.",
+      "equilibrium": "At 0.5 (50%) — Avoid. No clear institutional bias.",
+      "OTE_zone": "0.62 – 0.79 retracement — Optimal Trade Entry zone. Highest probability entry within premium/discount.",
+      "rule": "ONLY buy in discount. ONLY sell in premium. Buying at premium or selling at discount is low-probability retail behavior."
+    }
+  },
+
+  "ICT_concepts": {
+    "description": "Inner Circle Trader methodology — time-based, precision entries using institutional order flow.",
+    "AMD_model": {
+      "Accumulation": "Smart money builds a position quietly. Range-bound market. Low volatility.",
+      "Manipulation": "False move (stop hunt) against the intended direction. Takes out retail stops. Creates liquidity.",
+      "Distribution": "The real move begins. Price expands in the direction smart money was accumulating.",
+      "trading_rule": "Trade the Distribution leg. Avoid chasing Accumulation. Use the Manipulation as your entry signal."
+    },
+    "killzones": {
+      "description": "Specific time windows of high institutional activity and high-probability setups.",
+      "Asian_session": {
+        "time_EST": "8:00 PM – 12:00 AM",
+        "time_GMT": "1:00 AM – 5:00 AM",
+        "character": "Range-building. Defines the high and low that London/NY will often manipulate.",
+        "trade_type": "Mostly observe. Mark Asia high and low for future manipulation targets."
+      },
+      "London_killzone": {
+        "time_EST": "2:00 AM – 5:00 AM",
+        "time_GMT": "7:00 AM – 10:00 AM",
+        "character": "High volatility. Often sweeps Asia high or low (manipulation). Then reversal or continuation into NY.",
+        "trade_type": "Look for liquidity sweeps of Asia range then LTF CHoCH for entry."
+      },
+      "NY_killzone": {
+        "time_EST": "7:00 AM – 10:00 AM",
+        "time_GMT": "12:00 PM – 3:00 PM",
+        "character": "Highest volume. Often aligns with or extends the London move. Key economic releases.",
+        "trade_type": "Best for M15–H1 setups with clean structure."
+      },
+      "NY_lunch": {
+        "time_EST": "12:00 PM – 1:30 PM",
+        "character": "Low volume. Market makers manipulate during this window. Avoid trading.",
+        "rule": "DO NOT take new entries during NY lunch. High spread, choppy price action."
+      },
+      "NY_close": {
+        "time_EST": "3:00 PM – 5:00 PM",
+        "character": "Risk management and position squaring. Can give false moves.",
+        "rule": "Be cautious. Close short-term trades, manage open positions."
+      },
+      "rule_714": "Trade ONLY 7:00 AM – 2:00 PM (714 Method). This window captures London close + NY open. Peak confluence and volume."
+    },
+    "PD_arrays": {
+      "description": "Premium/Discount Arrays — a ranked list of POIs from highest to lowest probability.",
+      "hierarchy_bullish": [
+        "1. Bullish OB (with FVG overlay = highest)",
+        "2. Bullish FVG",
+        "3. Bullish Breaker Block",
+        "4. Bullish Mitigation Block",
+        "5. Bearish Breaker (flipped support)",
+        "6. Old Highs / EQH",
+        "7. Bullish Rejection Block",
+        "8. Gaps / Price voids"
+      ],
+      "hierarchy_bearish": [
+        "1. Bearish OB (with FVG overlay = highest)",
+        "2. Bearish FVG",
+        "3. Bearish Breaker Block",
+        "4. Bearish Mitigation Block",
+        "5. Bullish Breaker (flipped resistance)",
+        "6. Old Lows / EQL",
+        "7. Bearish Rejection Block",
+        "8. Gaps / Price voids"
+      ]
+    },
+    "IPDA": {
+      "description": "Interbank Price Delivery Algorithm. Markets look back 20, 40, and 60 trading days to identify liquidity targets.",
+      "lookback_periods": {
+        "20_days": "Short-term draw on liquidity. Used for swing trades.",
+        "40_days": "Medium-term. Used for position trades.",
+        "60_days": "Long-term. Used for macro bias."
+      },
+      "application": [
+        "Mark the high and low of the 20/40/60 day lookback",
+        "Price will seek to deliver to the opposing side's liquidity",
+        "If below 20-day high, draw is to the upside",
+        "If above 20-day low, draw is to the downside"
+      ]
+    },
+    "midnight_open": {
+      "description": "00:00 EST (New York Time) open price. Acts as a significant reference point for the day's range.",
+      "use": [
+        "Mark the 00:00 EST candle open",
+        "Price often returns to the midnight open at some point during the day",
+        "A premium above midnight open signals look for shorts back to it",
+        "A discount below midnight open signals look for longs back to it"
+      ]
+    },
+    "silver_bullet": {
+      "description": "ICT time-based setup using specific killzone windows.",
+      "windows": [
+        "3:00 AM – 4:00 AM EST (London open)",
+        "10:00 AM – 11:00 AM EST (NY AM session)",
+        "2:00 PM – 3:00 PM EST (NY PM session)"
+      ],
+      "setup_rules": [
+        "Wait for the specific window to open",
+        "Look for a liquidity sweep (BSL or SSL grab)",
+        "LTF CHoCH forms after the sweep",
+        "FVG created by the displacement enters",
+        "Enter on return to the FVG",
+        "Target the opposing liquidity"
+      ]
+    }
+  },
+
+  "price_action": {
+    "description": "Reading raw price movement. Understanding what candles are saying about buyer/seller intentions.",
+    "candlestick_patterns": {
+      "single_candles": {
+        "pin_bar": {
+          "description": "Long wick, small body. Rejection of a level.",
+          "bullish": "Long lower wick at support/demand — buyers pushed price back up aggressively.",
+          "bearish": "Long upper wick at resistance/supply — sellers rejected price.",
+          "confluence_needed": ["Must be at a key level (OB, FVG, S/R)", "HTF must support the direction", "Wick should be at least 2x the body"]
+        },
+        "engulfing_candle": {
+          "description": "Body fully engulfs the previous candle's body.",
+          "bullish": "Green candle body engulfs previous red candle. Strong buying intent.",
+          "bearish": "Red candle body engulfs previous green candle. Strong selling intent.",
+          "confluence_needed": ["Must occur at key level", "Volume should be higher than previous candle", "HTF alignment required"]
+        },
+        "doji": {
+          "description": "Open and close nearly equal. Market indecision.",
+          "dragonfly_doji": "Long lower wick only. Bullish at support.",
+          "gravestone_doji": "Long upper wick only. Bearish at resistance.",
+          "warning": "Doji alone is NOT a signal. Requires HTF level + follow-through candle."
+        },
+        "marubozu": {
+          "description": "Full body candle with no or minimal wicks. Strong momentum.",
+          "bullish": "Strong buyer control. Watch for continuation.",
+          "bearish": "Strong seller control. Watch for continuation.",
+          "use": "Identify displacement moves and momentum shifts."
+        }
+      },
+      "multi_candle_patterns": {
+        "morning_star": {
+          "structure": "Large bearish candle + small doji/body candle + large bullish candle",
+          "signal": "Bullish reversal",
+          "confluence": "Must form at key support, HTF demand, or oversold condition"
+        },
+        "evening_star": {
+          "structure": "Large bullish candle + small doji/body candle + large bearish candle",
+          "signal": "Bearish reversal",
+          "confluence": "Must form at key resistance, HTF supply, or overbought condition"
+        },
+        "inside_bar": {
+          "structure": "Candle body and wicks fully within the previous candle's range",
+          "signal": "Consolidation before expansion. Breakout incoming.",
+          "use": "Mark the inside bar high and low. Trade the breakout in the direction of HTF trend."
+        },
+        "three_white_soldiers": {
+          "structure": "3 consecutive bullish candles, each closing near the high",
+          "signal": "Strong bullish momentum",
+          "warning": "Often an overextension. Check for FVG or OB created. Do not buy into it — wait for pullback."
+        },
+        "three_black_crows": {
+          "structure": "3 consecutive bearish candles, each closing near the low",
+          "signal": "Strong bearish momentum",
+          "warning": "Often an overextension. Wait for pullback to OB/FVG."
+        }
+      }
+    },
+    "support_resistance": {
+      "types": {
+        "horizontal_levels": {
+          "description": "Price zones where price has previously reversed multiple times.",
+          "identification": ["3+ touches = strong level", "Round numbers (.00, .50)", "Previous daily/weekly highs and lows", "Yearly high/low"],
+          "rule": "The more times a level is tested without breaking, the MORE likely it will eventually break (weakening)."
+        },
+        "dynamic_levels": {
+          "EMAs": {
+            "20_EMA": "Short-term momentum. Price often bounces off in trending markets.",
+            "50_EMA": "Medium-term trend. Institutional reference.",
+            "200_EMA": "Long-term trend. Golden cross/death cross significance.",
+            "use": "In a strong trend, price dips to 20/50 EMA offer entries. Flat EMAs = ranging market."
+          },
+          "trendlines": {
+            "ascending": "Connect higher lows. Bullish structure support.",
+            "descending": "Connect lower highs. Bearish structure resistance.",
+            "warning": "Trendlines attract liquidity (stops cluster along them). Expect liquidity sweeps before true reaction."
+          }
+        },
+        "psychological_levels": {
+          "description": "Round numbers like 1.3000, 1.2500, 1.1000.",
+          "power": "High concentration of stop orders and pending orders. Often cause strong reactions.",
+          "confluence": "Round number + OB + FVG = extremely high probability POI."
+        }
+      }
+    },
+    "wyckoff_method": {
+      "description": "Richard Wyckoff's framework for reading market cycles based on Composite Man (smart money) behavior.",
+      "accumulation": {
+        "phases": {
+          "Phase_A": "Stopping the previous downtrend. PS (Preliminary Support), SC (Selling Climax), AR (Automatic Rally), ST (Secondary Test).",
+          "Phase_B": "Building the cause. SOW (Sign of Weakness), UT (Upthrust), SOS (Sign of Strength) visible.",
+          "Phase_C": "The Spring. Price dips below support (liquidity sweep) — the definitive test.",
+          "Phase_D": "Markup begins. LPS (Last Point of Support), BOS on structure.",
+          "Phase_E": "Price trends up. Pullbacks to EQH or retracements."
+        },
+        "spring": "THE key signal. False breakdown below support that sweeps stops then reverses bullish. Highest probability buy."
+      },
+      "distribution": {
+        "phases": {
+          "Phase_A": "Stopping the previous uptrend. PSY (Preliminary Supply), BC (Buying Climax), AR (Automatic Reaction), ST (Secondary Test).",
+          "Phase_B": "Building the cause for distribution. UT (Upthrust), sign of weakness.",
+          "Phase_C": "Upthrust After Distribution (UTAD). False breakout above resistance sweeps stops.",
+          "Phase_D": "Markdown begins. LPSY (Last Point of Supply).",
+          "Phase_E": "Price trends down."
+        },
+        "UTAD": "THE key signal. False breakout above resistance that sweeps stops then reverses bearish. Highest probability short."
+      }
+    }
+  },
+
+  "divergences": {
+    "description": "Divergence occurs when price and an oscillator disagree. A powerful signal of exhaustion and potential reversal.",
+    "types": {
+      "regular_divergence": {
+        "bullish": {
+          "description": "Price makes a Lower Low (LL) but oscillator makes a Higher Low (HL)",
+          "signal": "Bearish momentum is weakening. Potential bullish reversal.",
+          "best_context": "Price at key support, HTF demand, or FVG/OB level",
+          "oscillators": ["RSI", "MACD histogram", "Stochastic", "CCI", "OBV"]
+        },
+        "bearish": {
+          "description": "Price makes a Higher High (HH) but oscillator makes a Lower High (LH)",
+          "signal": "Bullish momentum is weakening. Potential bearish reversal.",
+          "best_context": "Price at key resistance, HTF supply, or FVG/OB level",
+          "oscillators": ["RSI", "MACD histogram", "Stochastic", "CCI", "OBV"]
+        }
+      },
+      "hidden_divergence": {
+        "bullish": {
+          "description": "Price makes a Higher Low (HL) but oscillator makes a Lower Low (LL)",
+          "signal": "Bullish CONTINUATION. Pullback in uptrend is ending.",
+          "best_context": "During a pullback in a clear uptrend, at demand zone"
+        },
+        "bearish": {
+          "description": "Price makes a Lower High (LH) but oscillator makes a Higher High (HH)",
+          "signal": "Bearish CONTINUATION. Rally in downtrend is ending.",
+          "best_context": "During a rally in a clear downtrend, at supply zone"
+        }
+      },
+      "exaggerated_divergence": {
+        "description": "Price makes a double top/bottom while oscillator makes a lower high/higher low. Rare but very strong.",
+        "signal": "Very high probability reversal signal."
+      }
+    },
+    "oscillator_settings": {
+      "RSI": {
+        "period": 14,
+        "overbought": 70,
+        "oversold": 30,
+        "divergence_use": "Look for divergence between price pivots and RSI pivots. RSI above 50 = bullish bias. Below 50 = bearish bias.",
+        "pro_tip": "In a strong uptrend, RSI stays between 40-80. In a strong downtrend, RSI stays between 20-60."
+      },
+      "MACD": {
+        "settings": "12, 26, 9",
+        "divergence_use": "Use the histogram (not the lines) for divergence. Histogram shrinking = momentum fading.",
+        "signal_line_cross": "Bullish when MACD crosses above signal. Bearish when below. Only trade in HTF direction."
+      },
+      "Stochastic": {
+        "settings": "14, 3, 3",
+        "overbought": 80,
+        "oversold": 20,
+        "use": "Best in ranging markets. In trending markets, use divergence only — ignore OB/OS signals alone."
+      },
+      "OBV": {
+        "description": "On-Balance Volume. Confirms price moves with volume.",
+        "bullish": "OBV trending up while price trends up = confirmed move.",
+        "bearish": "OBV trending down while price trends down = confirmed move.",
+        "divergence": "OBV falling while price rising = distribution (smart money selling into strength)."
+      }
+    },
+    "rules": [
+      "NEVER trade divergence alone without HTF structure alignment",
+      "Divergence + OB/FVG + liquidity sweep = highest probability setup",
+      "Hidden divergence in the direction of trend is MORE reliable than regular divergence",
+      "Regular divergence at a major POI (OB, key S/R) = possible reversal",
+      "Confirm divergence on at least 2 oscillators for higher confidence"
+    ]
+  },
+
+  "SMT_divergence": {
+    "description": "Smart Money Technique (SMT) Divergence — when two correlated assets fail to confirm the same structural high or low. This reveals institutional selling/buying in one while not the other.",
+    "correlated_pairs": {
+      "forex": {
+        "EURUSD_vs_GBPUSD": {
+          "description": "Both move similarly against USD. If EUR makes a new high but GBP does NOT, bearish divergence — institutions are distributing EUR.",
+          "rule": "If EURUSD makes HH but GBPUSD makes LH = bearish SMT. Look for EURUSD short."
+        },
+        "EURUSD_vs_DXY": {
+          "description": "EURUSD and DXY are inversely correlated. If EURUSD makes HH but DXY does NOT make a LL = bearish SMT on EURUSD.",
+          "note": "DXY inversion is a strong HTF filter."
+        },
+        "USDCHF_vs_EURUSD": "Inverse correlation. Use to confirm direction.",
+        "AUDUSD_vs_NZDUSD": "Closely correlated. Use for SMT on commodity currencies.",
+        "USDJPY_vs_USDCHF": "Both positively correlated. SMT between them signals institutional interest."
+      },
+      "indices": {
+        "US30_vs_US500": "Both are US indices. SMT signals major institutional divergence in market breadth.",
+        "US500_vs_US100": "Used for tech vs broad market divergence."
+      },
+      "metals": {
+        "XAUUSD_vs_DXY": "Inverse. Gold up = DXY down normally. Divergence = potential reversal.",
+        "XAUUSD_vs_XAGUSD": "Silver and Gold highly correlated. SMT between them is significant."
+      }
+    },
+    "how_to_trade_SMT": [
+      "Step 1: Identify two correlated assets",
+      "Step 2: Mark a key swing high or low on BOTH charts",
+      "Step 3: Check if both assets made the same high/low or if one failed",
+      "Step 4: Asset that FAILED to confirm is the weaker one — trade it in the direction of divergence",
+      "Step 5: Wait for LTF entry confirmation (CHoCH, OB, FVG) on the weaker asset",
+      "Step 6: Set SL beyond the swing that caused the SMT",
+      "Step 7: Target the opposing side's liquidity"
+    ]
+  },
+
+  "fibonacci_tools": {
+    "description": "Fibonacci ratios are used extensively to identify retracement entries, extensions for targets, and time cycles.",
+    "retracement_levels": {
+      "0.236": "Shallow retracement. Only valid in very strong momentum trends.",
+      "0.382": "Moderate retracement. Valid in strong trends.",
+      "0.500": "Equilibrium. Avoid entries here — no directional bias.",
+      "0.618": "Golden ratio. The most commonly respected retracement level.",
+      "0.705": "ICT OTE level. Between golden ratio and 0.79.",
+      "0.786": "Deep retracement. Last line before full reversal.",
+      "OTE_zone": "0.62 – 0.79 = Optimal Trade Entry zone. Highest probability retracement entries."
+    },
+    "extension_levels": {
+      "1.272": "First target. Conservative TP.",
+      "1.618": "Golden extension. Primary TP1 for most trades.",
+      "2.000": "TP2 in strong trending moves.",
+      "2.618": "TP3 for extended trending moves or macro targets.",
+      "rule": "Use Fibonacci extensions to project profit targets from the retracement entry point."
+    },
+    "application_rules": [
+      "Draw from swing low to swing high for bullish retracement",
+      "Draw from swing high to swing low for bearish retracement",
+      "Look for fib level confluence with OB, FVG, or S/R",
+      "Never enter solely because price is at 0.618 — need additional confirmation",
+      "In strong trends, shallower retracements (0.382) are common",
+      "In weak trends or reversals, deeper retracements (0.786+) are common"
+    ]
+  },
+
+  "sessions_and_timing": {
+    "description": "The forex market is a 24-hour market but not all hours are equal. Time is a critical variable in analysis.",
+    "sessions": {
+      "Sydney": {
+        "time_GMT": "10 PM – 7 AM",
+        "time_EST": "5 PM – 12 AM",
+        "character": "Low volume. AUD and NZD pairs most active. Avoid major trades.",
+        "pairs": ["AUDUSD", "NZDUSD", "AUDNZD"]
+      },
+      "Tokyo": {
+        "time_GMT": "12 AM – 9 AM",
+        "time_EST": "7 PM – 4 AM",
+        "character": "Moderate volume. Often sets range for London to manipulate. JPY pairs most active.",
+        "pairs": ["USDJPY", "EURJPY", "GBPJPY", "AUDJPY"]
+      },
+      "London": {
+        "time_GMT": "8 AM – 5 PM",
+        "time_EST": "3 AM – 12 PM",
+        "character": "HIGHEST volume period. Most setups form here. EUR and GBP pairs very active.",
+        "killzone": "8 AM – 10 AM GMT is the highest activity. Best setups.",
+        "pairs": ["EURUSD", "GBPUSD", "EURGBP", "GBPJPY", "EURCAD"]
+      },
+      "New_York": {
+        "time_GMT": "1 PM – 10 PM",
+        "time_EST": "8 AM – 5 PM",
+        "character": "High volume. Second most active. Often extends or reverses London move.",
+        "killzone": "8 AM – 10 AM EST is the NY killzone.",
+        "pairs": ["EURUSD", "GBPUSD", "USDCAD", "USDCHF", "USDJPY"]
+      },
+      "overlap": {
+        "London_NY": {
+          "time_EST": "8 AM – 12 PM",
+          "description": "Highest volatility window of the day. 714 Method focuses here. Best time for major pair setups."
+        }
+      }
+    },
+    "important_times": {
+      "00:00_EST": "Midnight open — significant reference price for the day",
+      "02:00_EST": "London killzone begins",
+      "04:00_EST": "London killzone peak — often manipulation completes",
+      "07:00_EST": "714 window opens — prime trading window",
+      "08:00_EST": "NY open — high-impact news typically drops here",
+      "10:00_EST": "NY AM killzone closes — reduce risk",
+      "12:00_EST": "NY lunch — DO NOT TRADE",
+      "14:00_EST": "714 window closes — stop new entries",
+      "17:00_EST": "Daily candle close (NY close) — significant reference"
+    },
+    "day_of_week": {
+      "Monday": "Range-building day. London often sets the direction. Lower confidence early — mark Asia/Sunday gaps.",
+      "Tuesday": "Increased activity. Can be the week's manipulation day.",
+      "Wednesday": "High probability setups. Often the most trending day of the week.",
+      "Thursday": "Continuation or reversal. Strong setups possible. Watch for ECB/BOE rate decisions.",
+      "Friday": "Profit-taking, position squaring. Moves can reverse. Do not hold positions over weekend. Avoid new setups after 12 PM EST."
+    }
+  },
+
+  "fundamentals_and_macro": {
+    "description": "Fundamentals create the WHY. Technical analysis shows the HOW. Both must be considered in professional analysis.",
+    "high_impact_events": {
+      "central_bank_decisions": {
+        "Federal_Reserve": "FOMC meeting — highest impact on USD pairs. Watch for rate decision + statement + press conference.",
+        "ECB": "European Central Bank — major impact on EURUSD, EURGBP",
+        "BOE": "Bank of England — major impact on GBP pairs",
+        "BOJ": "Bank of Japan — major impact on JPY pairs",
+        "RBA": "Reserve Bank of Australia — impact on AUD pairs",
+        "RBNZ": "Reserve Bank of New Zealand — impact on NZD pairs",
+        "SNB": "Swiss National Bank — impact on CHF pairs",
+        "BOC": "Bank of Canada — impact on CAD pairs",
+        "rule": "Never hold positions through central bank decisions unless the setup is extremely strong and SL is beyond a safe level."
+      },
+      "economic_data": {
+        "NFP": "Non-Farm Payrolls (US). Released first Friday of every month. Highest-impact US event. Massive volatility. AVOID trading 30 min before/after.",
+        "CPI": "Consumer Price Index. Inflation data. Directly influences rate decisions.",
+        "GDP": "Gross Domestic Product. Long-term trend indicator.",
+        "Unemployment": "Rising unemployment = dovish bias for central bank.",
+        "Retail_Sales": "Consumer spending. Key for USD, GBP, AUD.",
+        "PMI": "Purchasing Managers Index. Economic health indicator.",
+        "Trade_Balance": "Impacts commodity currencies (AUD, NZD, CAD)"
+      },
+      "news_rule": "Check economic calendar BEFORE marking setups. If major news is within 30 minutes of your intended entry, WAIT or stay out. News can negate perfect technical setups."
+    },
+    "intermarket_analysis": {
+      "USD_DXY": "The US Dollar Index is the master variable. DXY up = USD pairs up, commodity pairs down. Always check DXY first.",
+      "bond_yields": "Rising US yields = stronger USD. Falling yields = weaker USD. Monitor 10-year Treasury.",
+      "risk_on_risk_off": {
+        "risk_on": "AUD, NZD, CAD, equities rise. JPY, CHF, USD fall. Gold falls.",
+        "risk_off": "JPY, CHF, USD rise. AUD, NZD, commodity currencies fall. Gold rises."
+      },
+      "gold_vs_usd": "Inverse relationship. Gold rising with USD also rising = unusual and signals major event.",
+      "oil_vs_CAD": "Oil prices heavily influence USDCAD. Rising oil = CAD strength = USDCAD falls.",
+      "rule": "Before taking any trade, ask: what is the risk sentiment today? Does my trade align with it?"
+    }
+  },
+
+  "confluence_checklist": {
+    "description": "The MASTER checklist. Every trade must be run through this before execution. The more boxes checked, the higher the probability.",
+    "minimum_required": "Minimum 5 confluences from the list below. Fewer than 5 = NO TRADE.",
+    "tier_1_mandatory": {
+      "description": "These must ALWAYS be checked. No exceptions.",
+      "items": [
+        {
+          "id": "T1-01",
+          "check": "HTF Bias Defined",
+          "detail": "Is the weekly/daily trend clearly bullish, bearish, or ranging? Have you defined the macro direction?"
+        },
+        {
+          "id": "T1-02",
+          "check": "MTF Structure Aligned",
+          "detail": "Does H4/Daily structure confirm the HTF bias? Is the BOS/CHoCH in the same direction?"
+        },
+        {
+          "id": "T1-03",
+          "check": "Valid POI Identified",
+          "detail": "Is price at an OB, FVG, Supply/Demand zone, or key S/R level on H4 or Daily?"
+        },
+        {
+          "id": "T1-04",
+          "check": "Premium/Discount Context",
+          "detail": "Are you buying in discount or selling in premium? If buying in premium, RED FLAG."
+        },
+        {
+          "id": "T1-05",
+          "check": "LTF Entry Confirmation",
+          "detail": "Is there a CHoCH or BOS on M15/H1 at the POI confirming the intended direction?"
+        },
+        {
+          "id": "T1-06",
+          "check": "SL Location Defined",
+          "detail": "Is the stop loss BEYOND the invalidation level (not inside the POI)? Is SL risk ≤ 2%?"
+        },
+        {
+          "id": "T1-07",
+          "check": "Draw on Liquidity Clear",
+          "detail": "Do you know WHERE price is going? Is the target clear (opposite liquidity, FVG, previous high/low)?"
+        }
+      ]
+    },
+    "tier_2_confluence_adders": {
+      "description": "Each of these adds probability weight. Aim for as many as possible.",
+      "items": [
+        {
+          "id": "T2-01",
+          "check": "Fibonacci OTE Zone",
+          "detail": "Is the entry within the 0.62–0.79 retracement of the last impulse leg?"
+        },
+        {
+          "id": "T2-02",
+          "check": "Liquidity Sweep at POI",
+          "detail": "Did price sweep SSL/BSL before entering the POI? Stop hunt = fuel for reversal."
+        },
+        {
+          "id": "T2-03",
+          "check": "FVG Overlap with OB",
+          "detail": "Is there an FVG overlapping the Order Block? This is the highest quality POI."
+        },
+        {
+          "id": "T2-04",
+          "check": "Divergence Confirmed",
+          "detail": "Is RSI or MACD showing regular divergence at the POI? Oscillator confirms exhaustion."
+        },
+        {
+          "id": "T2-05",
+          "check": "SMT Divergence",
+          "detail": "Is a correlated pair failing to confirm the new high/low? Institutional divergence present?"
+        },
+        {
+          "id": "T2-06",
+          "check": "Killzone Timing",
+          "detail": "Are you within a high-probability time window? (London or NY killzone, or 714 window?)"
+        },
+        {
+          "id": "T2-07",
+          "check": "Round Number Level",
+          "detail": "Is the POI near a round number (x.xx00 or x.xx50)? Psychological level adds weight."
+        },
+        {
+          "id": "T2-08",
+          "check": "Session Gap Present",
+          "detail": "Is there a Sunday gap or session gap that has not yet been filled? Price seeks equilibrium."
+        },
+        {
+          "id": "T2-09",
+          "check": "EMA Alignment",
+          "detail": "Are the 20/50 EMA trending in the direction of the trade? Price bouncing off EMA?"
+        },
+        {
+          "id": "T2-10",
+          "check": "IPDA Lookback Target",
+          "detail": "Is the target aligned with the 20/40/60-day lookback liquidity level?"
+        },
+        {
+          "id": "T2-11",
+          "check": "Previous Day High/Low",
+          "detail": "Is there a PDH or PDL that price needs to clear or is using as a level?"
+        },
+        {
+          "id": "T2-12",
+          "check": "News Calendar Clear",
+          "detail": "Are there NO high-impact news events within 30 minutes of entry?"
+        },
+        {
+          "id": "T2-13",
+          "check": "Wyckoff Phase Identified",
+          "detail": "Is price in a Spring (accumulation) or UTAD (distribution) phase? These are highest probability."
+        },
+        {
+          "id": "T2-14",
+          "check": "Volume Confirmation",
+          "detail": "Was there a volume spike at the POI? Did OBV confirm the move direction?"
+        },
+        {
+          "id": "T2-15",
+          "check": "AMD Cycle Positioning",
+          "detail": "Is price in the Distribution (real move) phase of the AMD cycle, not Manipulation?"
+        },
+        {
+          "id": "T2-16",
+          "check": "Weekly/Monthly Open Reference",
+          "detail": "Is the entry above/below the weekly open in the direction of the trade?"
+        },
+        {
+          "id": "T2-17",
+          "check": "Intermarket Alignment",
+          "detail": "Does DXY, bond yields, or risk sentiment support the trade direction?"
+        },
+        {
+          "id": "T2-18",
+          "check": "Displacement Candle Present",
+          "detail": "Was there a strong institutional displacement candle (large body, close near extreme) into or out of the POI?"
+        }
+      ]
+    },
+    "tier_3_risk_reducers": {
+      "description": "These are RED FLAGS. If multiple are present, reduce size or skip the trade.",
+      "items": [
+        {
+          "id": "T3-01",
+          "check": "Opposing HTF Level Nearby",
+          "detail": "Is there a higher timeframe resistance/support within 20 pips that could block the trade?"
+        },
+        {
+          "id": "T3-02",
+          "check": "Market Ranging on HTF",
+          "detail": "Is the weekly/daily chart in a clear range? Rangy markets produce false breakouts."
+        },
+        {
+          "id": "T3-03",
+          "check": "Low Volume Session",
+          "detail": "Are you trading in Sydney or Tokyo session? Low volume = erratic moves."
+        },
+        {
+          "id": "T3-04",
+          "check": "Near Major News Event",
+          "detail": "Is there a red-folder news event in the next 30–60 minutes?"
+        },
+        {
+          "id": "T3-05",
+          "check": "Friday After 12 PM EST",
+          "detail": "Friday afternoon has low probability. Position squaring distorts price."
+        },
+        {
+          "id": "T3-06",
+          "check": "3 Consecutive Losses Today",
+          "detail": "Have you hit the stop-trading rule? Emotional trading destroys accounts."
+        },
+        {
+          "id": "T3-07",
+          "check": "Already Mitigated POI",
+          "detail": "Has the OB or FVG already been touched/tapped? Used POIs have lower probability."
+        },
+        {
+          "id": "T3-08",
+          "check": "Structure Ambiguous",
+          "detail": "Is the market structure unclear — neither clearly bullish nor bearish? WAIT."
+        }
+      ]
+    },
+    "scoring_system": {
+      "method": "Count Tier 2 items checked. Penalize for Tier 3 flags.",
+      "90_plus_percent": "All Tier 1 met + 10+ Tier 2 + 0 Tier 3 flags = Maximum size entry",
+      "75_percent": "All Tier 1 met + 6-9 Tier 2 + 0-1 Tier 3 flags = Standard size entry",
+      "60_percent": "All Tier 1 met + 4-5 Tier 2 + 1-2 Tier 3 flags = Half size entry",
+      "below_60": "Less than 4 Tier 2 or multiple Tier 3 flags = NO TRADE"
+    }
+  },
+
+  "risk_management": {
+    "description": "Risk management is the difference between surviving and blowing accounts. Non-negotiable rules.",
+    "position_sizing": {
+      "formula": "Risk Amount = Account Balance × Risk Percentage",
+      "example": "$10,000 account × 1% risk = $100 per trade",
+      "lot_calculation": "Lot Size = Risk Amount / (SL in pips × pip value)",
+      "pip_value": {
+        "EURUSD_standard": "$10 per pip per standard lot",
+        "EURUSD_mini": "$1 per pip per mini lot",
+        "EURUSD_micro": "$0.10 per pip per micro lot"
+      }
+    },
+    "rules": {
+      "max_risk_per_trade": "1–2% of account balance. NEVER exceed 2%.",
+      "max_daily_loss": "5% maximum daily loss. Hit this = stop trading for the day.",
+      "max_drawdown": "10–15% maximum account drawdown before reassessment period.",
+      "consecutive_losses": "Stop after 3 consecutive losses. Mandatory cool-down.",
+      "correlated_trades": "No more than 3 open trades on correlated pairs (e.g., EURUSD + GBPUSD count as correlated).",
+      "SL_rule": "ALWAYS define SL before entry. NEVER move SL against the trade (widening it).",
+      "BE_rule": "Move SL to breakeven when price reaches 1:1 RR minimum. Lock in profit.",
+      "partial_close": "Take 50% off at TP1 (1:1 or 1:2 RR). Let remainder run to TP2 with BE SL."
+    },
+    "RR_targets": {
+      "minimum": "1:2 RR. Never take a trade with less than 1:2.",
+      "optimal": "1:3 to 1:5 RR. Target these with clean setups.",
+      "exceptional": "1:7 to 1:10 RR possible on HTF setups from OB to opposing liquidity."
+    },
+    "SL_placement": {
+      "rule": "Place SL BEYOND the invalidation level of the setup.",
+      "bullish_OB_entry": "SL = 2-5 pips below the OB low",
+      "bearish_OB_entry": "SL = 2-5 pips above the OB high",
+      "after_liquidity_sweep": "SL = 5-10 pips beyond the sweep wick",
+      "avoid": ["Placing SL inside the OB (too tight)", "Placing SL at round numbers (obvious target)", "Moving SL further from entry (emotion-based)"]
+    }
+  },
+
+  "trade_execution_framework": {
+    "description": "The systematic process every trade must go through from idea to execution.",
+    "step_by_step": {
+      "step_1_macro_analysis": {
+        "name": "Macro Analysis",
+        "actions": [
+          "Open Monthly chart. Note: trend direction, major S/R, monthly OB/FVG",
+          "Open Weekly chart. Note: weekly trend, weekly range H/L, weekly OB/FVG, premium/discount",
+          "Define the macro draw on liquidity: where is price being pulled to?",
+          "Check DXY and correlated pairs for intermarket context"
+        ]
+      },
+      "step_2_structural_analysis": {
+        "name": "Structural Analysis",
+        "actions": [
+          "Open Daily chart. Mark: BOS/CHoCH, daily OB, daily FVG, key S/R",
+          "Open H4 chart. Mark: H4 BOS/CHoCH, H4 OB, H4 FVG, supply/demand zones",
+          "Confirm H4 structure aligns with Daily and Weekly bias",
+          "Mark all equal highs and lows (liquidity pools)",
+          "Identify the primary POI where you will be looking for entry"
+        ]
+      },
+      "step_3_entry_preparation": {
+        "name": "Entry Preparation",
+        "actions": [
+          "Open H1 chart. Observe price approaching the POI",
+          "Open M15 chart. Watch for CHoCH/BOS confirmation at POI",
+          "Apply Fibonacci retracement to last impulse. Is entry in OTE zone?",
+          "Check RSI/MACD for divergence at the POI",
+          "Check correlated pairs for SMT divergence",
+          "Verify killzone timing — are you in a high-probability session window?",
+          "Check economic calendar for nearby news events",
+          "Run full confluence checklist — count Tier 1 and Tier 2 items"
+        ]
+      },
+      "step_4_execution": {
+        "name": "Trade Execution",
+        "actions": [
+          "Open M5 chart for trigger",
+          "Wait for M5 displacement + FVG creation in trade direction",
+          "Set limit order at 50% of M5 FVG or OB entry point",
+          "Set SL 2-5 pips beyond the invalidation level",
+          "Set TP1 at nearest liquidity/FVG opposite",
+          "Set TP2 at major opposing POI (HTF level)",
+          "Calculate position size based on SL distance and 1-2% risk",
+          "Verify RR is minimum 1:2 before executing"
+        ]
+      },
+      "step_5_management": {
+        "name": "Trade Management",
+        "actions": [
+          "DO NOT move SL against the trade",
+          "Move SL to BE when TP1 is reached",
+          "Close 50% at TP1",
+          "Let remainder run to TP2 with trailing BE SL",
+          "Monitor for opposing HTF signal that would invalidate trade",
+          "DO NOT add to losing positions",
+          "Journal the trade immediately after close"
+        ]
+      },
+      "step_6_journaling": {
+        "name": "Trade Journaling",
+        "required_fields": [
+          "Date and Time",
+          "Session (London/NY/etc)",
+          "Pair and Direction",
+          "Setup Type (OB, FVG, divergence, etc)",
+          "Timeframes analyzed (all of them)",
+          "Confluences identified (list all)",
+          "Entry Price, SL, TP1, TP2",
+          "Position Size and % Risk",
+          "Outcome (W/L/BE)",
+          "Pips gained/lost",
+          "RR achieved",
+          "What went right",
+          "What went wrong",
+          "Screenshot (before and after)"
+        ]
+      }
+    }
+  },
+
+  "advanced_concepts": {
+    "dealing_ranges": {
+      "description": "Price tends to move between defined ranges (Old High to Old Low, session high to session low).",
+      "types": {
+        "weekly_range": "Monday–Friday range. Price often forms the weekly range in the first 2 days.",
+        "monthly_range": "Previous month high and low. Major draw on liquidity targets.",
+        "daily_range": "Previous day high and low (PDH/PDL). Common stop-hunt targets.",
+        "session_range": "Asia session range. London often breaks it (manipulation)."
+      },
+      "use": "If price is near a range extreme, expect a reversal or range expansion (breakout with volume)."
+    },
+    "propulsion_blocks": {
+      "description": "Consolidation zones that launch price in a new direction. Created by accumulation before distribution.",
+      "identification": "Look for tight consolidation with small candles (low range) before a large displacement candle.",
+      "use": "When price returns to propulsion block after displacement, it often acts as OB — high probability entry."
+    },
+    "rejection_blocks": {
+      "description": "A cluster of candles where wicks repeatedly reject a price level. Below the cluster = bullish. Above = bearish.",
+      "entry": "Enter when price returns to the cluster zone, expecting the same rejection to repeat."
+    },
+    "void_gaps": {
+      "description": "Large price voids with no candles traded (gaps). Price has a magnetic draw to fill these.",
+      "types": {
+        "weekend_gap": "Price gaps between Friday close and Monday open. Usually filled within 1-2 weeks.",
+        "news_gap": "Created by high-impact news. Direction depends on the news context.",
+        "institutional_gap": "Created by massive institutional orders. May take weeks to fill."
+      },
+      "use": "Mark all unfilled gaps on your chart. They are potential targets."
+    },
+    "silver_bullet_pro": {
+      "description": "Advanced ICT time-based setup with enhanced entry criteria.",
+      "setup": [
+        "Define HTF bias (daily/weekly)",
+        "Wait for the specific killzone window",
+        "Identify a liquidity pool that will be swept",
+        "After sweep, wait for displacement + FVG on M5",
+        "Enter at 50% of the FVG",
+        "Target opposing killzone liquidity",
+        "Must have minimum 1:3 RR to justify entry"
+      ]
+    },
+    "power_of_three": {
+      "description": "ICT concept: Accumulation (midnight to early London), Manipulation (early London), Distribution (NY open).",
+      "daily_bias": [
+        "Mark the midnight open (00:00 EST)",
+        "If daily bullish: expect accumulation near midnight open, manipulation sweep of sell-side, then distribution bullish into NY",
+        "If daily bearish: expect accumulation near midnight open, manipulation sweep of buy-side, then distribution bearish into NY"
+      ]
+    }
+  },
+
+  "setup_catalog": {
+    "description": "Reference setups with all their confluence requirements defined.",
+    "setups": [
+      {
+        "name": "OB Reversal",
+        "type": "Reversal from POI",
+        "minimum_confluences": [
+          "HTF bias aligns with trade direction",
+          "OB identified on H4 or Daily",
+          "LTF CHoCH at OB",
+          "Price in discount (buy) or premium (sell)",
+          "Minimum 1:2 RR to nearest liquidity"
+        ],
+        "bonus_confluences": ["FVG overlapping OB", "Divergence at OB", "Liquidity sweep before OB entry", "Killzone timing"],
+        "entry": "At 50% of OB candle or full OB retest",
+        "SL": "2-5 pips below OB low (bullish) / above OB high (bearish)"
+      },
+      {
+        "name": "FVG Fill",
+        "type": "Pullback into imbalance",
+        "minimum_confluences": [
+          "HTF bias confirmed",
+          "FVG formed by displacement (strong impulse)",
+          "FVG on H1+ timeframe",
+          "First retest of FVG (fresh)",
+          "Price approaching from discount/premium correctly"
+        ],
+        "bonus_confluences": ["FVG at OB level", "FVG at fib OTE", "Killzone timing"],
+        "entry": "Limit order at 50% of FVG",
+        "SL": "3 pips below/above the FVG extreme"
+      },
+      {
+        "name": "Liquidity Sweep Reversal",
+        "type": "Stop hunt + reversal",
+        "minimum_confluences": [
+          "HTF bias defined",
+          "Known liquidity pool swept (EQH, EQL, PDH, PDL)",
+          "Wick-only breach (close back inside)",
+          "LTF CHoCH after sweep",
+          "Sweep at HTF POI (OB or FVG)"
+        ],
+        "bonus_confluences": ["Heavy divergence at sweep", "SMT confirmation", "Volume spike at sweep", "Killzone timing"],
+        "entry": "After LTF CHoCH on M15 or M5",
+        "SL": "5-10 pips beyond the sweep wick"
+      },
+      {
+        "name": "CHoCH Continuation",
+        "type": "Structure break continuation",
+        "minimum_confluences": [
+          "HTF in clear trend",
+          "H4 CHoCH in trend direction",
+          "Price pulling back to last BOS level or OB",
+          "LTF holding structure (HL for bull, LH for bear)",
+          "At least 1:3 RR available"
+        ],
+        "bonus_confluences": ["Hidden divergence on oscillator at pullback", "EMA supporting the entry", "Fib OTE alignment"],
+        "entry": "At last H4 BOS level or nearest OB/FVG on pullback",
+        "SL": "Beyond the CHoCH level"
+      },
+      {
+        "name": "714 Session Setup",
+        "type": "Time-based session entry",
+        "minimum_confluences": [
+          "Trade taken between 7:00 AM – 2:00 PM (London-NY overlap)",
+          "HTF bias (Daily/H4) clearly defined",
+          "Entry at structure break (BOS on M15 or H1) + confirmation candle",
+          "Clean market structure (no chop)",
+          "Liquidity sweep completed before entry"
+        ],
+        "bonus_confluences": ["News calendar clear", "FVG or OB as entry level", "SMT confirmation on correlated pair"],
+        "entry": "At clean structure break candle within the 714 window",
+        "SL": "Below/above the manipulation candle"
+      },
+      {
+        "name": "SMT Divergence Trade",
+        "type": "Intermarket divergence",
+        "minimum_confluences": [
+          "Two correlated pairs identified",
+          "One pair makes new high/low, other fails",
+          "Weaker pair at HTF POI (OB or S/R)",
+          "LTF CHoCH on weaker pair",
+          "HTF trend alignment"
+        ],
+        "bonus_confluences": ["Regular oscillator divergence on same pair", "Killzone timing", "Liquidity sweep on the weaker pair"],
+        "entry": "On weaker pair at LTF CHoCH after SMT confirmed",
+        "SL": "Beyond the SMT swing"
+      }
+    ]
+  },
+
+  "pair_specific_knowledge": {
+    "EURUSD": {
+      "character": "Highest liquidity pair. Cleanest structure. Ideal for ICT/SMC concepts.",
+      "sessions": "Most active during London and NY. Avoid Asian session.",
+      "correlations": "Inversely correlated with DXY. Correlated with GBPUSD (SMT opportunities).",
+      "average_daily_range_pips": "80-120",
+      "best_strategies": ["OB Reversal", "FVG Fill", "London liquidity sweep", "714 Method"]
+    },
+    "GBPUSD": {
+      "character": "More volatile than EUR. Wider spreads. Strong trends.",
+      "sessions": "London killzone is most impactful.",
+      "correlations": "Correlated with EURUSD. Use for SMT.",
+      "average_daily_range_pips": "100-150",
+      "best_strategies": ["Liquidity sweep reversal", "OB reversal", "Strong trend continuation"]
+    },
+    "USDJPY": {
+      "character": "Risk-sensitive. Moves with bond yields. Can trend strongly for extended periods.",
+      "sessions": "Tokyo and NY sessions most active.",
+      "correlations": "Correlated with US10Y bond yields. Inversely correlated with XAUUSD (sometimes).",
+      "average_daily_range_pips": "80-130",
+      "best_strategies": ["Trend continuation", "Daily OB", "H4 structure BOS"]
+    },
+    "XAUUSD": {
+      "character": "Highest volatility. Massive pip moves. Highly liquid. Responds to USD and risk sentiment.",
+      "sessions": "London and NY most active. Huge moves on US news.",
+      "correlations": "Inversely correlated with DXY. Moves with geopolitical uncertainty.",
+      "average_daily_range_pips": "1500-3000 (in gold pips)",
+      "best_strategies": ["Daily OB reversal", "Liquidity sweep", "FVG fill on H4", "SMT with DXY"]
+    }
+  },
+
+  "common_mistakes": {
+    "description": "The most common errors that destroy traders. Learn to avoid these.",
+    "mistakes": [
+      {
+        "mistake": "Trading without HTF bias",
+        "consequence": "Fighting the dominant trend. Low win rate.",
+        "fix": "Always define weekly and daily bias FIRST before looking at lower timeframes."
+      },
+      {
+        "mistake": "Trading at the 50% equilibrium level",
+        "consequence": "No directional edge. Equal buyer/seller strength.",
+        "fix": "Only buy in discount (<50%). Only sell in premium (>50%)."
+      },
+      {
+        "mistake": "Entering before liquidity sweep",
+        "consequence": "Getting stopped out just before the real move begins.",
+        "fix": "Wait for the sweep of the obvious stop level, then enter on the reversal."
+      },
+      {
+        "mistake": "Moving SL further from entry",
+        "consequence": "Compounding losses. Removing the very protection that keeps you in the game.",
+        "fix": "Define SL before entry and NEVER widen it."
+      },
+      {
+        "mistake": "Chasing price after a big move",
+        "consequence": "Entering at the worst price. High risk, low reward.",
+        "fix": "Wait for the pullback to the OB or FVG created by the move."
+      },
+      {
+        "mistake": "Trading during news events",
+        "consequence": "Spread widens, price spikes erratically. Technical analysis becomes meaningless.",
+        "fix": "Check the calendar. Avoid trades 30 minutes before/after red news."
+      },
+      {
+        "mistake": "Ignoring the session time",
+        "consequence": "Trading in low-volume sessions (Asian overnight) leads to manipulation and false signals.",
+        "fix": "Focus on London and NY killzones exclusively."
+      },
+      {
+        "mistake": "Taking every setup without scoring",
+        "consequence": "Low-quality trades erode the edge. Overtrading.",
+        "fix": "Only enter when the confluence score is above the threshold. Be selective."
+      },
+      {
+        "mistake": "Not knowing the target before entry",
+        "consequence": "Taking profit too early or holding too long. Unclear exits.",
+        "fix": "Always identify the draw on liquidity BEFORE entering. Know TP1 and TP2 levels."
+      },
+      {
+        "mistake": "Revenge trading after a loss",
+        "consequence": "Emotional decision making. Compounds losses rapidly.",
+        "fix": "Apply the 3-loss rule. Stop for the day. Journal and review."
+      }
+    ]
+  },
+
+  "backtesting_framework": {
+    "description": "Systematic process to validate a strategy before risking real capital.",
+    "process": [
+      "Step 1: Define ALL rules of the setup in writing. Nothing vague.",
+      "Step 2: Go back on TradingView replay or MT4/MT5 Strategy Tester minimum 6 months.",
+      "Step 3: Only take setups that meet ALL defined rules (avoid hindsight bias).",
+      "Step 4: Record every trade: date, pair, TF, entry, SL, TP, result, RR, screenshot.",
+      "Step 5: After minimum 100 trades, calculate: Win Rate, Average RR, Expectancy, Max Drawdown.",
+      "Step 6: Expectancy = (Win Rate × Average Win RR) - (Loss Rate × Average Loss RR)",
+      "Step 7: Expectancy must be positive. Aim for >0.5.",
+      "Step 8: Paper trade for 30 days with all rules strictly applied.",
+      "Step 9: Only move to live trading after consistent paper trading results.",
+      "Step 10: Start live with minimum lot size. Scale only after 3 profitable months."
+    ],
+    "metrics_to_track": {
+      "win_rate": "Target: 45-65%. Higher than 70% with good RR = possibly over-fitted.",
+      "average_RR": "Target: minimum 1:2. Ideal: 1:3.",
+      "expectancy": "Target: positive. Above 0.3 is good. Above 0.5 is excellent.",
+      "max_drawdown": "Target: below 15%. Above 20% = review the strategy.",
+      "profit_factor": "Total Gross Profit / Total Gross Loss. Target: above 1.5.",
+      "consecutive_losses": "Track the maximum losing streak. Size your risk accordingly."
+    }
+  },
+
+  "714_method_deep_dive": {
+    "description": "The 714 Method by Mashaya Mthethwa — trading only during the 7 AM to 2 PM window which captures the London close and NY open overlap.",
+    "core_principles": [
+      "Only trade between 7:00 AM and 2:00 PM (London/NY overlap time)",
+      "Wait for structure break + confirmation candle within the window",
+      "Use session open range as reference",
+      "Look for liquidity sweeps early in the window (7-9 AM) before the real move",
+      "No trades taken after 2 PM — discipline is the edge"
+    ],
+    "process": [
+      "Mark the previous day high and low",
+      "Mark the Asian session high and low",
+      "At 7 AM: observe. Note the current market structure (bullish/bearish/ranging)",
+      "Look for London manipulation: sweep of Asia high or low",
+      "After sweep: wait for BOS/CHoCH confirmation candle on M15 or H1",
+      "Enter on the confirmation with SL below/above the swept level",
+      "Target: previous day high/low, weekly liquidity, or nearest HTF POI",
+      "Close all trades by 2 PM or move to BE"
+    ],
+    "why_it_works": "The 7 AM–2 PM window is the highest-probability session because it captures institutional activity from both London close and NY AM session. This is when the majority of daily range forms and where smart money executes their orders."
+  }
+}

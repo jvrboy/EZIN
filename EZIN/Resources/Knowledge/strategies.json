@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "module": "strategies",
+    "version": "1.0.0",
+    "description": "Complete ready-to-use strategy playbook. Each strategy defines market conditions, entry rules, exits, risk, and best symbols."
+  },
+  "strategies": [
+    {
+      "id": "trend_continuation_mtf",
+      "name": "Multi-Timeframe Trend Continuation",
+      "type": "trend",
+      "condition": "H4 and H1 aligned in one direction, ADX(M15) > 25",
+      "entry": [
+        "H1 trend defines direction.",
+        "M15 pullback into fib 0.5-0.618 of the last impulse + EMA50 or order block.",
+        "M5 prints engulfing/pin in trend direction.",
+        "Enter on M5 candle close."
+      ],
+      "stopLoss": "Below/above the pullback swing (add 0.5xATR buffer).",
+      "takeProfit": ["TP1: last swing extreme (take 50%)", "TP2: 1.618 fib extension"],
+      "riskReward": "min 1:2",
+      "bestSymbols": ["R_50", "R_75", "R_100"],
+      "confluencesUsed": ["htf_bias", "fib_level", "ema_dynamic", "candlestick", "structure"]
+    },
+    {
+      "id": "liquidity_sweep_reversal",
+      "name": "Liquidity Sweep Reversal (APA)",
+      "type": "counter-trend",
+      "condition": "Price sweeps equal highs/lows or a major swing point at an HTF POI (OB/FVG) in premium/discount.",
+      "entry": [
+        "Sweep wick beyond the level, close back inside.",
+        "M1 CHoCH after the sweep.",
+        "Enter at the M1 order block created by the CHoCH."
+      ],
+      "stopLoss": "Beyond the sweep extreme.",
+      "takeProfit": ["TP1: range equilibrium", "TP2: opposing liquidity pool"],
+      "riskReward": "min 1:3",
+      "bestSymbols": ["R_75", "R_100", "BOOM1000", "CRASH1000"],
+      "confluencesUsed": ["order_block", "structure", "sr_zone", "divergence"],
+      "warning": "Counter-trend: requires 5+ confluences, half size."
+    },
+    {
+      "id": "boom_spike_hunter",
+      "name": "Boom Spike Hunter",
+      "type": "spike",
+      "condition": "Boom index, spike probability >= 65 (spike-detection.json), price at M15 demand zone.",
+      "entry": ["BUY at the demand zone during down-drift with M1 slowing momentum."],
+      "stopLoss": "Below demand zone, min 1.5xATR(M1).",
+      "takeProfit": ["Exit immediately after spike prints, or trail 2xATR after spike"],
+      "riskReward": "variable; spikes typically deliver 1:3+",
+      "bestSymbols": ["BOOM1000", "BOOM500"],
+      "confluencesUsed": ["spike_cycle", "sr_zone", "rsi_position", "psych_level"]
+    },
+    {
+      "id": "crash_spike_hunter",
+      "name": "Crash Spike Hunter",
+      "type": "spike",
+      "condition": "Crash index, spike probability >= 65, price at M15 supply zone.",
+      "entry": ["SELL at the supply zone during up-drift with M1 slowing momentum."],
+      "stopLoss": "Above supply zone, min 1.5xATR(M1).",
+      "takeProfit": ["Exit after spike prints or trail"],
+      "bestSymbols": ["CRASH1000", "CRASH500"],
+      "confluencesUsed": ["spike_cycle", "sr_zone", "rsi_position", "psych_level"]
+    },
+    {
+      "id": "drift_rider",
+      "name": "Boom/Crash Drift Rider",
+      "type": "trend",
+      "condition": "Fresh spike just printed (cycle reset). Ride the drift.",
+      "entry": [
+        "Sell Boom / buy Crash on first M1 pullback rejection after the spike.",
+        "EMA9 below EMA21 (Boom) or above (Crash) on M1."
+      ],
+      "stopLoss": "Beyond the post-spike swing.",
+      "takeProfit": ["Fixed small target 1:1.5; hard exit before 50% of average cycle elapses"],
+      "bestSymbols": ["BOOM500", "CRASH500", "BOOM1000", "CRASH1000"],
+      "confluencesUsed": ["spike_cycle", "ema_dynamic", "candlestick"],
+      "warning": "NEVER hold into an overdue spike window."
+    },
+    {
+      "id": "bb_squeeze_breakout",
+      "name": "Bollinger Squeeze Breakout",
+      "type": "breakout",
+      "condition": "BB width at 20-period low on M15 (volatility contraction).",
+      "entry": [
+        "Wait for a full-bodied candle CLOSE outside the squeeze range with rising tick volume.",
+        "Enter on the retest of the range edge."
+      ],
+      "stopLoss": "Middle of the squeeze range.",
+      "takeProfit": ["Measured move: squeeze height projected from breakout point"],
+      "bestSymbols": ["R_100", "R_75", "Jump indices"],
+      "confluencesUsed": ["structure", "volume_confirm", "trendline"]
+    },
+    {
+      "id": "range_fader",
+      "name": "Range Fader",
+      "type": "range",
+      "condition": "ADX(M15) < 20, clear horizontal range with 2+ touches each side.",
+      "entry": [
+        "At range extreme: rejection candle + RSI beyond 70/30 + stochastic cross.",
+        "Enter toward the opposite side."
+      ],
+      "stopLoss": "Beyond the range extreme + buffer.",
+      "takeProfit": ["TP1 mid-range, TP2 opposite edge"],
+      "bestSymbols": ["R_10", "R_25", "Step Index"],
+      "confluencesUsed": ["sr_zone", "rsi_position", "candlestick"]
+    },
+    {
+      "id": "divergence_reversal",
+      "name": "Divergence Reversal",
+      "type": "counter-trend",
+      "condition": "Clear RSI/MACD divergence at an HTF level after an extended move.",
+      "entry": [
+        "Divergence visible on M15 or higher.",
+        "Wait for CHoCH on M5 to confirm.",
+        "Enter on the retest of the broken structure."
+      ],
+      "stopLoss": "Beyond the divergence extreme.",
+      "takeProfit": ["TP1: EMA50, TP2: 0.5 of the prior leg"],
+      "bestSymbols": ["R_75", "R_50", "V100"],
+      "confluencesUsed": ["divergence", "structure", "sr_zone"],
+      "warning": "Counter-trend rules apply: 5+ confluences, half size."
+    },
+    {
+      "id": "vwap_trend_scalp",
+      "name": "VWAP Trend Scalp",
+      "type": "trend-scalp",
+      "condition": "Intraday trend with price consistently on one side of VWAP.",
+      "entry": ["Pullback to VWAP + rejection candle in trend direction on M1."],
+      "stopLoss": "Beyond VWAP band.",
+      "takeProfit": ["Previous session extreme or 1:2"],
+      "bestSymbols": ["R_50", "R_75"],
+      "confluencesUsed": ["vwap", "htf_bias", "candlestick"]
+    }
+  ],
+  "strategySelection": {
+    "rules": [
+      "ADX > 25 -> trend strategies (trend_continuation_mtf, vwap_trend_scalp, drift_rider).",
+      "ADX < 20 -> range strategies (range_fader).",
+      "BB squeeze detected -> bb_squeeze_breakout.",
+      "Boom/Crash symbol -> spike strategies + drift_rider ONLY.",
+      "Divergence + HTF level -> divergence_reversal / liquidity_sweep_reversal.",
+      "Multiple strategies valid -> pick the one whose confluences overlap most with current findings; signal engine fuses them."
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "module": "candlesticks",
+    "version": "1.0.0",
+    "description": "Candlestick pattern recognition rules for pure price-based signals. Includes detection math, signal meaning, and required context."
+  },
+  "anatomy": {
+    "body": "abs(close - open)",
+    "upperWick": "high - max(open, close)",
+    "lowerWick": "min(open, close) - low",
+    "range": "high - low",
+    "bullish": "close > open",
+    "bearish": "close < open"
+  },
+  "corePrinciple": "A candlestick pattern is ONLY a signal when it forms AT a key location (support/resistance, order block, fib zone) AND aligns with bias. Patterns in the middle of nowhere are noise.",
+  "singleCandle": [
+    {
+      "name": "Pin Bar / Hammer",
+      "detection": "lowerWick >= 2 * body AND upperWick <= 0.3 * body AND forms after a decline",
+      "signal": "BULLISH_REVERSAL",
+      "context": "At support/demand zone. Entry on break of pin high, SL below pin low.",
+      "reliability": "high"
+    },
+    {
+      "name": "Shooting Star / Inverted Hammer at top",
+      "detection": "upperWick >= 2 * body AND lowerWick <= 0.3 * body AND forms after a rally",
+      "signal": "BEARISH_REVERSAL",
+      "context": "At resistance/supply zone. Entry on break of star low, SL above star high.",
+      "reliability": "high"
+    },
+    {
+      "name": "Doji",
+      "detection": "body <= 0.1 * range",
+      "signal": "INDECISION",
+      "context": "After a strong leg = potential exhaustion. Needs next-candle confirmation.",
+      "reliability": "low-alone"
+    },
+    {
+      "name": "Marubozu",
+      "detection": "body >= 0.9 * range",
+      "signal": "STRONG_CONTINUATION",
+      "context": "Full-bodied candle = momentum. Bullish marubozu breaking resistance = valid breakout.",
+      "reliability": "medium"
+    },
+    {
+      "name": "Spinning Top",
+      "detection": "small body, wicks both sides roughly equal",
+      "signal": "INDECISION",
+      "context": "In a trend pullback = pause, likely continuation. At extremes = possible reversal.",
+      "reliability": "low-alone"
+    }
+  ],
+  "doubleCandle": [
+    {
+      "name": "Bullish Engulfing",
+      "detection": "bearish candle followed by bullish candle whose body fully covers previous body",
+      "signal": "BULLISH_REVERSAL",
+      "context": "At demand zone / support with bullish HTF bias = strong entry trigger.",
+      "reliability": "high"
+    },
+    {
+      "name": "Bearish Engulfing",
+      "detection": "bullish candle followed by bearish candle whose body fully covers previous body",
+      "signal": "BEARISH_REVERSAL",
+      "context": "At supply zone / resistance with bearish HTF bias = strong entry trigger.",
+      "reliability": "high"
+    },
+    {
+      "name": "Tweezer Bottom",
+      "detection": "two candles with nearly equal lows, second closes bullish",
+      "signal": "BULLISH_REVERSAL",
+      "reliability": "medium"
+    },
+    {
+      "name": "Tweezer Top",
+      "detection": "two candles with nearly equal highs, second closes bearish",
+      "signal": "BEARISH_REVERSAL",
+      "reliability": "medium"
+    },
+    {
+      "name": "Inside Bar",
+      "detection": "candle fully inside previous candle's range",
+      "signal": "COMPRESSION_BREAKOUT",
+      "context": "Trade the break of the mother bar in the trend direction. Fakeout risk: wait for close beyond mother bar.",
+      "reliability": "medium"
+    }
+  ],
+  "tripleCandle": [
+    {
+      "name": "Morning Star",
+      "detection": "big bearish candle -> small indecision candle -> big bullish candle closing above midpoint of first",
+      "signal": "BULLISH_REVERSAL",
+      "reliability": "high"
+    },
+    {
+      "name": "Evening Star",
+      "detection": "big bullish candle -> small indecision candle -> big bearish candle closing below midpoint of first",
+      "signal": "BEARISH_REVERSAL",
+      "reliability": "high"
+    },
+    {
+      "name": "Three White Soldiers",
+      "detection": "three consecutive strong bullish candles with higher closes and small wicks",
+      "signal": "BULLISH_CONTINUATION",
+      "reliability": "high"
+    },
+    {
+      "name": "Three Black Crows",
+      "detection": "three consecutive strong bearish candles with lower closes and small wicks",
+      "signal": "BEARISH_CONTINUATION",
+      "reliability": "high"
+    },
+    {
+      "name": "Three Inside Up/Down",
+      "detection": "engulfing-like pattern plus a third candle confirming the direction",
+      "signal": "REVERSAL_CONFIRMED",
+      "reliability": "high"
+    }
+  ],
+  "pureCandleSignalMethod": {
+    "description": "How to get signals purely from candlesticks with no indicators.",
+    "steps": [
+      "1. Identify the last impulse leg and its direction (count consecutive same-color candles and their sizes).",
+      "2. Locate where price is relative to obvious swing highs/lows (raw structure).",
+      "3. Wait for price to reach a prior swing area or fresh extreme.",
+      "4. Watch wick behaviour: long rejection wicks against the move = absorption.",
+      "5. Trigger only on a confirmed pattern CLOSE (never mid-candle).",
+      "6. Entry: break of trigger candle high/low. SL: beyond pattern extreme. TP: last opposing swing.",
+      "7. Skip any pattern that forms mid-range with no reference level."
+    ],
+    "wickReading": [
+      "Long lower wicks repeatedly = buyers defending; look for longs.",
+      "Long upper wicks repeatedly = sellers defending; look for shorts.",
+      "Shrinking candle bodies in a move = momentum dying.",
+      "Expanding bodies in break direction = momentum confirmation."
+    ]
+  },
+  "onSynthetics": {
+    "notes": [
+      "On Boom indices, bearish candles dominate visually; a single large bullish candle is usually a spike, not a pattern.",
+      "On Crash indices, bullish candles dominate; a single large bearish candle is a spike.",
+      "Never treat spike candles as engulfing/reversal patterns; exclude spike candles from pattern detection.",
+      "Volatility indices (V10-V100) behave like normal markets; all patterns apply."
+    ]
+  }
+}

@@ -98,8 +98,11 @@ enum AgentRegistry {
     ]
 
     static func systemContext() -> String {
-        "You are backed by \(agents.count) specialist agents and \(pipelines.count) analysis pipelines. " +
+        var s = "You are backed by \(agents.count) specialist agents and \(pipelines.count) analysis pipelines. " +
         "Route each request internally to the best specialist(s). Key specialists include: " +
         agents.prefix(14).map { $0.name }.joined(separator: ", ") + ", and more."
+        let kb = KnowledgeBase.shared.systemContext()
+        if !kb.isEmpty { s += "\n\n" + kb }
+        return s
     }
 }

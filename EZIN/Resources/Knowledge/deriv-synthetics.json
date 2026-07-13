@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "module": "synthetics",
+    "version": "1.0.0",
+    "description": "Complete knowledge of Deriv synthetic indices: behaviour, character, best timeframes, and how to analyse each family."
+  },
+  "overview": {
+    "whatTheyAre": "Synthetic indices simulated by a cryptographically secure random number generator, audited, running 24/7 with constant defined volatility. No news, no sessions, no gaps (except Boom/Crash spikes).",
+    "advantages": [
+      "24/7 trading, no weekend gaps.",
+      "Constant statistical volatility -> ATR and probability models are stable.",
+      "No fundamental news shocks -> pure technical analysis works cleanly."
+    ],
+    "implications": [
+      "Because volatility is engineered, indicator settings stay consistent per symbol.",
+      "Support/resistance and structure still form from order flow of the pricing engine and trader behaviour on entries/exits.",
+      "Backtests are more representative than on news-driven markets."
+    ]
+  },
+  "families": {
+    "volatility": {
+      "symbols": {
+        "R_10": { "name": "Volatility 10", "annualVolatility": "10%", "character": "Slow, smooth, small candles. Good for beginners and tight-stop scalps." },
+        "R_25": { "name": "Volatility 25", "annualVolatility": "25%", "character": "Mild trends, moderate noise." },
+        "R_50": { "name": "Volatility 50", "annualVolatility": "50%", "character": "Balanced volatility, respects structure well." },
+        "R_75": { "name": "Volatility 75", "annualVolatility": "75%", "character": "Fast, strong impulses, deep pullbacks. Most popular for scalping. Needs wider stops." },
+        "R_100": { "name": "Volatility 100", "annualVolatility": "100%", "character": "Very fast and volatile. Big candles; strict risk control mandatory." }
+      },
+      "oneSecondVariants": "1s versions (e.g. 1HZ75V) tick every second instead of every 2 seconds: faster charts, same volatility profile.",
+      "howToAnalyse": [
+        "Treat like a normal market: full MTF analysis, structure, patterns, indicators all valid.",
+        "Match stop distance to the symbol's ATR — V75/V100 need 2-3x wider stops than V10/V25.",
+        "Trend days are common: ADX > 25 means ride pullbacks, do not fade."
+      ]
+    },
+    "boomCrash": {
+      "symbols": ["BOOM300", "BOOM500", "BOOM1000", "CRASH300", "CRASH500", "CRASH1000"],
+      "character": "Boom drifts DOWN with sudden UP spikes. Crash drifts UP with sudden DOWN spikes. 300 series spikes most often, 1000 least often.",
+      "howToAnalyse": [
+        "Two separate games: spike catching vs drift riding — never mix them in one position.",
+        "Always know ticks since last spike before any trade (see spike-detection.json).",
+        "Zones matter: spikes frequently launch from HTF demand (Boom) or supply (Crash).",
+        "M1 for execution, M5/M15 for zones, H1 for macro drift channel."
+      ],
+      "hardRules": [
+        "On Boom: never hold sells into an overdue spike window.",
+        "On Crash: never hold buys into an overdue spike window."
+      ]
+    },
+    "step": {
+      "symbols": ["STPRNG"],
+      "character": "Step Index moves in fixed-size steps with equal up/down probability. Extremely clean structure, tight ranges.",
+      "howToAnalyse": [
+        "Best for pure structure and S/R trading; levels are respected cleanly.",
+        "Range strategies excel; use ADX to detect the rare trend phases."
+      ]
+    },
+    "jump": {
+      "symbols": ["JD10", "JD25", "JD50", "JD75", "JD100"],
+      "character": "Uniform volatility with jumps (about 3 per hour on average) that move price ~30x normal in either direction.",
+      "howToAnalyse": [
+        "Like volatility indices but with random jump risk both directions.",
+        "Wider stops or smaller size to survive jumps; jumps also create breakout opportunities.",
+        "Never place stops just beyond obvious levels — jumps hunt them."
+      ]
+    },
+    "rangeBreak": {
+      "symbols": ["RDBEAR", "RDBULL"],
+      "character": "Range break indices oscillate in a range then break out after a set average number of attempts.",
+      "howToAnalyse": ["Trade the range edges until a statistical breakout window, then switch to breakout mode."]
+    }
+  },
+  "perSymbolPlaybook": {
+    "R_75": {
+      "bestTimeframes": ["M1", "M5", "M15 bias"],
+      "strategy": "EMA 9/21 pullback scalps in M15 trend direction; SL 1.5xATR(14); TP 2xSL. Avoid entries right after a 3xATR impulse candle (wait for pullback).",
+      "notes": "Respects fib 0.5-0.618 golden zone well on M5 legs."
+    },
+    "R_100": {
+      "bestTimeframes": ["M5", "M15"],
+      "strategy": "Breakout-retest of M15 ranges with volume confirmation. Too fast for M1 beginners.",
+      "notes": "Strong trending behaviour when ADX > 30."
+    },
+    "R_10": {
+      "bestTimeframes": ["M1", "M5"],
+      "strategy": "Mean reversion off Bollinger extremes in ranges; tiny targets, high win-rate style.",
+      "notes": "Small ATR means small absolute profit — size accordingly, never over-leverage to compensate."
+    },
+    "BOOM1000": {
+      "bestTimeframes": ["M1 execution", "M5/M15 zones"],
+      "strategy": "Buy at HTF demand with spike probability >= 65, or sell fresh drift immediately post-spike.",
+      "notes": "Longest cycle: drift sells have the most room, but discipline on exit is critical."
+    },
+    "CRASH1000": {
+      "bestTimeframes": ["M1 execution", "M5/M15 zones"],
+      "strategy": "Sell at HTF supply with spike probability >= 65, or buy fresh drift immediately post-spike.",
+      "notes": "Mirror logic of Boom 1000."
+    },
+    "BOOM500_CRASH500": {
+      "strategy": "Same logic as 1000 series but cycles are twice as fast: reduce hold time and targets accordingly."
+    }
+  },
+  "commonMistakes": [
+    "Treating Boom/Crash like normal markets and shorting Boom randomly (spike wipes the account).",
+    "Using the same stop distance across V10 and V75.",
+    "Overtrading 1s indices due to the speed of candles.",
+    "Ignoring that synthetics run 24/7 — fatigue leads to revenge trading; use session limits from risk-management.json."
+  ]
+}

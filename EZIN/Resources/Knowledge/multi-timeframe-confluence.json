@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "module": "multiTimeframe",
+    "version": "1.0.0",
+    "description": "Multi-timeframe analysis engine: bias determination, timeframe roles, alignment scoring, and confluence stacking rules. ALL timeframes must be analysed for every signal."
+  },
+  "timeframeRoles": {
+    "D1": { "role": "macro bias", "use": "Overall direction, major zones, weekly/daily highs-lows." },
+    "H4": { "role": "swing bias", "use": "Swing structure, HTF order blocks and FVGs, dealing range for premium/discount." },
+    "H1": { "role": "operational trend", "use": "Trend the session trades with. BOS/CHoCH tracking." },
+    "M15": { "role": "setup timeframe", "use": "Zones for entries, pullback mapping, ADX regime." },
+    "M5": { "role": "refinement", "use": "Refine zones, early confirmation patterns." },
+    "M1": { "role": "execution", "use": "Entry triggers, tight structure, spike execution." }
+  },
+  "biasDetermination": {
+    "steps": [
+      "1. On D1 and H4: mark swing structure. HH+HL = bullish, LH+LL = bearish, mixed = neutral.",
+      "2. Check price vs EMA200 on H1 and H4 (above = bullish weight, below = bearish weight).",
+      "3. Check the last BOS/CHoCH on H1.",
+      "4. Score: each bullish factor +1, bearish -1 across {D1 structure, H4 structure, H1 structure, H4 EMA200, H1 EMA200, H1 last BOS}.",
+      "5. Score >= +3 = BULLISH bias. Score <= -3 = BEARISH bias. Otherwise NEUTRAL (range mode or no trade)."
+    ],
+    "rule": "Bias MUST be determined before anything else. A signal against bias is automatically counter-trend and held to stricter standards."
+  },
+  "alignmentMatrix": {
+    "description": "How timeframe agreement changes signal quality.",
+    "grades": [
+      { "grade": "A+", "condition": "D1, H4, H1, M15 all aligned + M1/M5 trigger in same direction", "action": "Full size, trend strategy." },
+      { "grade": "A", "condition": "H4, H1, M15 aligned; D1 neutral", "action": "Full size." },
+      { "grade": "B", "condition": "H1 and M15 aligned; H4 neutral/against", "action": "Reduced size, quicker targets." },
+      { "grade": "C", "condition": "Only entry timeframe agrees", "action": "NO TRADE unless valid counter-trend setup with 5+ confluences." },
+      { "grade": "F", "condition": "Timeframes conflict chaotically", "action": "NO TRADE. Market is transitioning." }
+    ]
+  },
+  "topDownWorkflow": [
+    "D1: trend? major zones near price? -> note.",
+    "H4: swing structure, premium/discount of dealing range, HTF POIs -> note.",
+    "H1: operational trend, last BOS/CHoCH, momentum (RSI/MACD) -> note.",
+    "M15: setup zone identification, ADX regime, patterns forming -> note.",
+    "M5: zone refinement, early triggers, divergences -> note.",
+    "M1: final trigger + spike checks (Boom/Crash) -> note.",
+    "FUSE: send all notes to signal-engine.json for scoring."
+  ],
+  "confluenceStacking": {
+    "principle": "A confluence only counts once even if visible on multiple timeframes, but HIGHER timeframe versions carry more weight.",
+    "weightMultipliers": { "D1": 1.5, "H4": 1.4, "H1": 1.25, "M15": 1.1, "M5": 1.0, "M1": 0.9 },
+    "minimums": {
+      "trendTrade": "3 confluences minimum, at least 1 from H1 or above.",
+      "counterTrendTrade": "5 confluences minimum, must include HTF exhaustion or divergence AND an LTF CHoCH.",
+      "spikeTrade": "3 confluences minimum, must include spike_cycle factor."
+    }
+  },
+  "conflictResolution": [
+    "H4 bullish but H1 bearish -> wait: either H1 realigns (buy the CHoCH) or H4 flips (structure damage).",
+    "M15 setup against H1 trend -> treat strictly as counter-trend.",
+    "Never average conflicting biases into a trade; conflict = patience.",
+    "Fresh HTF CHoCH overrides older LTF signals — re-run the whole analysis."
+  ]
+}

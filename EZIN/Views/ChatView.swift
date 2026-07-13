@@ -92,15 +92,19 @@ struct ChatBubble: View {
         }
     }
     private var bubble: some View {
-        Text(message.text)
-            .font(.system(size: 14))
-            .foregroundStyle(.white.opacity(0.95))
-            .textSelection(.enabled)
-            .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(message.role == "assistant" ? Color.white.opacity(0.08) : Glass.accent.opacity(0.35))
-            )
+        Group {
+            if message.role == "assistant" {
+                MarkdownText(markdown: message.text)   // professional headings/lists/bold
+            } else {
+                Text(message.text).font(.system(size: 14)).foregroundStyle(.white.opacity(0.95))
+            }
+        }
+        .textSelection(.enabled)
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(message.role == "assistant" ? Color.white.opacity(0.08) : Glass.accent.opacity(0.35))
+        )
     }
 }
 

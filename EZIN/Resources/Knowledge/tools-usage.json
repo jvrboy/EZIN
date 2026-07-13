@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "module": "toolsUsage",
+    "version": "1.0.0",
+    "description": "How to use analysis tools correctly: drawing tools, indicator tools, chart tools, and computation recipes the app can implement directly."
+  },
+  "chartTools": {
+    "horizontalLine": {
+      "purpose": "Mark support/resistance zones.",
+      "howToUse": [
+        "Place at the BODY cluster of touches, not the extreme wick.",
+        "Convert to a zone: duplicate the line at wick extreme -> the band between is the zone.",
+        "Colour-code by timeframe (e.g. D1 red, H4 orange, H1 yellow, M15 gray)."
+      ]
+    },
+    "trendline": {
+      "purpose": "Track diagonal structure and liquidity.",
+      "howToUse": [
+        "Needs minimum 2 touches to draw, 3 to validate.",
+        "Connect wicks on the higher timeframe, bodies on lower.",
+        "Expect fake breaks (trendline liquidity) — trade the break-retest, not the first break."
+      ]
+    },
+    "fibRetracement": {
+      "purpose": "Find pullback entry zones and targets.",
+      "howToUse": [
+        "Anchor swing low -> swing high of the LAST completed impulse (reverse for downtrends).",
+        "Watch 0.5-0.618 golden zone for entries, 0.786 as final defence.",
+        "Use -0.272 and -0.618 (extensions) as TP projections."
+      ]
+    },
+    "rectangleZone": {
+      "purpose": "Mark order blocks, supply/demand, FVGs.",
+      "howToUse": [
+        "OB: cover the full candle range (or open-to-extreme refinement).",
+        "FVG: rectangle from candle1 wick to candle3 wick.",
+        "Delete mitigated zones to keep the chart clean."
+      ]
+    },
+    "replayBacktest": {
+      "purpose": "Train and validate without risk.",
+      "howToUse": [
+        "Hide future candles; step candle-by-candle applying the full checklist.",
+        "Log every simulated trade in the journal exactly like a live trade.",
+        "Minimum 50 replay trades per strategy before trading it live."
+      ]
+    }
+  },
+  "computationRecipes": {
+    "note": "Pure formulas so the app can compute indicators itself without external libraries.",
+    "SMA": "sma[i] = mean(close[i-n+1..i])",
+    "EMA": "k = 2/(n+1); ema[i] = close[i]*k + ema[i-1]*(1-k); seed ema[0] with SMA(n)",
+    "RSI": "gain/loss = diffs split by sign; use Wilder smoothing: avg = (prevAvg*(n-1)+current)/n; RSI = 100 - 100/(1+avgGain/avgLoss)",
+    "ATR": "tr = max(high-low, abs(high-prevClose), abs(low-prevClose)); ATR = Wilder-smoothed TR over n",
+    "MACD": "macd = EMA12(close) - EMA26(close); signal = EMA9(macd); histogram = macd - signal",
+    "Bollinger": "mid = SMA20; upper/lower = mid +/- 2*stdev(close,20)",
+    "Stochastic": "%K = 100*(close - lowestLow(n)) / (highestHigh(n) - lowestLow(n)); %D = SMA3(%K)",
+    "VWAP": "vwap = cumulative(typicalPrice*volume)/cumulative(volume); typicalPrice = (h+l+c)/3; reset per session/day",
+    "ADX": "compute +DM/-DM, smooth with Wilder, DX = 100*abs(+DI - -DI)/(+DI + -DI), ADX = Wilder-smoothed DX",
+    "swingDetection": "pivot high: high[i] > highs of k bars each side (k=2 default); mirror for pivot low",
+    "zigzag": "connect pivots filtered by minimum move of x*ATR to map structure automatically"
+  },
+  "toolWorkflowForAnalysis": [
+    "1. Load candles for all timeframes (realtime-data.json).",
+    "2. Auto-detect swings (swingDetection) -> build structure map (HH/HL/LH/LL, BOS, CHoCH).",
+    "3. Auto-mark S/R: cluster pivot prices within 0.5*ATR bands, rank by touch count and recency.",
+    "4. Auto-detect OBs and FVGs from the structure map.",
+    "5. Compute indicator set per timeframe (EMA9/21/50/200, RSI14, MACD, ATR14, ADX14, BB20).",
+    "6. Run pattern scanner (candlestick-patterns.json detections) on M1/M5/M15.",
+    "7. Feed everything to signal-engine.json.",
+    "8. Render: draw zones, structure labels, and the signal card on the chart."
+  ],
+  "bestPractices": [
+    "Fewer tools, mastered deeply, beat many tools used shallowly.",
+    "Every drawn object must have a reason; delete anything you cannot justify.",
+    "Indicators CONFIRM price action; they never lead the decision.",
+    "Keep one clean 'bias' chart layout and one 'execution' layout per symbol."
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "module": "realtimeData",
+    "version": "1.0.0",
+    "description": "How the brain gets real-time and historical market data over the network: Deriv WebSocket API endpoints, message formats, and data handling rules."
+  },
+  "derivWebSocketAPI": {
+    "endpoint": "wss://ws.derivws.com/websockets/v3?app_id={your_app_id}",
+    "note": "Register a free app_id at api.deriv.com. Public market data (ticks, candles) does not require account authorization.",
+    "requests": {
+      "tickStream": {
+        "description": "Subscribe to live ticks for a symbol.",
+        "send": { "ticks": "R_75", "subscribe": 1 },
+        "receive": "stream of { tick: { symbol, quote, epoch } }"
+      },
+      "candleHistory": {
+        "description": "Fetch historical OHLC candles.",
+        "send": {
+          "ticks_history": "R_75",
+          "style": "candles",
+          "granularity": 60,
+          "count": 1000,
+          "end": "latest"
+        },
+        "granularities": { "M1": 60, "M5": 300, "M15": 900, "M30": 1800, "H1": 3600, "H4": 14400, "D1": 86400 },
+        "receive": "{ candles: [{ open, high, low, close, epoch }] }"
+      },
+      "candleStream": {
+        "description": "Subscribe to live-updating candles.",
+        "send": { "ticks_history": "R_75", "style": "candles", "granularity": 60, "count": 1, "end": "latest", "subscribe": 1 },
+        "receive": "stream of { ohlc: { open, high, low, close, epoch, granularity } }"
+      },
+      "activeSymbols": {
+        "description": "List all tradable symbols with metadata.",
+        "send": { "active_symbols": "brief", "product_type": "basic" }
+      },
+      "unsubscribe": { "send": { "forget": "{subscription_id}" }, "orForgetAll": { "forget_all": "ticks" } }
+    },
+    "symbolCodes": {
+      "R_10": "Volatility 10 Index", "R_25": "Volatility 25 Index", "R_50": "Volatility 50 Index",
+      "R_75": "Volatility 75 Index", "R_100": "Volatility 100 Index",
+      "1HZ10V": "Volatility 10 (1s)", "1HZ25V": "Volatility 25 (1s)", "1HZ50V": "Volatility 50 (1s)",
+      "1HZ75V": "Volatility 75 (1s)", "1HZ100V": "Volatility 100 (1s)",
+      "BOOM300N": "Boom 300", "BOOM500": "Boom 500", "BOOM1000": "Boom 1000",
+      "CRASH300N": "Crash 300", "CRASH500": "Crash 500", "CRASH1000": "Crash 1000",
+      "stpRNG": "Step Index",
+      "JD10": "Jump 10", "JD25": "Jump 25", "JD50": "Jump 50", "JD75": "Jump 75", "JD100": "Jump 100"
+    }
+  },
+  "connectionManagement": {
+    "rules": [
+      "Send { ping: 1 } every 30 seconds to keep the socket alive.",
+      "On disconnect: exponential backoff reconnect (1s, 2s, 4s, ... max 60s) and re-subscribe all streams.",
+      "Queue outgoing requests while reconnecting; flush on open.",
+      "Track subscription ids so streams can be cleanly forgotten.",
+      "Validate every message has no 'error' field before processing; log errors with code and message."
+    ]
+  },
+  "dataPipeline": {
+    "steps": [
+      "1. On symbol selected: fetch candleHistory for ALL timeframes (M1, M5, M15, H1, H4, D1).",
+      "2. Subscribe to tick stream + M1 candle stream.",
+      "3. Aggregate live ticks into the current candle; roll higher timeframe candles from M1 closes.",
+      "4. Recompute indicators incrementally on each candle close (not every tick, except spike detection which uses ticks).",
+      "5. Re-run full analysis pipeline on every M1 close; re-run bias on every M15 close.",
+      "6. Cache candles locally so restarts don't refetch everything."
+    ],
+    "candleAggregation": "Higher TF candle: open = first M1 open of window, close = last M1 close, high = max highs, low = min lows.",
+    "freshnessRules": [
+      "Never analyse with stale data: if last tick is older than 10 seconds, flag data as stale and suppress signals.",
+      "Timestamp every signal with the data epoch it was computed from."
+    ]
+  },
+  "fallbackSources": {
+    "note": "For non-synthetic instruments (forex, crypto), the app may also use:",
+    "options": [
+      { "name": "Binance WebSocket", "endpoint": "wss://stream.binance.com:9443/ws/{symbol}@kline_{interval}", "use": "crypto candles/ticks, no key needed" },
+      { "name": "Twelve Data / Alpha Vantage REST", "use": "forex candles, requires free API key" }
+    ],
+    "rule": "Deriv synthetics data MUST come from the Deriv API only — no other source has these symbols."
+  },
+  "errorHandling": [
+    "RateLimit error -> backoff 60s, reduce request frequency.",
+    "MarketIsClosed -> only applies to non-synthetics; synthetics are 24/7.",
+    "InvalidSymbol -> re-fetch activeSymbols and correct the code via conversation.json entity map."
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "meta": {
+    "module": "conversation",
+    "version": "1.0.0",
+    "description": "Rule-based conversation engine. Maintains context, detects intents, and generates responses without an AI API."
+  },
+  "contextManagement": {
+    "memorySlots": {
+      "currentSymbol": "last symbol the user mentioned (e.g. Boom 1000, V75)",
+      "currentTimeframe": "last timeframe mentioned",
+      "lastSignal": "last generated signal object",
+      "lastIntent": "previous detected intent",
+      "userRiskProfile": "conservative | balanced | aggressive",
+      "conversationHistory": "rolling window of last 20 exchanges"
+    },
+    "rules": [
+      "If user says 'it', 'that pair', 'same one' -> resolve to currentSymbol.",
+      "If user asks a follow-up like 'and on M5?' -> reuse lastIntent with new timeframe.",
+      "If user gives no symbol and none is stored -> ask which instrument they want analysed.",
+      "Persist memory slots between messages; only clear on 'reset' intent.",
+      "Always keep responses focused on the stored context before asking clarifying questions."
+    ]
+  },
+  "intents": [
+    {
+      "name": "greeting",
+      "patterns": ["hi", "hello", "hey", "good morning", "good evening", "sup", "yo"],
+      "responses": [
+        "Hey trader. Which instrument do you want me to analyse? I cover Deriv synthetics (Volatility, Boom, Crash, Step, Jump) and standard pairs.",
+        "Hello. Give me a symbol (e.g. Boom 1000, Volatility 75) and I will run a full multi-timeframe analysis."
+      ]
+    },
+    {
+      "name": "request_analysis",
+      "patterns": ["analyse", "analyze", "analysis", "what do you see on", "check", "look at", "scan", "read the chart"],
+      "action": "run_full_pipeline",
+      "responses": [
+        "Running full multi-timeframe analysis on {symbol}: bias, structure, confluences, confirmations. One moment.",
+        "Analysing {symbol} across M1 to D1. I will confirm bias, trend, and confluences before giving anything."
+      ]
+    },
+    {
+      "name": "request_signal",
+      "patterns": ["signal", "entry", "buy or sell", "should i buy", "should i sell", "give me a trade", "setup"],
+      "action": "run_signal_engine",
+      "responses": [
+        "I will only give a signal if confluences and confirmations pass. Checking {symbol} now.",
+        "Fusing all timeframe data on {symbol} into one signal. If confidence is below threshold I will say NO TRADE."
+      ]
+    },
+    {
+      "name": "request_spike",
+      "patterns": ["spike", "when will it spike", "spike soon", "boom spike", "crash spike"],
+      "action": "run_spike_detection",
+      "responses": [
+        "Running spike probability analysis on {symbol}: tick momentum, candles since last spike, exhaustion levels."
+      ]
+    },
+    {
+      "name": "explain_concept",
+      "patterns": ["what is", "explain", "how does", "teach me", "meaning of", "define"],
+      "action": "lookup_knowledge",
+      "responses": [
+        "Here is what my knowledge base says about {topic}:"
+      ]
+    },
+    {
+      "name": "request_strategy",
+      "patterns": ["strategy", "how to trade", "best way to trade", "plan for", "method"],
+      "action": "lookup_strategies",
+      "responses": [
+        "Here is a complete strategy from my playbook for {symbol_or_topic}, including entries, exits and risk rules:"
+      ]
+    },
+    {
+      "name": "risk_question",
+      "patterns": ["lot size", "position size", "risk", "stop loss", "how much should i"],
+      "action": "run_risk_module",
+      "responses": [
+        "Let me calculate that with proper risk management. I never suggest risking more than 1-2% per trade."
+      ]
+    },
+    {
+      "name": "feedback_win",
+      "patterns": ["it won", "tp hit", "profit", "that worked", "win"],
+      "action": "log_outcome_win",
+      "responses": [
+        "Logged as a WIN. I have reinforced the weights of the confluences used in that signal."
+      ]
+    },
+    {
+      "name": "feedback_loss",
+      "patterns": ["it lost", "sl hit", "stopped out", "that failed", "loss"],
+      "action": "log_outcome_loss",
+      "responses": [
+        "Logged as a LOSS. I have reduced the weights of the confluences used and will analyse what went wrong."
+      ]
+    },
+    {
+      "name": "reset",
+      "patterns": ["reset", "start over", "clear", "new session"],
+      "action": "clear_memory",
+      "responses": ["Context cleared. Fresh session started."]
+    },
+    {
+      "name": "fallback",
+      "patterns": [],
+      "responses": [
+        "I did not fully catch that. You can ask me to: analyse a symbol, give a signal, detect spikes, explain a concept, give a strategy, or calculate risk.",
+        "Try: 'Analyse Boom 1000', 'Signal for V75 on M5', 'Explain order blocks', or 'Spike check Crash 500'."
+      ]
+    }
+  ],
+  "entityExtraction": {
+    "symbols": {
+      "boom 1000": "BOOM1000", "boom 500": "BOOM500", "boom 300": "BOOM300",
+      "crash 1000": "CRASH1000", "crash 500": "CRASH500", "crash 300": "CRASH300",
+      "v10": "R_10", "v25": "R_25", "v50": "R_50", "v75": "R_75", "v100": "R_100",
+      "volatility 10": "R_10", "volatility 25": "R_25", "volatility 50": "R_50",
+      "volatility 75": "R_75", "volatility 100": "R_100",
+      "step index": "STPRNG", "jump 10": "JD10", "jump 25": "JD25", "jump 50": "JD50",
+      "jump 75": "JD75", "jump 100": "JD100"
+    },
+    "timeframes": {
+      "1 minute": "M1", "m1": "M1", "5 minute": "M5", "m5": "M5",
+      "15 minute": "M15", "m15": "M15", "1 hour": "H1", "h1": "H1",
+      "4 hour": "H4", "h4": "H4", "daily": "D1", "d1": "D1"
+    },
+    "directions": { "buy": "BUY", "long": "BUY", "sell": "SELL", "short": "SELL" }
+  },
+  "toneRules": [
+    "Be direct and professional, like a senior analyst.",
+    "Always explain WHY, listing the confluences used.",
+    "Never overpromise; always state confidence level and risks.",
+    "Use short structured answers: Bias -> Confluences -> Confirmation -> Signal -> Risk."
+  ]
+}

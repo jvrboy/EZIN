@@ -35,23 +35,14 @@ struct ToolRegistry {
         let sym = resolveSymbol(str(args, "symbol"))
         let tf = resolveTF(str(args, "timeframe"))
         guard !sym.isEmpty else { return "Please specify a symbol." }
-        guard let candles = try? await app.deriv.candles(symbol: sym, timeframe: tf, count: 200), candles.count > 40 else {
-            return "No market data available for \(sym)."
+        // Subscribe for a live price, then run the full top-down multi-timeframe engine
+        // (D1 -> H4 -> H1 -> M15 -> M5 -> M1) with HTF bias, alignment grading and confluences.
+        app.deriv.subscribeTicks(sym)
+        let mtf = MultiTimeframeAnalyzer(deriv: app.deriv, engine: app.engine)
+        guard let result = await mtf.analyze(symbol: sym, requested: tf) else {
+            return "No market data available for \(DerivSymbols.display(sym)). Open it on the Chart tab and try again."
         }
-        var md = MarketData(symbol: sym, assetClass: DerivSymbols.assetClass(sym), timeframe: tf, candles: candles)
-        md.currentPrice = app.deriv.prices[sym] ?? candles.last?.close ?? 0
-        let ind = app.engine.analyzer.analyze(md)
-        let votes = app.engine.agents.filter { $0.isActive }.map { $0.analyze(md, ind) }
-        let decision = app.engine.council.deliberate(symbol: sym, timeframe: tf, votes: votes)
-        var out = "Analysis \(DerivSymbols.display(sym)) [\(tf.rawValue)] price \(String(format: "%.4f", md.currentPrice))\n"
-        out += String(format: "RSI14 %.0f, MACD %.4f, ADX %.0f, StochK %.0f, CCI %.0f\n", ind.rsi14, ind.macdHistogram, ind.adx, ind.stochK, ind.cci20)
-        out += "EMA12\(ind.ema12 > ind.ema26 ? ">" : "<")EMA26, Supertrend \(ind.supertrendUp ? "up" : "down"), Ichimoku \(ind.ichimokuTenkan > ind.ichimokuKijun ? "bull" : "bear"), VWAP \(md.currentPrice > ind.vwap ? "above" : "below")\n"
-        if let d = decision {
-            out += "Council: \(d.direction) · confidence \(Int(d.consensusRatio * 100))% · strength \(d.strength) (\(votes.count) agents)."
-        } else {
-            out += "Council: no consensus yet."
-        }
-        return out
+        return result.markdownReport()
     }
 
     private func signals() -> String {

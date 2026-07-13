@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "module": "scalping",
+    "version": "1.0.0",
+    "description": "Perpetual scalping knowledge: continuous, systematic scalping cycles with strict rules for entries, exits, and session management."
+  },
+  "definition": "Perpetual scalping = trading a continuous loop of small, high-probability setups on low timeframes (M1/M5), repeatedly harvesting small moves in the direction of a confirmed higher-timeframe bias, all session, every session, with fixed rules.",
+  "theLoop": {
+    "description": "The perpetual scalping cycle. Repeat continuously while session limits allow.",
+    "cycle": [
+      "1. BIAS: Re-check M15/H1 bias every 15 minutes. Only scalp in bias direction.",
+      "2. ZONE: Wait for price to reach a pre-marked M5 zone (S/R, order block, EMA21, VWAP).",
+      "3. TRIGGER: Wait for M1 confirmation pattern (engulfing, pin bar, break-retest).",
+      "4. EXECUTE: Enter with fixed risk (0.5-1%), SL beyond structure, TP at 1:1.5 to 1:2.",
+      "5. MANAGE: Move SL to breakeven at 1:1. No hoping, no widening stops.",
+      "6. LOG: Record the trade in the journal (self-learning.json schema).",
+      "7. RESET: Return to step 1. If 2 consecutive losses -> mandatory 30 min pause.",
+      "8. STOP: Hard stop at daily loss limit (-3%) or daily target (+5%). Session over."
+    ]
+  },
+  "rules": {
+    "entries": [
+      "Only trade WITH the M15/H1 bias unless the counter-trend module explicitly validates a reversal (5+ confluences).",
+      "Minimum 3 confluences per entry — no exceptions for scalps.",
+      "Never chase: if the trigger candle already ran more than 50% to TP, skip.",
+      "Never enter during a 3xATR impulse candle; wait for the pullback.",
+      "One position per symbol at a time."
+    ],
+    "exits": [
+      "TP is pre-defined; never remove it.",
+      "Breakeven at 1:1 always.",
+      "Time stop: if the scalp has not moved in your favour within 10 candles, exit.",
+      "Exit immediately if bias flips on M15 (CHoCH against you)."
+    ],
+    "session": [
+      "Max 10 trades per session.",
+      "Max daily loss: 3% of account. Hit it -> stop, no re-entry.",
+      "Daily target: 5%. Hit it -> stop or reduce to quarter size.",
+      "After 2 consecutive losses: 30 minute mandatory break.",
+      "After 3 consecutive losses: session over."
+    ]
+  },
+  "bestSetups": [
+    {
+      "name": "EMA Pullback Scalp",
+      "timeframes": { "bias": "M15", "entry": "M1" },
+      "steps": [
+        "M15 in clear trend (price above/below EMA50, ADX > 25).",
+        "M1 price pulls back to EMA21.",
+        "M1 prints rejection candle (pin/engulfing) at EMA21 in trend direction.",
+        "Enter on candle close. SL beyond pullback swing. TP 1:2."
+      ],
+      "bestOn": ["R_75", "R_100", "R_50"]
+    },
+    {
+      "name": "Break-Retest Scalp",
+      "timeframes": { "bias": "M15", "entry": "M1/M5" },
+      "steps": [
+        "M5 range or level breaks WITH a strong close and volume.",
+        "Wait for retest of the broken level.",
+        "M1 rejection at the retest -> enter in break direction.",
+        "SL beyond the level; TP = range height projected."
+      ],
+      "bestOn": ["R_100", "R_75", "Step Index"]
+    },
+    {
+      "name": "VWAP Bounce Scalp",
+      "timeframes": { "bias": "M15", "entry": "M1" },
+      "steps": [
+        "Trending market, price extended from VWAP.",
+        "Wait for return to VWAP with slowing momentum.",
+        "Rejection candle at VWAP in trend direction -> enter.",
+        "SL past VWAP band, TP at previous extreme."
+      ],
+      "bestOn": ["R_50", "R_75"]
+    },
+    {
+      "name": "Post-Spike Drift Scalp",
+      "timeframes": { "entry": "M1" },
+      "steps": [
+        "Boom/Crash only. Immediately after a spike prints.",
+        "Enter WITH the drift (sell Boom, buy Crash) on first M1 rejection.",
+        "Small TP (drift candles are small), exit before mid-cycle."
+      ],
+      "bestOn": ["BOOM500", "BOOM1000", "CRASH500", "CRASH1000"]
+    },
+    {
+      "name": "Range Edge Scalp",
+      "timeframes": { "bias": "M15", "entry": "M1" },
+      "steps": [
+        "ADX < 20 on M15 = confirmed range.",
+        "Buy range low / sell range high only with rejection pattern + RSI extreme.",
+        "TP mid-range or opposite edge. Stop trading the range after a confirmed breakout."
+      ],
+      "bestOn": ["R_10", "R_25", "Step Index"]
+    }
+  ],
+  "psychology": [
+    "Scalping is execution of a checklist, not prediction. Confidence comes from the process.",
+    "Every skipped bad trade is a win.",
+    "Never increase size after a loss (no martingale, ever).",
+    "The loop only compounds if losses stay small — protecting capital IS the strategy."
+  ],
+  "mathOfScalping": {
+    "expectancy": "E = (winRate x avgWin) - (lossRate x avgLoss). Must be positive after costs.",
+    "example": "50% win rate at 1:2 R:R = (0.5 x 2R) - (0.5 x 1R) = +0.5R per trade.",
+    "costs": "Spread matters enormously on M1. Only scalp symbols where TP >= 10x spread."
+  }
+}

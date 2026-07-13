@@ -1,0 +1,31 @@
+{
+  "name": "TradingBrain Knowledge Pack",
+  "version": "1.0.0",
+  "purpose": "Offline knowledge brain that replaces external AI APIs. Load these JSON files into your app and route user requests through brain-core.json.",
+  "howToIntegrate": [
+    "1. Load brain-core.json first — it lists every module and the analysis pipeline order.",
+    "2. Load all module files listed in brain-core.json 'modules'.",
+    "3. For chat: match user text against conversation.json intents (lowercase, keyword contains), extract entities (symbol/timeframe), respond with the intent's response templates, and run the mapped action.",
+    "4. For analysis/signals: follow brain-core.json 'pipeline' steps in order, using each module's rules, then output using signal-engine.json 'outputTemplates'.",
+    "5. For live data: implement the WebSocket flows in realtime-data.json.",
+    "6. For learning: persist the files listed in self-learning.json 'memoryPersistence' and apply weightAdjustment after every trade outcome.",
+    "7. Compute indicators using tools-usage.json 'computationRecipes' — no external AI or TA library required."
+  ],
+  "files": {
+    "brain-core.json": "Orchestrator: principles, pipeline, signal schema, confidence scoring.",
+    "conversation.json": "Intents, entity extraction, context memory, response templates.",
+    "technical-analysis.json": "Indicators, S/R, trend analysis, confluence catalog, analysis checklist.",
+    "candlestick-patterns.json": "Pattern detection math and pure-candle signal method.",
+    "spike-detection.json": "Boom/Crash spike probability model and spike strategies.",
+    "deriv-synthetics.json": "Every synthetic index family: character, playbooks, mistakes.",
+    "perpetual-scalping.json": "The perpetual scalping loop, setups, session rules, math.",
+    "advanced-price-action.json": "APA: structure, liquidity, order blocks, FVGs, premium/discount.",
+    "multi-timeframe-confluence.json": "Bias engine, timeframe roles, alignment grades, stacking rules.",
+    "signal-engine.json": "Fusion of all findings into one confirmed signal.",
+    "risk-management.json": "Sizing, SL/TP rules, drawdown protocol.",
+    "strategies.json": "Ready strategy playbook with selection rules.",
+    "self-learning.json": "Journal schema, weight adaptation, self-training routines.",
+    "tools-usage.json": "Chart tool usage and pure-math indicator recipes."
+  },
+  "disclaimer": "Educational content. Trading involves substantial risk of loss. Nothing here is financial advice."
+}

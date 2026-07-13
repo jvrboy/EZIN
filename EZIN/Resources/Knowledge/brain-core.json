@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "name": "TradingBrain",
+    "version": "1.0.0",
+    "type": "offline-knowledge-brain",
+    "description": "Core orchestration brain. Replaces external AI APIs with rule-based knowledge modules. Loads all knowledge files and routes tasks to the correct module.",
+    "author": "v0",
+    "createdAt": "2026-07-13"
+  },
+  "modules": {
+    "conversation": "conversation.json",
+    "technicalAnalysis": "technical-analysis.json",
+    "candlesticks": "candlestick-patterns.json",
+    "spikeDetection": "spike-detection.json",
+    "synthetics": "deriv-synthetics.json",
+    "scalping": "perpetual-scalping.json",
+    "priceAction": "advanced-price-action.json",
+    "multiTimeframe": "multi-timeframe-confluence.json",
+    "signalEngine": "signal-engine.json",
+    "riskManagement": "risk-management.json",
+    "strategies": "strategies.json",
+    "selfLearning": "self-learning.json",
+    "realtimeData": "realtime-data.json",
+    "toolsUsage": "tools-usage.json"
+  },
+  "corePrinciples": [
+    "ALWAYS analyse ALL timeframes before giving any signal (M1, M5, M15, H1, H4, D1).",
+    "ALWAYS confirm bias first: higher timeframe trend defines bias, lower timeframe gives entry.",
+    "ALWAYS classify every setup as TREND or COUNTER-TREND and weight trend setups higher.",
+    "ALWAYS require confluences: minimum 3 independent confluences before a signal is valid.",
+    "ALWAYS run proper confirmation steps (candle close, retest, momentum) before final signal.",
+    "ALWAYS combine ALL findings (bias, trend, structure, patterns, indicators, spikes, volume) into ONE fused signal via the signal engine.",
+    "NEVER give a signal without a stop loss, take profit, and risk assessment.",
+    "NEVER trade against a confirmed higher-timeframe trend without exceptional counter-trend confluences (5+).",
+    "Log every signal outcome into the self-learning module to improve future weights."
+  ],
+  "pipeline": {
+    "description": "Order of operations for every analysis request.",
+    "steps": [
+      { "step": 1, "module": "realtimeData", "action": "Fetch live candles for all timeframes for the requested symbol." },
+      { "step": 2, "module": "multiTimeframe", "action": "Determine higher-timeframe bias and trend direction." },
+      { "step": 3, "module": "technicalAnalysis", "action": "Compute indicators, support/resistance, structure on each timeframe." },
+      { "step": 4, "module": "priceAction", "action": "Run advanced price action analysis: structure breaks, liquidity, order blocks, FVGs." },
+      { "step": 5, "module": "candlesticks", "action": "Scan for candlestick patterns on entry timeframes." },
+      { "step": 6, "module": "spikeDetection", "action": "If symbol is Boom/Crash, run spike probability analysis." },
+      { "step": 7, "module": "signalEngine", "action": "Fuse all findings, score confluences, run confirmations, output final signal." },
+      { "step": 8, "module": "riskManagement", "action": "Attach SL, TP, position size, risk-reward to the signal." },
+      { "step": 9, "module": "selfLearning", "action": "Record signal, later record outcome, adjust module weights." }
+    ]
+  },
+  "signalOutputSchema": {
+    "symbol": "string",
+    "direction": "BUY | SELL | NO_TRADE",
+    "confidence": "0-100",
+    "bias": "bullish | bearish | neutral",
+    "setupType": "trend | counter-trend | range | spike",
+    "timeframesAnalysed": ["M1", "M5", "M15", "H1", "H4", "D1"],
+    "confluences": ["array of confluence descriptions"],
+    "confirmations": ["array of completed confirmation checks"],
+    "entry": "number",
+    "stopLoss": "number",
+    "takeProfit": ["array of TP levels"],
+    "riskRewardRatio": "number",
+    "reasoning": "string - full human-readable explanation",
+    "warnings": ["array of risk warnings"]
+  },
+  "confidenceScoring": {
+    "base": 0,
+    "rules": [
+      { "condition": "HTF bias aligned with signal direction", "points": 25 },
+      { "condition": "each valid confluence", "points": 8, "max": 40 },
+      { "condition": "each completed confirmation", "points": 5, "max": 20 },
+      { "condition": "strong momentum agreement", "points": 10 },
+      { "condition": "counter-trend setup", "points": -20 },
+      { "condition": "news/volatility warning active", "points": -15 }
+    ],
+    "thresholds": {
+      "noTrade": "below 55",
+      "lowConfidence": "55-69",
+      "tradeable": "70-84",
+      "highConfidence": "85-100"
+    }
+  },
+  "disclaimer": "Educational knowledge base. Trading synthetic indices and leveraged products carries a high risk of loss. No signal is guaranteed. Always use risk management."
+}
