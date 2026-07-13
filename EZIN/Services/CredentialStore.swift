@@ -3,6 +3,7 @@ import Security
 
 /// Securely stores AI API keys / Deriv tokens in the iOS Keychain so the user
 /// never has to re-enter them. Persists across launches on-device.
+/// Items are marked ThisDeviceOnly so trading tokens never sync to iCloud Keychain.
 final class CredentialStore: ObservableObject {
     static let shared = CredentialStore()
     private let service = "com.ezin.credentials"
@@ -19,6 +20,7 @@ final class CredentialStore: ObservableObject {
         ]
         SecItemDelete(query as CFDictionary)
         query[kSecValueData as String] = data
+        query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         SecItemAdd(query as CFDictionary, nil)
         refresh()
     }

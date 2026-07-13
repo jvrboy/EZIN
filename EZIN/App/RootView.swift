@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Root shell — glass tab bar with Signals · History · Bot · Settings.
+/// Root shell — glass tab bar: Chart · Signals · History · Bot · Settings.
 struct RootView: View {
     @EnvironmentObject var app: AppState
-    @State private var tab: AppTab = .signals
+    @State private var tab: AppTab = .chart
 
     var body: some View {
         ZStack {
@@ -13,6 +13,7 @@ struct RootView: View {
                 header
                 Group {
                     switch tab {
+                    case .chart:    ChartView()
                     case .signals:  SignalsView()
                     case .history:  HistoryView()
                     case .bot:      BotView()
@@ -42,10 +43,11 @@ struct RootView: View {
 }
 
 enum AppTab: String, CaseIterable {
-    case signals, history, bot, settings
+    case chart, signals, history, bot, settings
     var title: String { rawValue.capitalized }
     var icon: String {
         switch self {
+        case .chart:    return "chart.xyaxis.line"
         case .signals:  return "waveform.path.ecg"
         case .history:  return "clock.arrow.circlepath"
         case .bot:      return "cpu"
