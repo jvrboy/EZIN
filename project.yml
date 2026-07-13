@@ -55,3 +55,38 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGNING_REQUIRED: "NO"
         CODE_SIGNING_ALLOWED: "NO"
+
+  # Logic-test bundle for the money-critical engine (voting, indicators, stops).
+  # Only built under the `test` action — the CI `build` action never compiles it,
+  # so it cannot affect the unsigned .ipa archive.
+  EZINTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: EZINTests
+    dependencies:
+      - target: EZIN
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ezin.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
+
+# Explicit scheme so behaviour is deterministic across Xcode/CI:
+#  - `xcodebuild -scheme EZIN build`  -> builds ONLY the app (test target excluded)
+#  - `xcodebuild -scheme EZIN test`   -> builds + runs EZINTests
+schemes:
+  EZIN:
+    build:
+      targets:
+        EZIN: all
+    test:
+      targets:
+        - EZINTests
+      gatherCoverageData: false
+    run:
+      config: Debug
+    archive:
+      config: Release

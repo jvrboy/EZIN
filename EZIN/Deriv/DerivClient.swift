@@ -36,11 +36,12 @@ struct DerivClosedTrade: Identifiable {
 }
 
 enum DerivError: Error, LocalizedError {
-    case timeout, notConnected, api(String)
+    case timeout, notConnected, api(String), connectionDropped
     var errorDescription: String? {
         switch self {
         case .timeout: return "Request timed out"
         case .notConnected: return "Not connected to Deriv"
+        case .connectionDropped: return "Connection dropped before a response arrived"
         case .api(let m): return m
         }
     }
@@ -49,7 +50,13 @@ enum DerivError: Error, LocalizedError {
 /// Production Deriv WebSocket client (v3 API).
 /// Real-time: authorize, balance, ticks, candles, proposal, buy, portfolio,
 /// proposal_open_contract (live P&L), sell, profit_table. No mock data.
-/// Includes automatic reconnect with backoff so live trading/signals survive drops.
+///
+/// Reliability (real money at stake):
+///  - Automatic reconnect with capped backoff + re-subscribe + re-authorize.
+///  - Keep-alive heartbeat (ping) so idle sockets are not silently dropped.
+///  - In-flight requests are FAILED (not left hanging) when the socket drops,
+///    so a buy/sell can never silently vanish.
+///  - send() failures are surfaced to the specific caller AND to `lastError`.
 final class DerivClient: NSObject, ObservableObject {
     static let defaultAppID = 1089
     static let endpoint = "wss://ws.derivws.com/websockets/v3"
@@ -72,6 +79,11 @@ final class DerivClient: NSObject, ObservableObject {
     // Reconnection
     private var shouldReconnect = true
     private var reconnectAttempts = 0
+    private var isConnecting = false
+
+    // Keep-alive heartbeat
+    private var heartbeat: DispatchSourceTimer?
+    private let heartbeatInterval: TimeInterval = 20
 
     /// One-shot request/response continuations keyed by req_id.
     private var waiters: [Int: CheckedContinuation<[String: Any], Error>] = [:]
@@ -83,16 +95,28 @@ final class DerivClient: NSObject, ObservableObject {
         self.appID = appID ?? DerivClient.defaultAppID
         self.token = token
         self.shouldReconnect = true
+
+        // Prevent overlapping connects (e.g. a stale receiveLoop failure racing a manual reconnect).
+        lock.lock()
+        if isConnecting { lock.unlock(); return }
+        isConnecting = true
+        lock.unlock()
+
         await MainActor.run { self.connectionState = .connecting; self.authorized = false }
 
         guard let url = URL(string: "\(DerivClient.endpoint)?app_id=\(self.appID)") else {
-            await MainActor.run { self.connectionState = .error("bad url") }; return
+            await MainActor.run { self.connectionState = .error("bad url") }
+            lock.lock(); isConnecting = false; lock.unlock()
+            return
         }
         task?.cancel(with: .goingAway, reason: nil)
         task = session.webSocketTask(with: url)
         task?.resume()
         receiveLoop()
+        startHeartbeat()
+
         await MainActor.run { self.connectionState = .connected; self.reconnectAttempts = 0 }
+        lock.lock(); isConnecting = false; lock.unlock()
 
         // Re-subscribe any symbols that were active before a reconnect.
         for s in subscribedSymbols { send(["ticks": s, "subscribe": 1]) }
@@ -116,21 +140,51 @@ final class DerivClient: NSObject, ObservableObject {
 
     func disconnect() {
         shouldReconnect = false
+        stopHeartbeat()
         send(["forget_all": ["ticks", "candles", "balance", "proposal_open_contract"]])
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
+        failAllWaiters(DerivError.notConnected)
         connectionState = .disconnected
         authorized = false
     }
 
     private func scheduleReconnect() {
         guard shouldReconnect else { return }
+        // If a connect() is already in progress, don't stack another attempt.
+        lock.lock(); let busy = isConnecting; lock.unlock()
+        guard !busy else { return }
+
+        stopHeartbeat()
         reconnectAttempts += 1
         let delay = min(Double(reconnectAttempts) * 2.0, 30.0)
         DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self = self, self.shouldReconnect else { return }
             Task { await self.connect(appID: self.appID, token: self.token) }
         }
+    }
+
+    // MARK: - Keep-alive
+
+    private func startHeartbeat() {
+        stopHeartbeat()
+        let timer = DispatchSource.makeTimerSource(queue: .global())
+        timer.schedule(deadline: .now() + heartbeatInterval, repeating: heartbeatInterval)
+        timer.setEventHandler { [weak self] in self?.send(["ping": 1]) }
+        timer.resume()
+        heartbeat = timer
+    }
+
+    private func stopHeartbeat() {
+        heartbeat?.cancel()
+        heartbeat = nil
+    }
+
+    /// Fail every pending request so callers (buys/sells/candles) get a real error
+    /// instead of hanging until their individual timeout when the socket drops.
+    private func failAllWaiters(_ error: Error) {
+        lock.lock(); let pending = waiters; waiters.removeAll(); lock.unlock()
+        for (_, cont) in pending { cont.resume(throwing: error) }
     }
 
     // MARK: - Market data
@@ -235,7 +289,13 @@ final class DerivClient: NSObject, ObservableObject {
         var payload = dict; payload["req_id"] = id
         return try await withCheckedThrowingContinuation { cont in
             lock.lock(); waiters[id] = cont; lock.unlock()
-            send(payload)
+            // If the write itself fails, fail THIS request immediately instead of waiting
+            // for the timeout — a failed buy must never silently disappear.
+            send(payload) { [weak self] err in
+                guard let self = self else { return }
+                self.lock.lock(); let w = self.waiters.removeValue(forKey: id); self.lock.unlock()
+                w?.resume(throwing: err)
+            }
             DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { [weak self] in
                 guard let self = self else { return }
                 self.lock.lock(); let w = self.waiters.removeValue(forKey: id); self.lock.unlock()
@@ -244,22 +304,39 @@ final class DerivClient: NSObject, ObservableObject {
         }
     }
 
-    private func send(_ dict: [String: Any]) {
+    private func send(_ dict: [String: Any], onFailure: ((Error) -> Void)? = nil) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
-              let str = String(data: data, encoding: .utf8) else { return }
-        task?.send(.string(str)) { [weak self] err in
+              let str = String(data: data, encoding: .utf8) else {
+            onFailure?(DerivError.api("failed to encode request")); return
+        }
+        guard let task = task else {
+            DispatchQueue.main.async { self.lastError = DerivError.notConnected.localizedDescription }
+            onFailure?(DerivError.notConnected); return
+        }
+        task.send(.string(str)) { [weak self] err in
             if let err = err {
                 DispatchQueue.main.async { self?.lastError = err.localizedDescription }
+                onFailure?(err)
             }
         }
     }
 
     private func receiveLoop() {
-        task?.receive { [weak self] result in
+        let current = task
+        current?.receive { [weak self] result in
             guard let self = self else { return }
+            // Ignore callbacks from a socket that has already been superseded
+            // (prevents a stale drop from tearing down a healthy reconnection).
+            guard current === self.task else { return }
             switch result {
             case .failure(let err):
-                DispatchQueue.main.async { self.connectionState = .error(err.localizedDescription) }
+                DispatchQueue.main.async {
+                    self.connectionState = .error(err.localizedDescription)
+                    self.authorized = false
+                }
+                self.stopHeartbeat()
+                // Fail everything in flight so trades/queries surface an error now.
+                self.failAllWaiters(DerivError.connectionDropped)
                 self.scheduleReconnect()
             case .success(let message):
                 if case let .string(text) = message { self.route(text) }
@@ -295,6 +372,8 @@ final class DerivClient: NSObject, ObservableObject {
             if let c = json["proposal_open_contract"] as? [String: Any] {
                 self.updatePosition(c)
             }
+        case "ping":
+            break // keep-alive acknowledgement
         default:
             if let err = json["error"] as? [String: Any] {
                 DispatchQueue.main.async { self.lastError = err["message"] as? String }
