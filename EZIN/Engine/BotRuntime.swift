@@ -8,6 +8,11 @@ import Combine
 ///
 /// Signal scanning runs continuously to feed the Signals tab; trade execution only
 /// happens while the bot is running.
+///
+/// Isolated to the main actor so that `running`, `lastVotes` and `placing` are never
+/// mutated concurrently from the background scan `Task` (they previously raced). All
+/// network calls are `await`ed and suspend without blocking the UI.
+@MainActor
 final class BotRuntime: ObservableObject {
     private let deriv: DerivClient
     private let engine: SignalEngine
@@ -96,7 +101,8 @@ final class BotRuntime: ObservableObject {
                 currency: deriv.currency, stopLoss: sl, takeProfit: tp)
             _ = try await deriv.buy(proposalId: prop.id, price: prop.price)
         } catch {
-            DispatchQueue.main.async { self.deriv.lastError = error.localizedDescription }
+            // Already on the main actor — surface the failure directly.
+            deriv.lastError = error.localizedDescription
         }
     }
 

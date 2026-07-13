@@ -23,7 +23,11 @@ struct ChatView: View {
                     }
                     .padding(16)
                     .onChange(of: vm.messages.count) { _ in
-                        if let last = vm.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                        // Only jump to the bottom when the user just sent a message.
+                        // Never auto-scroll on assistant/tool output (and never animate),
+                        // so the reading position stays put while replies stream in.
+                        guard vm.messages.last?.role == "user", let last = vm.messages.last else { return }
+                        proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
             }
