@@ -1,67 +1,83 @@
 # EZIN
 
-**Deriv signal intelligence — glass edition.** Native SwiftUI iOS app (iOS 15+) ported from the
-`forex-signals` / `forex-jsx` indicator suite and the multi-agent Deriv trading bots.
+**Deriv signal intelligence — glass edition.** Native SwiftUI iOS app (iOS 15+) porting the
+`forex-signals` / `forex-jsx` indicator suite and the multi-agent Deriv trading bots, with a
+real-time chart, an AI assistant, and MCP tooling.
 
-## Features
+## Tabs
 
-- **Glassmorphism UI** — frosted `.ultraThinMaterial` cards, animated aurora background, spring transitions.
-- **4 tabs:** Signals · History · Bot · Settings.
-- **Faithful indicator engine (Swift):** Moving Averages (SMA/EMA/RMA/WMA/DEMA/TEMA/HMA/VWMA/KAMA),
-  RSI, MACD, ATR, Bollinger Bands, Stochastic, CCI, Williams %R, Momentum, ROC, OBV, MFI, ADX/DMI,
-  Supertrend, plus a pivot-based **Divergence Engine** and spike detectors.
-- **Hidden multi-agent backend:** 7 specialized agents (Trend, Momentum, MeanReversion, Volume,
-  Divergence, Volatility, Structure) → weighted **VotingCouncil** → **SignalEngine**. Runs continuously
-  in the background and pushes signals to the UI.
-- **Deriv API:** default **public app id `1089`** out of the box; users can add their own app id + token.
-- **Settings for everything:** notifications, auto-trade, risk sizing, default strategy.
-- **LLM model import:** import `.gguf`, `.safetensors`, `.bin` or any file — **no size limit** — copied
-  into the app's own directory.
-- **AI API keys:** OpenAI, Anthropic, Gemini, Groq, Mistral, OpenRouter, Hugging Face — saved to the
-  **Keychain** so you never re-enter them.
-- **Pipelines:** build ordered analysis pipelines (fetch → indicators → divergence → agents → council → emit → trade).
-- **Self-owned storage:** creates its own directory under **On My iPhone → EZIN** (Files app) and persists
-  models, pipelines, history and logs automatically.
+1. **Chart** — clean candlestick chart only: instrument picker, timeframe selector, pan + pinch-zoom,
+   live tick updates, and unlimited historical backfill. Nothing else on this tab.
+2. **Signals** — live council signals as consensus is reached.
+3. **Chat** — a simple chat surface backed by a powerful agent/tool orchestrator (see below).
+4. **History** — *Trades* (real closed trades from your Deriv account) and *Signals* (app-generated
+   signals logged on-device in real time, shown even with **no API token**).
+5. **Bot** — start/stop the perpetual scalper.
+6. **Settings** — assistant, bot, appearance, API keys, MCP, Deriv config.
 
-## Architecture
+## Instruments (all Deriv markets)
 
-```
-EZIN/
-├── App/            EZINApp, AppState, RootView (glass tab bar)
-├── Theme/          Glass design system + aurora background
-├── Models/         Core types, TradingSignal, indicators container, domain models
-├── Indicators/     MovingAverages + full indicator library
-├── Strategies/     DivergenceEngine + spike detectors
-├── Engine/         TechnicalAnalyzer, Agents, VotingCouncil, SignalEngine, BotRuntime
-├── Deriv/          WebSocket client + symbol catalog
-├── Services/       FileStore (Files-app dir), CredentialStore (Keychain), Stores
-└── Views/          Signals, History, Bot, Settings + sub-screens
-```
+Volatility Indices + Volatility (1s), Boom & Crash (300/500/600/900/1000), Jump, Step, Range Break,
+DEX, Drift Switch, plus Forex, Commodities (metals), Crypto and Stock Indices.
 
-## Real-time & production (v1.1.0)
+## Indicators (50+)
 
-- **No mock data.** All data is live from the Deriv WebSocket API (`wss://ws.derivws.com`).
-- **Live client:** authorize, `balance` (subscribed), `ticks`, `ticks_history` candles, `proposal`,
-  `buy`, `proposal_open_contract` (live P&L), `sell`, `profit_table` (real closed-trade history).
-- **Trading Bot (perpetual scalper):** runs 24/7 on your chosen instruments, evaluates **all** agents
-  and indicators on every scan (no single strategy), and places **real Deriv Multiplier trades**
-  respecting your config. Big liquid-glass **Start/Stop** control on the Bot tab.
-- **Bot config (Settings → Trading Bot):** fixed lot size (stake), multiplier, instruments to trade
-  (multi-select), max open positions, and stops (**Points / Pips / Profit / Bot Choice**).
-- **PAT:** add your Deriv Personal Access Token in Settings → Deriv API (works with the public app id
-  or your own). Stored in the Keychain.
-- **History:** real closed trades pulled from `profit_table`.
+- **Volatility:** ATR, Bollinger Bands, Keltner, Donchian, Std Dev, Historical Volatility,
+  Chaikin Volatility, Mass Index, Ulcer Index.
+- **Momentum:** RSI, Stochastic, MACD, Momentum, ROC, Williams %R, CCI, TRIX, Ultimate Oscillator,
+  Chande Momentum (CMO), MFI.
+- **Direction/Trend:** ADX/DMI, Parabolic SAR, Ichimoku, Supertrend, SMA/EMA/WMA/DEMA/TEMA/HMA/VWMA/KAMA,
+  Gann HiLo, Pivot Points, Linear Regression slope, Heikin Ashi, trend strength.
+- **Volume:** OBV, A/D Line, Chaikin Money Flow, Volume Oscillator, MFI, Ease of Movement,
+  NVI, PVI, VWAP, Force Index.
 
-> Live order execution requires your Deriv PAT. Validate on a **demo** account first — standard practice
-> before going live.
+## Signal engine
 
-## Download build
+**12 specialist agents** (Trend, Momentum, MeanReversion, Volume, Divergence, Volatility, Structure,
+Ichimoku, Breakout, VWAPFlow, Oscillator, HullTrend) cast weighted votes into a **VotingCouncil** for
+higher-confluence, more accurate signals. Runs continuously on live Deriv WebSocket data (no mock data).
 
-Every push to `main` publishes the latest unsigned `.ipa` to the **`build-latest`** GitHub Release.
+## AI assistant (Chat tab)
+
+- **Auto-routing** across all your providers (OpenAI, Anthropic, OpenRouter, Gemini, Groq, Mistral):
+  picks the strongest available model and falls back on failure.
+- **Unlimited API keys per provider** — add as many as you like; EZIN rotates through them (round-robin)
+  so a single key's rate limit never blocks you.
+- **36 specialist agents + 50 pipelines** power an orchestration loop.
+- **In-app tools** the assistant can call: `analyze`, `signals`, `price`, `instruments`, `history`,
+  `place_trade` (guarded), and `mcp`.
+- **Customizable** in Settings → Chat: editable system prompt, auto-route toggle, trading permission,
+  temperature.
+
+## MCP connectors
+
+Settings → Chat → MCP Connectors. Point EZIN at your own MCP servers:
+
+- **MetaTrader 5** — e.g. `vincentwongso/mt5-trading-mcp` or `amirkhonov/metatrader5-mcp` (Windows/Docker).
+- **TradingView** — e.g. `atilaahmettaner/tradingview-mcp`.
+- **Custom** — any HTTP MCP server.
+
+The app is the MCP **client**; heavy tools (code/script execution, web scraping/automation) run on the
+MCP servers you connect — the correct architecture for a sandboxed iOS app.
+
+## Appearance
+
+8 themes (Aurora, Liquid Glass, Midnight, Sunset, Ocean, Forest, Mono, Neon) with gradient palettes and
+an animated-background motion toggle.
+
+## Real-time & production
+
+Live Deriv WebSocket API (`wss://ws.derivws.com`) with **automatic reconnect + backoff + resubscribe**,
+live balance/ticks/candles, proposals, buys, `proposal_open_contract` (live P&L), sells, and `profit_table`.
+Credentials are stored in the Keychain **device-only** (never synced to iCloud). App Transport Security is
+enforced (no arbitrary loads).
+
+> Live order execution requires your Deriv PAT. Validate on a **demo** account first before going live.
 
 ## Build
 
-The project is defined with **XcodeGen** (`project.yml`). CI builds an **unsigned `.ipa`** on every push.
+XcodeGen (`project.yml`). CI builds an unsigned `.ipa` on every push to `main` and publishes it to the
+`build-latest` GitHub Release.
 
 ```bash
 brew install xcodegen
@@ -69,8 +85,4 @@ xcodegen generate
 open EZIN.xcodeproj
 ```
 
-CI: `.github/workflows/build.yml` → generates the project, runs `xcodebuild` with signing disabled, and
-uploads `EZIN-unsigned.ipa` as a workflow artifact.
-
-> Note: EZIN is a **native iOS (Swift)** app. An Android `.apk` target is not applicable to a SwiftUI
-> codebase; only the iOS unsigned `.ipa` is produced.
+> EZIN is a native iOS (Swift) app; only the iOS unsigned `.ipa` is produced.
