@@ -1,0 +1,66 @@
+import Foundation
+import Combine
+
+enum MCPKind: String, Codable, CaseIterable, Identifiable {
+    case mt5, tradingview, custom
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .mt5: return "MetaTrader 5"
+        case .tradingview: return "TradingView"
+        case .custom: return "Custom MCP"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .mt5: return "chart.bar.doc.horizontal"
+        case .tradingview: return "chart.xyaxis.line"
+        case .custom: return "puzzlepiece.extension"
+        }
+    }
+}
+
+/// A user-configured MCP server connection.
+struct MCPConnector: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var name: String
+    var kind: MCPKind
+    var url: String
+    var authHeader: String = ""        // optional "Authorization" value, e.g. "Bearer xyz"
+    var enabled: Bool = true
+
+    var headersDict: [String: String] {
+        authHeader.isEmpty ? [:] : ["Authorization": authHeader]
+    }
+}
+
+/// Persisted MCP connectors, pre-seeded with MT5 + TradingView presets the user can point at their own server.
+final class MCPStore: ObservableObject {
+    static let shared = MCPStore()
+    @Published var connectors: [MCPConnector] { didSet { save() } }
+    private let file = "mcp_connectors.json"
+
+    private init() {
+        connectors = FileStore.shared.read([MCPConnector].self, from: file, in: FileStore.shared.dataDir) ?? MCPStore.presets
+    }
+
+    func add(_ c: MCPConnector) { connectors.append(c) }
+    func update(_ c: MCPConnector) { if let i = connectors.firstIndex(where: { $0.id == c.id }) { connectors[i] = c } }
+    func remove(_ c: MCPConnector) { connectors.removeAll { $0.id == c.id } }
+
+    /// Resolve a connector by user-typed server name or kind.
+    func byServerName(_ name: String) -> MCPConnector? {
+        let n = name.lowercased()
+        return connectors.first { $0.enabled && ($0.name.lowercased() == n || $0.kind.rawValue == n || $0.kind.title.lowercased() == n) }
+    }
+
+    private func save() { FileStore.shared.write(connectors, to: file, in: FileStore.shared.dataDir) }
+
+    /// Presets based on popular open-source MCP servers (disabled until the user sets their own URL).
+    /// MT5 e.g. vincentwongso/mt5-trading-mcp or amirkhonov/metatrader5-mcp (run locally / Docker).
+    /// TradingView e.g. atilaahmettaner/tradingview-mcp.
+    static let presets: [MCPConnector] = [
+        MCPConnector(name: "MetaTrader 5", kind: .mt5, url: "http://localhost:8000/mcp", authHeader: "", enabled: false),
+        MCPConnector(name: "TradingView", kind: .tradingview, url: "http://localhost:8001/mcp", authHeader: "", enabled: false)
+    ]
+}

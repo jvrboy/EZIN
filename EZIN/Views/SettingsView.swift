@@ -12,6 +12,13 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(spacing: 16) {
 
+                        GlassSection(title: "Assistant") {
+                            NavigationLink { ChatSettingsView() } label: {
+                                GlassNavRow(icon: "bubble.left.and.bubble.right.fill", title: "Chat, agents & MCP",
+                                            value: "\(AgentRegistry.agents.count) agents")
+                            }.buttonStyle(.plain)
+                        }
+
                         GlassSection(title: "Trading Bot") {
                             NavigationLink { BotSettingsView() } label: {
                                 GlassNavRow(icon: "cpu", title: "Bot configuration",
