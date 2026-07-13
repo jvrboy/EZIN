@@ -5,7 +5,7 @@ enum Glass {
     static let corner: CGFloat = 20
     static let cornerSmall: CGFloat = 14
 
-    // Aurora background palette
+    // Aurora background palette (defaults; live values come from ThemeStore).
     static let bgTop = Color(red: 0.05, green: 0.06, blue: 0.12)
     static let bgBottom = Color(red: 0.02, green: 0.02, blue: 0.05)
     static let accent = Color(red: 0.40, green: 0.47, blue: 0.98)      // indigo
@@ -46,29 +46,31 @@ extension View {
     }
 }
 
-/// Animated aurora mesh background used app-wide.
+/// Animated aurora mesh background used app-wide. Colors + motion follow ThemeStore.
 struct AuroraBackground: View {
+    @ObservedObject private var theme = ThemeStore.shared
     @State private var animate = false
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Glass.bgTop, Glass.bgBottom],
+            LinearGradient(colors: [theme.theme.gradientTop, theme.theme.gradientBottom],
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 
             Circle()
-                .fill(Glass.accent.opacity(0.35))
+                .fill(theme.theme.blobA.opacity(0.35))
                 .frame(width: 320, height: 320)
                 .blur(radius: 90)
                 .offset(x: animate ? -120 : -60, y: animate ? -220 : -160)
 
             Circle()
-                .fill(Glass.accent2.opacity(0.28))
+                .fill(theme.theme.blobB.opacity(0.28))
                 .frame(width: 280, height: 280)
                 .blur(radius: 90)
                 .offset(x: animate ? 140 : 90, y: animate ? 260 : 200)
         }
         .ignoresSafeArea()
         .onAppear {
+            guard theme.motionEnabled else { return }
             withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
                 animate.toggle()
             }
