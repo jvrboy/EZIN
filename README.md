@@ -6,10 +6,10 @@ real-time chart, an AI assistant, and MCP tooling.
 
 ## Tabs
 
-1. **Chart** — clean candlestick chart only: instrument picker, timeframe selector, pan + pinch-zoom,
-   live tick updates, and unlimited historical backfill. Nothing else on this tab.
+1. **Chart** — clean candlestick chart with advanced overlays: instrument picker, timeframe selector, pan + pinch-zoom,
+   live tick updates, unlimited historical backfill, **Volume Profile**, **Heatmap**, and **Jump Markers**.
 2. **Signals** — live council signals as consensus is reached.
-3. **Chat** — a simple chat surface backed by a powerful agent/tool orchestrator (see below).
+3. **Chat** — a simple chat surface backed by a powerful agent/tool orchestrator with **Local LLM support**.
 4. **History** — *Trades* (real closed trades from your Deriv account) and *Signals* (app-generated
    signals logged on-device in real time, shown even with **no API token**).
 5. **Bot** — start/stop the perpetual scalper.
@@ -30,6 +30,10 @@ DEX, Drift Switch, plus Forex, Commodities (metals), Crypto and Stock Indices.
   Gann HiLo, Pivot Points, Linear Regression slope, Heikin Ashi, trend strength.
 - **Volume:** OBV, A/D Line, Chaikin Money Flow, Volume Oscillator, MFI, Ease of Movement,
   NVI, PVI, VWAP, Force Index.
+- **Advanced Overlays:**
+    - **Volume Profile:** POC, Value Area High/Low, and volume-at-price distribution.
+    - **Liquidity Heatmap:** Clustered swing highs/lows indicating resting orders.
+    - **Jump Markers:** Statistical outlier detection for significant price moves.
 
 ## Signal engine
 
@@ -39,6 +43,7 @@ higher-confluence, more accurate signals. Runs continuously on live Deriv WebSoc
 
 ## AI assistant (Chat tab)
 
+- **Local LLM Inference:** Import and run your own GGUF or SafeTensors models directly on-device for private, low-latency assistance.
 - **Auto-routing** across all your providers (OpenAI, Anthropic, OpenRouter, Gemini, Groq, Mistral):
   picks the strongest available model and falls back on failure.
 - **Unlimited API keys per provider** — add as many as you like; EZIN rotates through them (round-robin)
@@ -47,7 +52,7 @@ higher-confluence, more accurate signals. Runs continuously on live Deriv WebSoc
 - **In-app tools** the assistant can call: `analyze`, `signals`, `price`, `instruments`, `history`,
   `place_trade` (guarded), and `mcp`.
 - **Customizable** in Settings → Chat: editable system prompt, auto-route toggle, trading permission,
-  temperature.
+  temperature, and local model selection.
 
 ## MCP connectors
 

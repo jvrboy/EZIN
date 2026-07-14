@@ -12,17 +12,38 @@ enum AIProviderError: Error, LocalizedError {
 }
 
 /// Auto-routing AI client: picks the most powerful available provider and falls back on failure.
+/// Prioritizes local LLM models if selected, then falls back to remote providers.
 /// Uses APIKeyStore round-robin so multiple keys per provider are all used.
 enum AIRouter {
-    /// Most-powerful-first priority order.
+    /// Most-powerful-first priority order for remote providers.
     static let priority: [CredentialKey] = [.openAI, .anthropic, .openRouter, .gemini, .groq, .mistral, .huggingFace]
 
     static func availableProviders() -> [CredentialKey] {
-        priority.filter { APIKeyStore.shared.count(for: $0) > 0 }
+        var providers = priority.filter { APIKeyStore.shared.count(for: $0) > 0 }
+        // Add local LLM if any models are imported
+        if !LLMModelStore.shared.models.isEmpty {
+            providers.insert(.localLLM, at: 0)
+        }
+        return providers
     }
 
     static func complete(system: String, messages: [ChatTurn], preferred: CredentialKey? = nil) async -> Result<String, Error> {
-        var order = availableProviders()
+        // Check if a local LLM model is selected and available
+        if let selectedModelID = ChatConfigStore.shared.config.selectedLocalModelID,
+           let model = LLMModelStore.shared.models.first(where: { $0.id == selectedModelID }) {
+            do {
+                // Try local inference first if a model is selected
+                try await LocalLLMManager.shared.loadModel(model)
+                let prompt = buildPrompt(system: system, messages: messages)
+                let text = try await LocalLLMManager.shared.generate(prompt: prompt)
+                if !text.isEmpty { return .success(text) }
+            } catch {
+                // Fall back to remote providers if local inference fails
+            }
+        }
+        
+        // Fall back to remote providers
+        var order = availableProviders().filter { $0 != .localLLM }
         if let p = preferred, order.contains(p) { order.removeAll { $0 == p }; order.insert(p, at: 0) }
         guard !order.isEmpty else { return .failure(AIProviderError.noKey) }
         for provider in order {
@@ -42,6 +63,7 @@ enum AIRouter {
         case .anthropic: return try await callAnthropic(key: key, system: system, messages: messages)
         case .gemini: return try await callGemini(key: key, system: system, messages: messages)
         case .huggingFace: throw AIProviderError.noKey
+        case .localLLM: throw AIProviderError.noKey
         default: return try await callOpenAICompatible(provider, key: key, system: system, messages: messages)
         }
     }
@@ -86,6 +108,18 @@ enum AIRouter {
         guard let cands = obj["candidates"] as? [[String: Any]], let c0 = cands.first,
               let cont = c0["content"] as? [String: Any], let parts = cont["parts"] as? [[String: Any]] else { throw AIProviderError.parse }
         return parts.compactMap { $0["text"] as? String }.joined()
+    }
+
+    // MARK: - Helpers
+
+    /// Build a single prompt string from system instruction and message history.
+    private static func buildPrompt(system: String, messages: [ChatTurn]) -> String {
+        var prompt = "System: \(system)\n\n"
+        for msg in messages {
+            prompt += "\(msg.role.capitalized): \(msg.content)\n"
+        }
+        prompt += "Assistant: "
+        return prompt
     }
 
     // MARK: - Transport

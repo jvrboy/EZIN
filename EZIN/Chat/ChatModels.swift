@@ -20,6 +20,7 @@ struct ChatConfig: Codable {
     var autoRoute: Bool = true
     var allowTrading: Bool = false
     var temperature: Double = 0.4
+    var selectedLocalModelID: UUID? = nil  // ID of the selected local LLM model, if any
 
     static let defaultPrompt = """
     You are EZIN Assistant, an expert AI inside the EZIN trading app. You can analyze markets, \

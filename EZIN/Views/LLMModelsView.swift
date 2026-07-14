@@ -1,8 +1,10 @@
 import SwiftUI
 
 /// Import & manage local LLM model files (.gguf, .safetensors, any) — no size limit.
+/// Users can select a model to use for local chat inference.
 struct LLMModelsView: View {
     @ObservedObject private var store = LLMModelStore.shared
+    @ObservedObject private var chatConfig = ChatConfigStore.shared
     @State private var showPicker = false
     @State private var importError: String?
 
@@ -30,8 +32,21 @@ struct LLMModelsView: View {
                            subtitle: "Import a .gguf or .safetensors model to run inference locally.")
             } else {
                 GlassSection(title: "Imported (\(store.models.count))") {
+                    if let selectedID = chatConfig.config.selectedLocalModelID,
+                       let selectedModel = store.models.first(where: { $0.id == selectedID }) {
+                        Text("Active: \(selectedModel.name)")
+                            .font(.caption).foregroundStyle(Glass.accent)
+                            .padding(.bottom, 8)
+                    }
+                    
                     ForEach(Array(store.models.enumerated()), id: \.element.id) { idx, m in
                         HStack(spacing: 12) {
+                            // Selection radio button
+                            Button { chatConfig.config.selectedLocalModelID = m.id } label: {
+                                Image(systemName: chatConfig.config.selectedLocalModelID == m.id ? "circle.fill" : "circle")
+                                    .foregroundStyle(Glass.accent)
+                            }.buttonStyle(.plain)
+                            
                             Image(systemName: "cube.box.fill").foregroundStyle(Glass.accent2).frame(width: 26)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(m.name).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.88)).lineLimit(1)

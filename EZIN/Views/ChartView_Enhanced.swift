@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// Chart tab — candlestick chart with advanced indicators: Volume Profile, Heatmap, Jump Markers.
-struct ChartView: View {
+/// Enhanced Chart tab — candlestick chart with advanced indicators: Volume Profile, Heatmap, Jump Markers.
+struct ChartViewEnhanced: View {
     @EnvironmentObject var app: AppState
-    @StateObject private var vm = ChartViewModel()
+    @StateObject private var vm = ChartViewModelEnhanced()
 
     var body: some View {
         VStack(spacing: 10) {
             selectorBar
-            CandleChart(vm: vm)
+            CandleChartEnhanced(vm: vm)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .glassCard()
                 .padding(.horizontal, 12)
@@ -117,9 +117,9 @@ struct ChartView: View {
     }
 }
 
-/// Chart data + gesture state. Streams live ticks and pages history on demand.
+/// Enhanced chart data + gesture state with indicator data.
 @MainActor
-final class ChartViewModel: ObservableObject {
+final class ChartViewModelEnhanced: ObservableObject {
     @Published var symbol = "R_100"
     @Published var timeframe: Timeframe = .m1
     @Published var candles: [Candle] = []
@@ -138,7 +138,6 @@ final class ChartViewModel: ObservableObject {
     @Published var liquidityLevels: [Microstructure.LiquidityLevel]?
     @Published var jumpEvents: [Microstructure.JumpEvent]?
 
-    // Gesture bases (not published — avoid redraw storms)
     var dragBase: CGFloat = 0
     var scaleBase: CGFloat = 1
     var needsBackfill = false
@@ -189,7 +188,6 @@ final class ChartViewModel: ObservableObject {
         }
     }
 
-    /// Page older candles when the user scrolls to the oldest loaded bar (unlimited history).
     func backfill() async {
         guard let deriv = deriv, !backfilling, let oldest = candles.first else { return }
         backfilling = true; defer { backfilling = false }
@@ -230,9 +228,9 @@ final class ChartViewModel: ObservableObject {
     func stop() { ticker?.cancel(); ticker = nil }
 }
 
-/// Canvas candlestick renderer with pan + pinch-zoom and indicator overlays.
-struct CandleChart: View {
-    @ObservedObject var vm: ChartViewModel
+/// Enhanced canvas candlestick renderer with pan + pinch-zoom and indicator overlays.
+struct CandleChartEnhanced: View {
+    @ObservedObject var vm: ChartViewModelEnhanced
 
     var body: some View {
         GeometryReader { _ in
