@@ -21,6 +21,7 @@ struct LLMModel: Codable, Identifiable, Hashable {
 enum CredentialKey: String, Codable, CaseIterable, Identifiable {
     case openAI, anthropic, gemini, groq, mistral, openRouter, huggingFace
     case derivToken, customEndpoint, localLLM
+    case nvidianim, freemodel, cerebras
     var id: String { rawValue }
 
     var display: String {
@@ -35,6 +36,9 @@ enum CredentialKey: String, Codable, CaseIterable, Identifiable {
         case .derivToken: return "Deriv API Token"
         case .customEndpoint: return "Custom Endpoint"
         case .localLLM: return "Local LLM"
+        case .nvidianim: return "Nvidia NIM"
+        case .freemodel: return "FreeModel.dev"
+        case .cerebras: return "Cerebras"
         }
     }
     var isAIProvider: Bool { self != .derivToken && self != .customEndpoint }

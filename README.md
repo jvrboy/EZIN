@@ -8,8 +8,8 @@ real-time chart, an AI assistant, and MCP tooling.
 
 1. **Chart** — clean candlestick chart with advanced overlays: instrument picker, timeframe selector, pan + pinch-zoom,
    live tick updates, unlimited historical backfill, **Volume Profile**, **Heatmap**, and **Jump Markers**.
-2. **Signals** — live council signals as consensus is reached.
-3. **Chat** — a simple chat surface backed by a powerful agent/tool orchestrator with **Local LLM support**.
+2. **Signals** — live council signals with **Multi-Timeframe Analysis** and **Real-Time Performance Tracking**.
+3. **Chat** — a simple chat surface backed by a powerful agent/tool orchestrator with **Local LLM support** and **Nvidia NIM/Cerebras** integration.
 4. **History** — *Trades* (real closed trades from your Deriv account) and *Signals* (app-generated
    signals logged on-device in real time, shown even with **no API token**).
 5. **Bot** — start/stop the perpetual scalper.
@@ -35,14 +35,17 @@ DEX, Drift Switch, plus Forex, Commodities (metals), Crypto and Stock Indices.
     - **Liquidity Heatmap:** Clustered swing highs/lows indicating resting orders.
     - **Jump Markers:** Statistical outlier detection for significant price moves.
 
-## Signal engine
+## Signal engine (Multi-Timeframe)
 
-**12 specialist agents** (Trend, Momentum, MeanReversion, Volume, Divergence, Volatility, Structure,
-Ichimoku, Breakout, VWAPFlow, Oscillator, HullTrend) cast weighted votes into a **VotingCouncil** for
-higher-confluence, more accurate signals. Runs continuously on live Deriv WebSocket data (no mock data).
+**Multi-Timeframe Consensus Engine** analyzes M1, M5, M15, M30, H1, H4, and D1 simultaneously using **12 specialist agents** per timeframe.
+- **Indicator Confluence**: Requires agreement across multiple timeframes and 50+ indicators.
+- **Microstructure Analysis**: Incorporates volume profile, order flow, and liquidity levels.
+- **Real-Time Tracking**: Monitors every signal's P&L, accuracy, and win rate in real-time.
+- **Self-Improvement**: Automated recommendation engine suggests strategy adjustments based on performance metrics.
 
 ## AI assistant (Chat tab)
 
+- **Extended Provider Support:** Now includes **Nvidia NIM**, **Cerebras**, and **FreeModel.dev** for high-performance, low-latency inference.
 - **Local LLM Inference:** Import and run your own GGUF or SafeTensors models directly on-device for private, low-latency assistance.
 - **Auto-routing** across all your providers (OpenAI, Anthropic, OpenRouter, Gemini, Groq, Mistral):
   picks the strongest available model and falls back on failure.
@@ -51,8 +54,6 @@ higher-confluence, more accurate signals. Runs continuously on live Deriv WebSoc
 - **36 specialist agents + 50 pipelines** power an orchestration loop.
 - **In-app tools** the assistant can call: `analyze`, `signals`, `price`, `instruments`, `history`,
   `place_trade` (guarded), and `mcp`.
-- **Customizable** in Settings → Chat: editable system prompt, auto-route toggle, trading permission,
-  temperature, and local model selection.
 
 ## MCP connectors
 

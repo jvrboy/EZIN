@@ -16,7 +16,7 @@ enum AIProviderError: Error, LocalizedError {
 /// Uses APIKeyStore round-robin so multiple keys per provider are all used.
 enum AIRouter {
     /// Most-powerful-first priority order for remote providers.
-    static let priority: [CredentialKey] = [.openAI, .anthropic, .openRouter, .gemini, .groq, .mistral, .huggingFace]
+    static let priority: [CredentialKey] = [.openAI, .anthropic, .cerebras, .nvidianim, .openRouter, .gemini, .groq, .mistral, .freemodel, .huggingFace]
 
     static func availableProviders() -> [CredentialKey] {
         var providers = priority.filter { APIKeyStore.shared.count(for: $0) > 0 }
@@ -62,6 +62,7 @@ enum AIRouter {
         switch provider {
         case .anthropic: return try await callAnthropic(key: key, system: system, messages: messages)
         case .gemini: return try await callGemini(key: key, system: system, messages: messages)
+        case .nvidianim, .freemodel, .cerebras: return try await callExtendedProvider(provider, key: key, system: system, messages: messages)
         case .huggingFace: throw AIProviderError.noKey
         case .localLLM: throw AIProviderError.noKey
         default: return try await callOpenAICompatible(provider, key: key, system: system, messages: messages)
@@ -74,6 +75,9 @@ enum AIRouter {
         case .groq: return ("https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile")
         case .mistral: return ("https://api.mistral.ai/v1/chat/completions", "mistral-large-latest")
         case .openRouter: return ("https://openrouter.ai/api/v1/chat/completions", "openai/gpt-4o")
+        case .nvidianim: return ("https://integrate.api.nvidia.com/v1/chat/completions", "meta/llama-3.1-405b-instruct")
+        case .freemodel: return ("https://api.freemodel.dev/v1/chat/completions", "gpt-3.5-turbo")
+        case .cerebras: return ("https://api.cerebras.ai/v1/chat/completions", "cerebras-7b")
         default: return ("https://api.openai.com/v1/chat/completions", "gpt-4o")
         }
     }
@@ -83,6 +87,17 @@ enum AIRouter {
         var msgs: [[String: Any]] = [["role": "system", "content": system]]
         for m in messages { msgs.append(["role": m.role == "assistant" ? "assistant" : "user", "content": m.content]) }
         let body: [String: Any] = ["model": model, "messages": msgs, "temperature": ChatConfigStore.shared.config.temperature]
+        let obj = try await postJSON(urlStr, headers: ["Authorization": "Bearer \(key)"], body: body)
+        guard let choices = obj["choices"] as? [[String: Any]], let first = choices.first,
+              let msg = first["message"] as? [String: Any], let content = msg["content"] as? String else { throw AIProviderError.parse }
+        return content
+    }
+
+    private static func callExtendedProvider(_ provider: CredentialKey, key: String, system: String, messages: [ChatTurn]) async throws -> String {
+        let (urlStr, model) = endpoint(provider)
+        var msgs: [[String: Any]] = [["role": "system", "content": system]]
+        for m in messages { msgs.append(["role": m.role == "assistant" ? "assistant" : "user", "content": m.content]) }
+        let body: [String: Any] = ["model": model, "messages": msgs, "temperature": ChatConfigStore.shared.config.temperature, "max_tokens": 1200]
         let obj = try await postJSON(urlStr, headers: ["Authorization": "Bearer \(key)"], body: body)
         guard let choices = obj["choices"] as? [[String: Any]], let first = choices.first,
               let msg = first["message"] as? [String: Any], let content = msg["content"] as? String else { throw AIProviderError.parse }
