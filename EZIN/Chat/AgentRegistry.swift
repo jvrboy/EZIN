@@ -40,6 +40,14 @@ enum AgentRegistry {
         .init(name: "WebResearcher", role: "web scraping and automation via MCP"),
         .init(name: "CodeRunner", role: "runs code/scripts via an MCP executor"),
         .init(name: "DataWrangler", role: "transforms and summarizes datasets"),
+        .init(name: "RegimeClassifier", role: "classifies trend, range, and volatility regimes from CHOP, efficiency, and ADX"),
+        .init(name: "NormalizedMomentumAgent", role: "compares Fisher, PPO, CMO, and price z-score momentum"),
+        .init(name: "DirectionalConfirmationAgent", role: "confirms direction with Aroon and Vortex studies"),
+        .init(name: "ParticipationAgent", role: "validates moves with relative volume, force index, CMF, and MFI"),
+        .init(name: "AnomalyAgent", role: "flags unusual price z-scores, volatility, and volume spikes"),
+        .init(name: "SecureWebScraper", role: "extracts bounded public web content with SSRF and content-type protections"),
+        .init(name: "WorkspaceBuilder", role: "creates and organizes files inside a path-confined agent workspace"),
+        .init(name: "PipelineAuditor", role: "reports executable pipeline stages and deterministic outputs"),
         .init(name: "Explainer", role: "teaches trading concepts"),
         .init(name: "GeneralAssistant", role: "handles anything outside trading")
     ]
@@ -94,12 +102,20 @@ enum AgentRegistry {
         .init(name: "Performance Review", steps: ["trades", "stats", "insights"]),
         .init(name: "Regime Switch", steps: ["detect", "adapt", "reconfigure"]),
         .init(name: "News + Technicals Fusion", steps: ["news", "technicals", "decide"]),
-        .init(name: "General QA", steps: ["understand", "answer"])
+        .init(name: "General QA", steps: ["understand", "answer"]),
+        .init(name: "Executable Council Scan", steps: ["live candles", "active agents", "weighted council"]),
+        .init(name: "Executable Regime Detection", steps: ["choppiness", "efficiency", "ADX", "classify"]),
+        .init(name: "Executable Anomaly Detection", steps: ["z-score", "relative volume", "volatility", "flag"]),
+        .init(name: "Executable Breakout Validation", steps: ["channels", "Aroon", "participation", "confirm"]),
+        .init(name: "Executable Participation Check", steps: ["RVOL", "CMF", "MFI", "force index"]),
+        .init(name: "Executable Risk Plan", steps: ["risk budget", "stop distance", "units"]),
+        .init(name: "Secure Web Research", steps: ["validate", "fetch", "extract", "links"]),
+        .init(name: "Agent Workspace Manifest", steps: ["scan", "metadata", "report"])
     ]
 
     static func systemContext() -> String {
-        "You are backed by \(agents.count) specialist agents and \(pipelines.count) analysis pipelines. " +
-        "Route each request internally to the best specialist(s). Key specialists include: " +
-        agents.prefix(14).map { $0.name }.joined(separator: ", ") + ", and more."
+        "You are backed by \(agents.count) specialist roles, \(pipelines.count) cataloged workflows, and \(PipelineExecutor.definitions.count) directly executable local pipelines. " +
+        "Route each request to the smallest capable specialist set and prefer executable tools over unsupported claims. Key specialists include: " +
+        agents.prefix(18).map { $0.name }.joined(separator: ", ") + ", and more."
     }
 }

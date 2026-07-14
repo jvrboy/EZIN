@@ -8,6 +8,7 @@ actor LocalLLMInferenceService {
         case modelNotFound
         case failedToLoadModel(String)
         case inferenceError(String)
+        case runtimeUnavailable
         case invalidInput
         case cancelled
         
@@ -16,6 +17,7 @@ actor LocalLLMInferenceService {
             case .modelNotFound: return "Local model file not found."
             case .failedToLoadModel(let msg): return "Failed to load model: \(msg)"
             case .inferenceError(let msg): return "Inference error: \(msg)"
+            case .runtimeUnavailable: return "Local model inference requires an installed native GGUF runtime. Configure a remote provider or an MCP inference server."
             case .invalidInput: return "Invalid input provided."
             case .cancelled: return "Inference was cancelled."
             }
@@ -38,8 +40,7 @@ actor LocalLLMInferenceService {
     /// - Parameter model: The LLMModel metadata object pointing to the model file.
     /// - Throws: LocalLLMError if the model cannot be loaded.
     func loadModel(_ model: LLMModel) async throws {
-        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let modelPath = documentsURL.appendingPathComponent("Models").appendingPathComponent(model.relativePath).path
+        let modelPath = FileStore.shared.url(forRelative: model.relativePath).standardizedFileURL.path
         
         guard FileManager.default.fileExists(atPath: modelPath) else {
             throw LocalLLMError.modelNotFound
@@ -77,30 +78,19 @@ actor LocalLLMInferenceService {
             throw LocalLLMError.modelNotFound
         }
         
-        guard !prompt.isEmpty else {
+        guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw LocalLLMError.invalidInput
         }
-        
-        // Simulate inference with a realistic delay (in production, this would call llama.cpp bindings)
-        // For now, we'll return a placeholder response to demonstrate the architecture.
-        let startTime = Date()
-        var result = ""
-        
-        // Simulate token-by-token generation
-        let simulatedTokens = generateSimulatedResponse(for: prompt, maxTokens: config.maxTokens)
-        for token in simulatedTokens {
-            if Task.isCancelled {
-                throw LocalLLMError.cancelled
-            }
-            
-            // Simulate processing time per token
-            try await Task.sleep(nanoseconds: 10_000_000) // 10ms per token
-            result += token
-            onToken?(token)
+        guard FileManager.default.fileExists(atPath: modelPath) else {
+            loadedModelPath = nil
+            modelMetadata = nil
+            throw LocalLLMError.modelNotFound
         }
-        
-        self.lastInferenceTime = Date()
-        return result
+
+        // Importing a model records and validates the file; it does not imply that a native
+        // inference runtime is linked into the app. Returning generated-looking placeholder
+        // text here caused the router to treat fabricated output as a successful model response.
+        throw LocalLLMError.runtimeUnavailable
     }
     
     /// Get metadata about the currently loaded model.
@@ -113,27 +103,6 @@ actor LocalLLMInferenceService {
         return self.lastInferenceTime
     }
     
-    // MARK: - Private Helpers
-    
-    /// Simulate a response for demonstration purposes.
-    /// In production, this would be replaced with actual llama.cpp inference.
-    private func generateSimulatedResponse(for prompt: String, maxTokens: Int) -> [String] {
-        let responses: [String: [String]] = [
-            "price": ["The", " current", " price", " is", " based", " on", " market", " dynamics", "."],
-            "signal": ["A", " strong", " buy", " signal", " has", " been", " detected", " based", " on", " technical", " indicators", "."],
-            "analysis": ["The", " market", " shows", " bullish", " momentum", " with", " strong", " volume", " support", "."],
-        ]
-        
-        let lowerPrompt = prompt.lowercased()
-        for (key, tokens) in responses {
-            if lowerPrompt.contains(key) {
-                return Array(tokens.prefix(maxTokens))
-            }
-        }
-        
-        // Default response
-        return Array(["The", " analysis", " is", " complete", "."].prefix(maxTokens))
-    }
 }
 
 /// Convenience wrapper for managing the local LLM inference service singleton.
@@ -163,9 +132,7 @@ final class LocalLLMManager {
     }
     
     /// Get the currently loaded model.
-    func getCurrentModel() -> LLMModel? {
-        return Task {
-            await service.getCurrentModel()
-        }.result.success ?? nil
+    func getCurrentModel() async -> LLMModel? {
+        await service.getCurrentModel()
     }
 }

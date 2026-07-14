@@ -72,13 +72,82 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
+enum AppTypeface: String, CaseIterable, Identifiable {
+    case system, rounded, serif, monospaced, avenirNext, futura, georgia
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "System"
+        case .rounded: return "Rounded"
+        case .serif: return "New York"
+        case .monospaced: return "Monospaced"
+        case .avenirNext: return "Avenir Next"
+        case .futura: return "Futura"
+        case .georgia: return "Georgia"
+        }
+    }
+
+    var previewFont: Font {
+        switch self {
+        case .system: return .system(size: 18)
+        case .rounded: return .system(size: 18, design: .rounded)
+        case .serif: return .system(size: 18, design: .serif)
+        case .monospaced: return .system(size: 18, design: .monospaced)
+        case .avenirNext: return .custom("Avenir Next", size: 18)
+        case .futura: return .custom("Futura", size: 18)
+        case .georgia: return .custom("Georgia", size: 18)
+        }
+    }
+
+    var appFont: Font { font(size: 17) }
+
+    /// Builds a weighted font for explicit UI labels that would otherwise override the app-wide
+    /// environment font. Numeric/code surfaces can request monospacing regardless of preference.
+    func font(size: CGFloat, weight: Font.Weight = .regular, monospaced: Bool = false) -> Font {
+        if monospaced { return .system(size: size, weight: weight, design: .monospaced) }
+        switch self {
+        case .system: return .system(size: size, weight: weight)
+        case .rounded: return .system(size: size, weight: weight, design: .rounded)
+        case .serif: return .system(size: size, weight: weight, design: .serif)
+        case .monospaced: return .system(size: size, weight: weight, design: .monospaced)
+        case .avenirNext: return .custom("Avenir Next", size: size, relativeTo: .body).weight(weight)
+        case .futura: return .custom("Futura", size: size, relativeTo: .body).weight(weight)
+        case .georgia: return .custom("Georgia", size: size, relativeTo: .body).weight(weight)
+        }
+    }
+}
+
+enum AppTextScale: String, CaseIterable, Identifiable {
+    case compact, standard, comfortable, accessibility
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var dynamicTypeSize: DynamicTypeSize {
+        switch self {
+        case .compact: return .medium
+        case .standard: return .large
+        case .comfortable: return .xLarge
+        case .accessibility: return .xxxLarge
+        }
+    }
+}
+
 final class ThemeStore: ObservableObject {
     static let shared = ThemeStore()
     @Published var theme: AppTheme { didSet { UserDefaults.standard.set(theme.rawValue, forKey: "app.theme") } }
     @Published var motionEnabled: Bool { didSet { UserDefaults.standard.set(motionEnabled, forKey: "app.motion") } }
+    @Published var typeface: AppTypeface { didSet { UserDefaults.standard.set(typeface.rawValue, forKey: "app.typeface") } }
+    @Published var textScale: AppTextScale { didSet { UserDefaults.standard.set(textScale.rawValue, forKey: "app.textScale") } }
 
     private init() {
         theme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "app.theme") ?? "aurora") ?? .aurora
         motionEnabled = (UserDefaults.standard.object(forKey: "app.motion") as? Bool) ?? true
+        typeface = AppTypeface(rawValue: UserDefaults.standard.string(forKey: "app.typeface") ?? "system") ?? .system
+        textScale = AppTextScale(rawValue: UserDefaults.standard.string(forKey: "app.textScale") ?? "standard") ?? .standard
+    }
+
+    func resetTypography() {
+        typeface = .system
+        textScale = .standard
     }
 }

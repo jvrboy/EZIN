@@ -32,6 +32,7 @@ struct TechnicalAnalyzer {
 
         t.atr14 = last(Indicators.atr(high, low, close, 14))
         t.atr7 = last(Indicators.atr(high, low, close, 7))
+        t.atrPercent = last(close) != 0 ? t.atr14 / abs(last(close)) * 100 : 0
 
         let st = Indicators.stochastic(high, low, close)
         t.stochK = last(st.k); t.stochD = last(st.d)
@@ -60,11 +61,17 @@ struct TechnicalAnalyzer {
         t.chaikinVol = last(Indicators.chaikinVolatility(high, low, 10))
         t.massIndex = last(Indicators.massIndex(high, low))
         t.ulcerIndex = last(Indicators.ulcerIndex(close, 14))
+        t.choppinessIndex = last(Indicators.choppinessIndex(high, low, close, 14))
 
         // MARK: Extended momentum
         t.trix = last(Indicators.trix(close, 15))
         t.ultimateOsc = last(Indicators.ultimateOscillator(high, low, close))
         t.cmo = last(Indicators.cmo(close, 14))
+        let ppo = Indicators.ppo(close)
+        t.ppoLine = last(ppo.line); t.ppoSignal = last(ppo.signal); t.ppoHistogram = last(ppo.histogram)
+        t.fisherTransform = last(Indicators.fisherTransform(high, low, 10))
+        t.priceZScore = last(Indicators.zScore(close, 20))
+        t.efficiencyRatio = last(Indicators.efficiencyRatio(close, 10))
 
         // MARK: Extended direction / trend
         let psar = Indicators.parabolicSAR(high, low)
@@ -88,6 +95,11 @@ struct TechnicalAnalyzer {
 
         t.linRegSlope = last(Indicators.linRegSlope(close, 14))
 
+        let aroon = Indicators.aroon(high, low, 25)
+        t.aroonUp = last(aroon.up); t.aroonDown = last(aroon.down); t.aroonOscillator = last(aroon.oscillator)
+        let vortex = Indicators.vortex(high, low, close, 14)
+        t.vortexPlus = last(vortex.plus); t.vortexMinus = last(vortex.minus)
+
         // MARK: Extended volume
         t.adLine = last(Indicators.adLine(high, low, close, vol))
         t.cmf = last(Indicators.cmf(high, low, close, vol, 20))
@@ -97,10 +109,12 @@ struct TechnicalAnalyzer {
         t.pvi = last(Indicators.pvi(close, vol))
         t.vwap = last(Indicators.vwap(high, low, close, vol))
         t.forceIndex = last(Indicators.forceIndex(close, vol, 13))
+        t.relativeVolume = last(Indicators.relativeVolume(vol, 20))
 
-        // Trend strength: ADX magnitude blended with EMA alignment.
+        // Trend strength: directional strength, EMA alignment, and price-path efficiency.
         let emaAligned = (t.ema12 > t.ema26 && t.ema50 > t.ema200) || (t.ema12 < t.ema26 && t.ema50 < t.ema200)
-        t.trendStrength = min(100, t.adx + (emaAligned ? 20 : 0))
+        let directionalAgreement = abs(t.aroonOscillator) >= 50 && abs(t.vortexPlus - t.vortexMinus) >= 0.1
+        t.trendStrength = min(100, t.adx + (emaAligned ? 15 : 0) + (directionalAgreement ? 10 : 0) + t.efficiencyRatio * 10)
 
         return t
     }

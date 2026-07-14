@@ -185,7 +185,8 @@ final class ChatViewModel: ObservableObject {
         }
 
         var steps = 0
-        while steps < 5 {
+        let maximumToolSteps = 8
+        while steps < maximumToolSteps {
             steps += 1
             let result = await AIRouter.complete(system: system, messages: turns)
             switch result {
@@ -197,7 +198,8 @@ final class ChatViewModel: ObservableObject {
                     store.appendToCurrent(ChatMessage(role: "tool", text: "⚙️ \(action.tool)(\(compact(action.args)))"))
                     let out = await tools.run(action.tool, args: action.args)
                     // If a tool produced an artifact, attach it to a dedicated bubble.
-                    if let art = ArtifactStore.shared.lastArtifact, action.tool.hasPrefix("create_") {
+                    if let art = ArtifactStore.shared.lastArtifact,
+                       action.tool.hasPrefix("create_") || action.tool == "workspace_export" {
                         var m = ChatMessage(role: "assistant", text: "Created **\(art.name)** — tap to download or share.")
                         m.artifactPath = art.relativePath; m.artifactName = art.name
                         store.appendToCurrent(m)
@@ -212,6 +214,10 @@ final class ChatViewModel: ObservableObject {
                 }
             }
         }
+        store.appendToCurrent(ChatMessage(
+            role: "assistant",
+            text: "I stopped after \(maximumToolSteps) tool steps to keep this workflow bounded. Ask me to continue if more work is needed."
+        ))
         busy = false
     }
 

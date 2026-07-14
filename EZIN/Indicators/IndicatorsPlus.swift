@@ -344,4 +344,118 @@ extension Indicators {
         for i in close.indices where i > 0 { raw[i] = (close[i] - close[i - 1]) * volume[i] }
         return MA.ema(raw, len)
     }
+
+    static func relativeVolume(_ volume: [Double], _ len: Int = 20) -> [Double] {
+        let average = MA.sma(volume, len)
+        return volume.indices.map { average[$0] > 0 ? volume[$0] / average[$0] : 1 }
+    }
+
+    // MARK: - Advanced momentum and market regime
+
+    static func ppo(_ close: [Double], fast: Int = 12, slow: Int = 26, signal: Int = 9)
+        -> (line: [Double], signal: [Double], histogram: [Double]) {
+        let fastEMA = MA.ema(close, fast)
+        let slowEMA = MA.ema(close, slow)
+        let line = close.indices.map { slowEMA[$0] != 0 ? (fastEMA[$0] - slowEMA[$0]) / slowEMA[$0] * 100 : 0 }
+        let signalLine = MA.ema(line, signal)
+        let histogram = close.indices.map { line[$0] - signalLine[$0] }
+        return (line, signalLine, histogram)
+    }
+
+    static func zScore(_ src: [Double], _ len: Int = 20) -> [Double] {
+        let mean = MA.sma(src, len)
+        let deviation = stdev(src, len)
+        return src.indices.map { deviation[$0] > 0 ? (src[$0] - mean[$0]) / deviation[$0] : 0 }
+    }
+
+    static func efficiencyRatio(_ close: [Double], _ len: Int = 10) -> [Double] {
+        var out = [Double](repeating: 0, count: close.count)
+        guard close.count > len else { return out }
+        for i in len..<close.count {
+            let direction = abs(close[i] - close[i - len])
+            var volatility = 0.0
+            for j in (i - len + 1)...i { volatility += abs(close[j] - close[j - 1]) }
+            out[i] = volatility > 0 ? direction / volatility : 0
+        }
+        return out
+    }
+
+    static func fisherTransform(_ high: [Double], _ low: [Double], _ len: Int = 10) -> [Double] {
+        let n = min(high.count, low.count)
+        var out = [Double](repeating: 0, count: n)
+        var normalized = 0.0
+        guard n > 0 else { return out }
+        for i in 0..<n {
+            let start = max(0, i - len + 1)
+            let highest = high[start...i].max() ?? high[i]
+            let lowest = low[start...i].min() ?? low[i]
+            let median = (high[i] + low[i]) / 2
+            let raw = highest > lowest ? 2 * ((median - lowest) / (highest - lowest) - 0.5) : 0
+            normalized = max(-0.999, min(0.999, 0.66 * raw + 0.67 * normalized))
+            let fisher = 0.5 * log((1 + normalized) / (1 - normalized))
+            out[i] = i == 0 ? fisher : 0.5 * fisher + 0.5 * out[i - 1]
+        }
+        return out
+    }
+
+    static func aroon(_ high: [Double], _ low: [Double], _ len: Int = 25)
+        -> (up: [Double], down: [Double], oscillator: [Double]) {
+        let n = min(high.count, low.count)
+        var up = [Double](repeating: 50, count: n)
+        var down = [Double](repeating: 50, count: n)
+        let period = max(2, len)
+        guard n >= period else { return (up, down, zip(up, down).map { $0 - $1 }) }
+        for i in (period - 1)..<n {
+            let start = i - period + 1
+            var highIndex = start, lowIndex = start
+            for j in (start + 1)...i {
+                if high[j] >= high[highIndex] { highIndex = j }
+                if low[j] <= low[lowIndex] { lowIndex = j }
+            }
+            up[i] = 100 * Double(period - 1 - (i - highIndex)) / Double(period - 1)
+            down[i] = 100 * Double(period - 1 - (i - lowIndex)) / Double(period - 1)
+        }
+        return (up, down, zip(up, down).map { $0 - $1 })
+    }
+
+    static func vortex(_ high: [Double], _ low: [Double], _ close: [Double], _ len: Int = 14)
+        -> (plus: [Double], minus: [Double]) {
+        let n = min(high.count, min(low.count, close.count))
+        var plus = [Double](repeating: 1, count: n)
+        var minus = [Double](repeating: 1, count: n)
+        guard n > 1 else { return (plus, minus) }
+        var tr = [Double](repeating: 0, count: n)
+        var vmPlus = [Double](repeating: 0, count: n)
+        var vmMinus = [Double](repeating: 0, count: n)
+        for i in 1..<n {
+            tr[i] = max(high[i] - low[i], max(abs(high[i] - close[i - 1]), abs(low[i] - close[i - 1])))
+            vmPlus[i] = abs(high[i] - low[i - 1])
+            vmMinus[i] = abs(low[i] - high[i - 1])
+        }
+        guard n > len else { return (plus, minus) }
+        for i in len..<n {
+            var trSum = 0.0, plusSum = 0.0, minusSum = 0.0
+            for j in (i - len + 1)...i { trSum += tr[j]; plusSum += vmPlus[j]; minusSum += vmMinus[j] }
+            if trSum > 0 { plus[i] = plusSum / trSum; minus[i] = minusSum / trSum }
+        }
+        return (plus, minus)
+    }
+
+    static func choppinessIndex(_ high: [Double], _ low: [Double], _ close: [Double], _ len: Int = 14) -> [Double] {
+        let n = min(high.count, min(low.count, close.count))
+        var out = [Double](repeating: 50, count: n)
+        guard n > len, len > 1 else { return out }
+        var tr = [Double](repeating: 0, count: n)
+        for i in 1..<n {
+            tr[i] = max(high[i] - low[i], max(abs(high[i] - close[i - 1]), abs(low[i] - close[i - 1])))
+        }
+        for i in len..<n {
+            let start = i - len + 1
+            let range = (high[start...i].max() ?? high[i]) - (low[start...i].min() ?? low[i])
+            var trSum = 0.0
+            for j in start...i { trSum += tr[j] }
+            if range > 0, trSum > 0 { out[i] = 100 * log10(trSum / range) / log10(Double(len)) }
+        }
+        return out
+    }
 }

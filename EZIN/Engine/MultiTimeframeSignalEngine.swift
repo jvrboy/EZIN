@@ -3,8 +3,14 @@ import Foundation
 /// Enhanced signal engine that analyzes across all timeframes and uses all available indicators
 /// and tools to generate high-accuracy, multi-confluence signals.
 final class MultiTimeframeSignalEngine {
-    let baseEngine = SignalEngine()
-    let analyzer = TechnicalAnalyzer()
+    private let deriv: DerivClient
+    private let baseEngine: SignalEngine
+    private let analyzer = TechnicalAnalyzer()
+
+    init(deriv: DerivClient, baseEngine: SignalEngine = SignalEngine()) {
+        self.deriv = deriv
+        self.baseEngine = baseEngine
+    }
     
     struct TimeframeAnalysis {
         let timeframe: Timeframe
@@ -53,18 +59,19 @@ final class MultiTimeframeSignalEngine {
         for md: MarketData,
         timeframes: [Timeframe] = Timeframe.allCases,
         strategyName: String = "Multi-Timeframe Consensus"
-    ) -> MultiTimeframeSignal? {
+    ) async -> MultiTimeframeSignal? {
         var analyses: [TimeframeAnalysis] = []
         var directionVotes: [Direction] = []
         var confidenceScores: [Double] = []
         
-        // Analyze each timeframe
+        // Analyze each timeframe using real Deriv candles. Individual failures are isolated so
+        // a temporarily unavailable timeframe does not discard the entire analysis.
         for tf in timeframes {
-            guard let tfData = fetchMarketDataForTimeframe(md.symbol, tf) else { continue }
-            
+            guard let tfData = await fetchMarketDataForTimeframe(md.symbol, tf) else { continue }
+
             let analysis = analyzeTimeframe(tfData, timeframe: tf)
             analyses.append(analysis)
-            
+
             if let signal = analysis.signal {
                 directionVotes.append(signal.type.direction)
                 confidenceScores.append(analysis.confidence)
@@ -200,7 +207,9 @@ final class MultiTimeframeSignalEngine {
         // Volatility regime
         if (microstructure.volatilityRegime != .calm) { score += 0.15; count += 1 }
         
-        return count > 0 ? score / Double(count) : 0.5
+        // Each confirmed condition contributes to confidence. Dividing the fixed 0.15
+        // contribution by the number of conditions previously collapsed every result to 0.15.
+        return count > 0 ? min(0.45 + score, 0.95) : 0.45
     }
     
     private func determineConsensusDirection(_ votes: [Direction]) -> Direction {
@@ -253,9 +262,19 @@ final class MultiTimeframeSignalEngine {
         return reasoning
     }
     
-    private func fetchMarketDataForTimeframe(_ symbol: String, _ timeframe: Timeframe) -> MarketData? {
-        // This would fetch historical data for the specific timeframe
-        // For now, returning nil as a placeholder
-        return nil
+    private func fetchMarketDataForTimeframe(_ symbol: String, _ timeframe: Timeframe) async -> MarketData? {
+        do {
+            let candles = try await deriv.candles(symbol: symbol, timeframe: timeframe, count: 220)
+            guard candles.count >= 30 else { return nil }
+            return MarketData(
+                symbol: symbol,
+                assetClass: DerivSymbols.assetClass(symbol),
+                timeframe: timeframe,
+                candles: candles,
+                currentPrice: candles.last?.close ?? 0
+            )
+        } catch {
+            return nil
+        }
     }
 }

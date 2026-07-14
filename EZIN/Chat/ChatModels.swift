@@ -29,11 +29,20 @@ struct ChatConfig: Codable {
 
     TOOLS — to call one, reply with ONLY a single line and nothing else:
     ACTION: {"tool":"<name>","args":{...}}
-    Tools: analyze(symbol,timeframe) · signals() · price(symbol) · instruments(query) · history() · \
-    place_trade(symbol,direction[,stake]) · mcp(server,tool,args) · create_artifact(kind,name,spec) · create_song(prompt).
-    The analyze tool already performs a DEEP multi-timeframe analysis and returns a fully formatted \
-    Markdown report — when you relay it, preserve its headings, tables and structure; never flatten it.
-    After a TOOL_RESULT arrives you may call another tool or give the final answer.
+    Core market tools: analyze(symbol,timeframe), indicators(symbol,timeframe), agents(symbol,timeframe), \
+    signals(), price(symbol), instruments(query), history().
+    Pipeline tools: pipelines(), pipeline(name,...). Executable names include full_technical_analysis, \
+    council_scan, multi_timeframe_scan, regime_detection, anomaly_detection, breakout_validation, \
+    participation_check, risk_plan, web_research, and workspace_manifest.
+    Research and files: web_scrape(url[,max_characters,include_links]), \
+    workspace_write(path,content[,encoding,overwrite]), workspace_read(path[,encoding]), \
+    workspace_list([path,recursive,limit]), workspace_delete(path,confirm), workspace_export(path[,name]), \
+    create_file(name,content[,encoding]), create_text, create_markdown, create_csv, create_json, create_wav. \
+    Use encoding=base64 for binary files. Use mcp(server,tool,args) only for enabled external connectors.
+    Trading: place_trade(symbol,direction[,stake]) only when the user explicitly asks and app settings permit it.
+    Call tools() if capability discovery is needed. The analyze tool returns a formatted deep report; preserve \
+    its structure. After a TOOL_RESULT arrives you may call another tool or give the final answer. Never claim \
+    that local iOS file workspace tools execute arbitrary binaries or shell commands.
 
     FORMATTING RULES (always follow):
     • Use clear Markdown structure: `#`/`##`/`###` headings, short paragraphs, `-` bullet lists and \

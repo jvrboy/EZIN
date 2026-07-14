@@ -171,10 +171,65 @@ struct HullTrendAgent: SignalAgent {
     }
 }
 
+/// Market-regime agent — suppresses directional conviction in choppy conditions and
+/// confirms efficient trends. It is deliberately low-weight because regime is a gate,
+/// not an entry signal by itself.
+struct RegimeAgent: SignalAgent {
+    let name = "Regime"; let role = "Choppiness / Efficiency / ADX"; let weight = 0.65; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        let trending = ind.choppinessIndex < 45 && ind.efficiencyRatio > 0.35
+        let direction = ind.ema12 >= ind.ema26 ? 1.0 : -1.0
+        let score = trending ? direction : 0
+        let confidence = trending ? min(0.9, 0.55 + ind.efficiencyRatio * 0.4) : 0.45
+        return vote(name, weight, score, confidence, "CHOP \(Int(ind.choppinessIndex)) · ER \(String(format: "%.2f", ind.efficiencyRatio))")
+    }
+}
+
+/// Directional-confirmation agent — Aroon recency and Vortex movement must agree.
+struct DirectionalAgent: SignalAgent {
+    let name = "Directional"; let role = "Aroon / Vortex"; let weight = 0.95; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        var s = 0.0
+        if ind.aroonOscillator > 35 { s += 0.9 } else if ind.aroonOscillator < -35 { s -= 0.9 }
+        if ind.vortexPlus > ind.vortexMinus * 1.05 { s += 0.8 }
+        else if ind.vortexMinus > ind.vortexPlus * 1.05 { s -= 0.8 }
+        let separation = min(1, abs(ind.vortexPlus - ind.vortexMinus))
+        return vote(name, weight, s, 0.58 + separation * 0.3, "Aroon \(Int(ind.aroonOscillator)) · VI \(String(format: "%.2f", ind.vortexPlus))/\(String(format: "%.2f", ind.vortexMinus))")
+    }
+}
+
+/// Normalized-momentum agent — PPO direction plus Fisher and z-score extremes.
+struct NormalizedMomentumAgent: SignalAgent {
+    let name = "NormalizedMomentum"; let role = "PPO / Fisher / Z-Score"; let weight = 0.9; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        var s = 0.0
+        if ind.ppoHistogram > 0 { s += 0.8 } else if ind.ppoHistogram < 0 { s -= 0.8 }
+        if ind.fisherTransform > 0.5 { s += 0.5 } else if ind.fisherTransform < -0.5 { s -= 0.5 }
+        // Very extended z-scores reduce confidence instead of blindly chasing price.
+        let extensionPenalty = min(0.25, max(0, abs(ind.priceZScore) - 2) * 0.1)
+        return vote(name, weight, s, 0.72 - extensionPenalty, "PPO \(String(format: "%.2f", ind.ppoHistogram)) · z \(String(format: "%.2f", ind.priceZScore))")
+    }
+}
+
+/// Participation agent — validates price direction only when volume expands.
+struct ParticipationAgent: SignalAgent {
+    let name = "Participation"; let role = "Relative Volume / Force Index / CMF"; let weight = 0.75; var isActive = true
+    func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote {
+        guard ind.relativeVolume >= 1.05 else {
+            return vote(name, weight, 0, 0.45, "relative volume \(String(format: "%.2f", ind.relativeVolume))")
+        }
+        var s = 0.0
+        if ind.forceIndex > 0 { s += 0.7 } else if ind.forceIndex < 0 { s -= 0.7 }
+        if ind.cmf > 0.05 { s += 0.6 } else if ind.cmf < -0.05 { s -= 0.6 }
+        return vote(name, weight, s, min(0.9, 0.55 + (ind.relativeVolume - 1) * 0.2), "RVOL \(String(format: "%.2f", ind.relativeVolume))")
+    }
+}
+
 enum AgentFactory {
     static func standardCouncil() -> [SignalAgent] {
         [TrendAgent(), MomentumAgent(), MeanReversionAgent(),
          VolumeAgent(), DivergenceAgent(), VolatilityAgent(), StructureAgent(),
-         IchimokuAgent(), BreakoutAgent(), VWAPFlowAgent(), OscillatorAgent(), HullTrendAgent()]
+         IchimokuAgent(), BreakoutAgent(), VWAPFlowAgent(), OscillatorAgent(), HullTrendAgent(),
+         RegimeAgent(), DirectionalAgent(), NormalizedMomentumAgent(), ParticipationAgent()]
     }
 }

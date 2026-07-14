@@ -3,6 +3,7 @@ import SwiftUI
 /// Root shell — glass tab bar: Chart · Signals · Chat · History · Bot · Settings.
 struct RootView: View {
     @EnvironmentObject var app: AppState
+    @ObservedObject private var theme = ThemeStore.shared
     @State private var tab: AppTab = .chart
 
     var body: some View {
@@ -32,7 +33,7 @@ struct RootView: View {
     private var header: some View {
         HStack {
             Text("EZIN")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(theme.typeface.font(size: 22, weight: .bold))
                 .foregroundStyle(.white)
             Spacer()
             ConnectionPill(state: app.connectionState)
@@ -60,6 +61,7 @@ enum AppTab: String, CaseIterable {
 
 struct GlassTabBar: View {
     @Binding var selection: AppTab
+    @ObservedObject private var theme = ThemeStore.shared
     var body: some View {
         HStack(spacing: 4) {
             ForEach(AppTab.allCases, id: \.self) { t in
@@ -68,7 +70,7 @@ struct GlassTabBar: View {
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: t.icon).font(.system(size: 17, weight: .semibold))
-                        Text(t.title).font(.system(size: 9, weight: .medium))
+                        Text(t.title).font(theme.typeface.font(size: 9, weight: .medium))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -90,10 +92,11 @@ struct GlassTabBar: View {
 
 struct ConnectionPill: View {
     let state: DerivConnectionState
+    @ObservedObject private var theme = ThemeStore.shared
     var body: some View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 8, height: 8)
-            Text(state.label).font(.system(size: 11, weight: .medium))
+            Text(state.label).font(theme.typeface.font(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.7))
         }
         .padding(.horizontal, 10).padding(.vertical, 6)

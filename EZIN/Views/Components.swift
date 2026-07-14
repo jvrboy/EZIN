@@ -2,11 +2,12 @@ import SwiftUI
 
 struct GlassSection<Content: View>: View {
     let title: String
+    @ObservedObject private var theme = ThemeStore.shared
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold))
+                .font(theme.typeface.font(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.5))
                 .padding(.leading, 4)
             VStack(spacing: 0) { content }
@@ -19,10 +20,11 @@ struct GlassToggle: View {
     let label: String
     var desc: String? = nil
     @Binding var isOn: Bool
+    @ObservedObject private var theme = ThemeStore.shared
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.88))
+                Text(label).font(theme.typeface.font(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.88))
                 if let desc = desc { Text(desc).font(.caption2).foregroundStyle(.white.opacity(0.4)) }
             }
             Spacer()
@@ -34,10 +36,11 @@ struct GlassToggle: View {
 
 struct GlassNavRow: View {
     let icon: String; let title: String; var value: String? = nil
+    @ObservedObject private var theme = ThemeStore.shared
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon).foregroundStyle(Glass.accent2).frame(width: 24)
-            Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.9))
+            Text(title).font(theme.typeface.font(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.9))
             Spacer()
             if let value = value { Text(value).font(.caption).foregroundStyle(.white.opacity(0.45)) }
             Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.3))
@@ -51,11 +54,13 @@ struct GlassField: View {
     let placeholder: String
     @Binding var text: String
     var secure: Bool = false
+    @ObservedObject private var theme = ThemeStore.shared
     var body: some View {
         Group {
             if secure { SecureField(placeholder, text: $text) }
             else { TextField(placeholder, text: $text) }
         }
+        .font(theme.typeface.font(size: 15))
         .textInputAutocapitalization(.never)
         .autocorrectionDisabled()
         .foregroundStyle(.white)
