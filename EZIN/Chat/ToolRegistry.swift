@@ -17,6 +17,8 @@ struct ToolRegistry {
         case "signal_performance": return signalPerformance(args)
         case "agent_leaderboard":  return agentLeaderboard()
         case "inject_news":        return injectNews(args)
+        case "create_artifact":    return createArtifact(args)
+        case "create_song":        return createSong(args)
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -160,5 +162,117 @@ struct ToolRegistry {
 
         NewsReactiveAgent.injectEvent(headline: headline, impact: impact, confidence: confidence)
         return "Injected news event: '\(headline.prefix(60))' (\(impactStr), \(Int(confidence * 100))% confidence)."
+    }
+
+    // MARK: - Artifact Creation
+
+    private func createArtifact(_ args: [String: Any]) -> String {
+        guard let kindStr = args["kind"] as? String else { return "Missing 'kind' parameter." }
+        let name = (args["name"] as? String) ?? "artifact"
+        let content = (args["content"] as? String) ?? (args["spec"] as? String) ?? ""
+
+        let kind: ArtifactsCreator.ArtifactSpec.Kind
+        switch kindStr.lowercased() {
+        case "wav", "audio": kind = .wav
+        case "midi": kind = .midi
+        case "csv": kind = .csv
+        case "json": kind = .json
+        case "html": kind = .html
+        case "text", "txt": kind = .text
+        case "md", "markdown": kind = .markdown
+        case "py", "python": kind = .python
+        case "js", "javascript": kind = .javascript
+        case "swift": kind = .swift
+        case "zip": kind = .zip
+        case "app", "prototype", "appprototype": kind = .appPrototype
+        default: return "Unknown artifact kind: '\(kindStr)'. Supported: wav, midi, csv, json, html, txt, md, py, js, swift, zip, appPrototype."
+        }
+
+        let spec = ArtifactsCreator.ArtifactSpec(kind: kind, name: name, content: content)
+        guard let artifact = ArtifactsCreator.create(spec: spec) else {
+            return "Failed to create artifact."
+        }
+        return "Created \(artifact.name) (\(artifact.sizeDisplay)). Tap the chip to download."
+    }
+
+    // MARK: - Song / Audio Creation
+
+    private func createSong(_ args: [String: Any]) -> String {
+        let prompt = (args["prompt"] as? String) ?? ""
+        let name = (args["name"] as? String) ?? "song"
+        let format = (args["format"] as? String ?? "wav").lowercased()
+        let tempo = (args["tempo"] as? Double).map { UInt16($0) } ?? 120
+
+        let noteDesc = promptToNotes(prompt)
+
+        let artifact: Artifact?
+        if format == "midi" || format == "mid" {
+            guard let data = AudioGenerationService.generateMIDI(from: noteDesc, tempoBPM: tempo) else {
+                return "Failed to generate MIDI."
+            }
+            artifact = saveAudioArtifact(data: data, name: name, ext: "mid")
+        } else {
+            guard let data = AudioGenerationService.generateWAV(from: noteDesc) else {
+                return "Failed to generate WAV."
+            }
+            artifact = saveAudioArtifact(data: data, name: name, ext: "wav")
+        }
+
+        guard let art = artifact else { return "Failed to save audio file." }
+        return "Created \(art.name) (\(art.sizeDisplay)) from: '\(prompt.prefix(60))'."
+    }
+
+    private func saveAudioArtifact(data: Data, name: String, ext: String) -> Artifact? {
+        let dir = FileStore.shared.artifactsDir
+        let fileName = "\(name).\(ext)"
+        let url = FileStore.shared.saveData(data, name: fileName, in: dir)
+        let relPath = FileStore.shared.relativePath(url)
+        let artifact = Artifact(name: fileName, relativePath: relPath, kind: ext, byteSize: Int64(data.count))
+        ArtifactStore.shared.add(artifact)
+        return artifact
+    }
+
+    private func promptToNotes(_ prompt: String) -> String {
+        let p = prompt.lowercased()
+        if p.contains("major chord") || p.contains("happy") {
+            let root = extractNote(from: p) ?? "C4"
+            return chordPattern(root: root, minor: false)
+        }
+        if p.contains("minor chord") || p.contains("sad") {
+            let root = extractNote(from: p) ?? "A3"
+            return chordPattern(root: root, minor: true)
+        }
+        if p.contains("scale") || p.contains("ascending") {
+            return "\(extractNote(from: p) ?? "C4") 0.5s\nD4 0.5s\nE4 0.5s\nF4 0.5s\nG4 0.5s\nA4 0.5s\nB4 0.5s\nC5 0.5s"
+        }
+        if p.contains("arpeggio") {
+            return "\(extractNote(from: p) ?? "C4") 0.4s\nE4 0.4s\nG4 0.4s\nC5 0.4s\nG4 0.4s\nE4 0.4s\nC4 0.4s"
+        }
+        return prompt
+    }
+
+    private func extractNote(from prompt: String) -> String? {
+        let notes = ["C", "D", "E", "F", "G", "A", "B"]
+        for note in notes {
+            if prompt.range(of: note, options: .caseInsensitive) != nil {
+                let octave = prompt.contains("3") ? "3" : (prompt.contains("5") ? "5" : "4")
+                return "\(note)\(octave)"
+            }
+        }
+        return nil
+    }
+
+    private func chordPattern(root: String, minor: Bool) -> String {
+        let third = minor ? "Eb" : "E"
+        let fifth = "G"
+        return """
+        chord \(root) \(third)4 \(fifth)4 1s amp 0.6
+        rest 0.5s
+        chord \(third) \(fifth)4 \(root) 1s amp 0.5
+        rest 0.5s
+        chord \(fifth)4 \(root) \(third) 1s amp 0.5
+        rest 0.5s
+        chord \(root) \(third)4 \(fifth)4 2s amp 0.7
+        """
     }
 }
