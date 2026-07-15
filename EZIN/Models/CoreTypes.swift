@@ -20,6 +20,18 @@ enum SignalStrength: Int, Codable {
 enum SignalType: String, Codable {
     case buy = "BUY", sell = "SELL", hold = "HOLD"
     case strongBuy = "STRONG_BUY", strongSell = "STRONG_SELL"
+
+    var isBullish: Bool { self == .buy || self == .strongBuy }
+    var isBearish: Bool { self == .sell || self == .strongSell }
+    var direction: Direction {
+        switch self {
+        case .strongBuy: return .strongBullish
+        case .buy: return .bullish
+        case .strongSell: return .strongBearish
+        case .sell: return .bearish
+        case .hold: return .neutral
+        }
+    }
 }
 
 enum AssetClass: String, Codable, CaseIterable {

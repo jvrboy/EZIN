@@ -12,6 +12,7 @@ final class AppState: ObservableObject {
     let pipelines = PipelineStore.shared
     let botConfig = BotConfigStore.shared
     let signalHistory = SignalHistoryStore.shared
+    let signalPerformance = SignalPerformanceStore.shared
 
     // Runtime
     let deriv = DerivClient()
@@ -25,6 +26,7 @@ final class AppState: ObservableObject {
     @Published var booted = false
 
     private var historyTimer: Timer?
+    private var cancellables = Set<AnyCancellable>()
 
     func boot() async {
         guard !booted else { return }
@@ -32,12 +34,47 @@ final class AppState: ObservableObject {
 
         deriv.$connectionState.receive(on: RunLoop.main).assign(to: &$connectionState)
 
+        // Push notifications: request authorization on first boot.
+        Task { await PushNotificationManager.shared.requestAuthorization() }
+
+        // Wire signal feeds: history + performance tracking + push notifications.
         bot.onSignals = { [weak self] signals in
             Task { @MainActor in
                 self?.signals = signals
                 self?.signalHistory.record(signals)
+                // Track performance for each new signal.
+                for signal in signals {
+                    let price = self?.deriv.prices[signal.symbol] ?? signal.entry
+                    self?.signalPerformance.track(signal, currentPrice: price)
+                }
+                // Notify for high-confidence signals.
+                for signal in signals where signal.confidence >= 75 {
+                    PushNotificationManager.shared.notifySignalGenerated(signal)
+                }
             }
         }
+
+        // Wire price updates to performance tracking.
+        deriv.$prices
+            .throttle(for: .seconds(5), scheduler: RunLoop.main, latest: true)
+            .sink { [weak self] prices in
+                Task { @MainActor in
+                    self?.signalPerformance.updatePrices(prices)
+                }
+            }
+            .store(in: &cancellables)
+
+        // Wire push notifications to connection state changes.
+        deriv.$connectionState
+            .dropFirst()
+            .sink { state in
+                switch state {
+                case .error: PushNotificationManager.shared.notifyConnectionLost()
+                case .connected: PushNotificationManager.shared.notifyConnectionRestored()
+                default: break
+                }
+            }
+            .store(in: &cancellables)
 
         await connect()
         bot.startScanning()

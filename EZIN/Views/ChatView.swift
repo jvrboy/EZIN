@@ -16,27 +16,19 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if messages.isEmpty { intro }
-                        ForEach(messages) { m in ChatBubble(message: m).id(m.id) }
-                        if vm.busy {
-                            HStack(spacing: 8) {
-                                ProgressView().tint(.white)
-                                Text("Thinking…").font(.caption).foregroundStyle(.white.opacity(0.5))
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    if messages.isEmpty { intro }
+                    ForEach(messages) { m in ChatBubble(message: m).id(m.id) }
+                    if vm.busy {
+                        HStack(spacing: 8) {
+                            ProgressView().tint(.white)
+                            Text("Thinking…").font(.caption).foregroundStyle(.white.opacity(0.5))
                         }
-                    }
-                    .padding(16)
-                    // Scroll ONLY when the user just sent a message — never on assistant
-                    // output, and never animated. Reading position stays put otherwise.
-                    .onChange(of: vm.pendingScrollID) { id in
-                        guard let id = id else { return }
-                        proxy.scrollTo(id, anchor: .bottom)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+                .padding(16)
             }
             inputBar
         }
@@ -156,7 +148,6 @@ struct ChatBubble: View {
 final class ChatViewModel: ObservableObject {
     @Published var input = ""
     @Published var busy = false
-    @Published var pendingScrollID: UUID?
 
     private let store = ConversationStore.shared
     private let memory = MemoryStore.shared
@@ -168,7 +159,6 @@ final class ChatViewModel: ObservableObject {
         if let fact = MemoryStore.extractRememberRequest(text) { memory.remember(fact, scope: store.currentID) }
         let userMsg = ChatMessage(role: "user", text: text)
         store.appendToCurrent(userMsg)
-        pendingScrollID = userMsg.id
         busy = true
         Task { await runLoop(app: app) }
     }

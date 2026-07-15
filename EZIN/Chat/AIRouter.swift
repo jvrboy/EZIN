@@ -16,7 +16,7 @@ enum AIProviderError: Error, LocalizedError {
 /// Uses APIKeyStore round-robin so multiple keys per provider are all used.
 enum AIRouter {
     /// Most-powerful-first priority order for remote providers.
-    static let priority: [CredentialKey] = [.openAI, .anthropic, .cerebras, .nvidianim, .openRouter, .gemini, .groq, .mistral, .freemodel, .huggingFace]
+    static let priority: [CredentialKey] = [.openAI, .anthropic, .cerebras, .nvidianim, .groq, .openRouter, .gemini, .mistral, .sambaNova, .cloudflareAI, .ollamaCloud, .kiloCode, .freemodel, .huggingFace]
 
     static func availableProviders() -> [CredentialKey] {
         var providers = priority.filter { APIKeyStore.shared.count(for: $0) > 0 }
@@ -59,13 +59,22 @@ enum AIRouter {
     // MARK: - Providers
 
     private static func call(_ provider: CredentialKey, key: String, system: String, messages: [ChatTurn]) async throws -> String {
-        switch provider {
-        case .anthropic: return try await callAnthropic(key: key, system: system, messages: messages)
-        case .gemini: return try await callGemini(key: key, system: system, messages: messages)
-        case .nvidianim, .freemodel, .cerebras: return try await callExtendedProvider(provider, key: key, system: system, messages: messages)
-        case .huggingFace: throw AIProviderError.noKey
-        case .localLLM: throw AIProviderError.noKey
-        default: return try await callOpenAICompatible(provider, key: key, system: system, messages: messages)
+        do {
+            let result: String
+            switch provider {
+            case .anthropic: result = try await callAnthropic(key: key, system: system, messages: messages)
+            case .gemini: result = try await callGemini(key: key, system: system, messages: messages)
+            case .nvidianim, .freemodel, .cerebras, .cloudflareAI, .ollamaCloud, .kiloCode, .sambaNova:
+                result = try await callExtendedProvider(provider, key: key, system: system, messages: messages)
+            case .huggingFace: throw AIProviderError.noKey
+            case .localLLM: throw AIProviderError.noKey
+            default: result = try await callOpenAICompatible(provider, key: key, system: system, messages: messages)
+            }
+            trackSuccess(provider: provider, key: key, response: ["result": result])
+            return result
+        } catch {
+            trackError(provider: provider, key: key, error: error)
+            throw error
         }
     }
 
@@ -77,7 +86,11 @@ enum AIRouter {
         case .openRouter: return ("https://openrouter.ai/api/v1/chat/completions", "openai/gpt-4o")
         case .nvidianim: return ("https://integrate.api.nvidia.com/v1/chat/completions", "meta/llama-3.1-405b-instruct")
         case .freemodel: return ("https://api.freemodel.dev/v1/chat/completions", "gpt-3.5-turbo")
-        case .cerebras: return ("https://api.cerebras.ai/v1/chat/completions", "cerebras-7b")
+        case .cerebras: return ("https://api.cerebras.ai/v1/chat/completions", "llama-3.3-70b")
+        case .cloudflareAI: return ("https://api.cloudflare.com/client/v4/ai/chat/completions", "@cf/meta/llama-3.3-70b-instruct")
+        case .ollamaCloud: return ("https://ollama.ai/v1/chat/completions", "llama3.3")
+        case .kiloCode: return ("https://api.kilocode.ai/v1/chat/completions", "gpt-4o")
+        case .sambaNova: return ("https://api.sambanova.ai/v1/chat/completions", "Meta-Llama-3.3-70B-Instruct")
         default: return ("https://api.openai.com/v1/chat/completions", "gpt-4o")
         }
     }
@@ -126,6 +139,29 @@ enum AIRouter {
     }
 
     // MARK: - Helpers
+
+    // MARK: - Usage Tracking
+
+    private static func trackSuccess(provider: CredentialKey, key: String, response: [String: Any]) {
+        let keyHash = String(key.prefix(8)) + "..." + String(key.suffix(4))
+        var headers: [AnyHashable: Any] = [:]
+        if let usage = response["usage"] as? [String: Any] {
+            if let total = usage["total_tokens"] as? Int {
+                headers["x-ratelimit-tokens-remaining"] = String(max(0, 10000 - total))
+            }
+        }
+        APITokenTracker.shared.recordUsage(provider: provider, keyId: keyHash, tokensUsed: (response["usage"] as? [String: Any])?["total_tokens"] as? Int ?? 0, responseHeaders: headers)
+        APITokenTracker.shared.markHealthy(provider: provider, keyId: keyHash)
+    }
+
+    private static func trackError(provider: CredentialKey, key: String, error: Error) {
+        let keyHash = String(key.prefix(8)) + "..." + String(key.suffix(4))
+        if let err = error as? AIProviderError, case .http(let msg) = err, msg.contains("429") {
+            APITokenTracker.shared.markRateLimited(provider: provider, keyId: keyHash, retryAfter: 60)
+        } else {
+            APITokenTracker.shared.recordError(provider: provider, keyId: keyHash)
+        }
+    }
 
     /// Build a single prompt string from system instruction and message history.
     private static func buildPrompt(system: String, messages: [ChatTurn]) -> String {

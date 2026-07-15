@@ -22,6 +22,7 @@ enum CredentialKey: String, Codable, CaseIterable, Identifiable {
     case openAI, anthropic, gemini, groq, mistral, openRouter, huggingFace
     case derivToken, customEndpoint, localLLM
     case nvidianim, freemodel, cerebras
+    case cloudflareAI, ollamaCloud, kiloCode, sambaNova
     var id: String { rawValue }
 
     var display: String {
@@ -39,6 +40,10 @@ enum CredentialKey: String, Codable, CaseIterable, Identifiable {
         case .nvidianim: return "Nvidia NIM"
         case .freemodel: return "FreeModel.dev"
         case .cerebras: return "Cerebras"
+        case .cloudflareAI: return "Cloudflare Workers AI"
+        case .ollamaCloud: return "Ollama Cloud"
+        case .kiloCode: return "Kilo Code"
+        case .sambaNova: return "Samba Nova Cloud"
         }
     }
     var isAIProvider: Bool { self != .derivToken && self != .customEndpoint }

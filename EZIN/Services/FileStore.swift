@@ -107,4 +107,16 @@ final class FileStore {
         let url = root.appendingPathComponent(model.relativePath)
         try? fm.removeItem(at: url)
     }
+
+    // MARK: - Raw data helpers
+
+    func writeRaw(_ data: Data, to name: String, in dir: URL) {
+        let url = dir.appendingPathComponent(name)
+        try? data.write(to: url)
+    }
+
+    func readRaw(from name: String, in dir: URL) -> Data? {
+        let url = dir.appendingPathComponent(name)
+        return try? Data(contentsOf: url)
+    }
 }
