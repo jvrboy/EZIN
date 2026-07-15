@@ -19,6 +19,9 @@ struct ToolRegistry {
         case "inject_news":        return injectNews(args)
         case "create_artifact":    return createArtifact(args)
         case "create_song":        return createSong(args)
+        case "brain_insights":     return brainInsights()
+        case "brain_report":       return brainReport()
+        case "ultra_confirm":      return ultraConfirmation(args)
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -261,6 +264,58 @@ struct ToolRegistry {
         }
         return nil
     }
+
+    // MARK: - Brain Tools
+
+    private func brainInsights() -> String {
+        let insights = app.brain.getInsights()
+        return insights.joined(separator: "\n")
+    }
+
+    private func brainReport() -> String {
+        return app.brain.getBrainReport()
+    }
+
+    // MARK: - Ultra-Confirmation Pipeline
+
+    private func ultraConfirmation(_ args: [String: Any]) -> String {
+        let sym = resolveSymbol(str(args, "symbol"))
+        guard !sym.isEmpty else { return "Missing 'symbol' parameter." }
+        let tf = Timeframe(rawValue: str(args, "timeframe")) ?? .m5
+        let accountSize = args["account_size"] as? Double ?? Double(str(args, "account_size"))
+        let riskPct = args["risk_percent"] as? Double ?? Double(str(args, "risk_percent"))
+
+        // Get current market data
+        let candles = app.deriv.priceCache[sym]?.candles ?? []
+        let prices = app.deriv.priceCache[sym]?.prices ?? []
+        let md = MarketData(symbol: sym, assetClass: DerivSymbols.assetClass(sym), timeframe: tf,
+                            candles: candles, currentPrice: prices.last ?? 0)
+
+        guard candles.count > 30 else { return "Insufficient data for \(sym). Need at least 30 candles." }
+
+        // Run the deep analysis
+        let ind = TechnicalAnalyzer().analyze(md)
+        let agents = ExtendedAgentFactory.fullCouncil().filter { $0.isActive }
+        let votes = agents.map { $0.analyze(md, ind) }
+        let report = AnalysisReport.build(
+            marketData: md, indicators: ind, votes: votes,
+            higherTFData: nil, higherTFIndicators: nil,
+            requestedTF: tf
+        )
+
+        // Run ultra-confirmation pipeline
+        let input = UltraConfirmationPipeline.PipelineInput(
+            symbol: sym, timeframe: tf,
+            accountSize: accountSize, riskPercent: riskPct,
+            sessionPreference: nil, currentPosition: nil
+        )
+        let pipeline = UltraConfirmationPipeline()
+        let output = pipeline.run(input: input, report: report)
+
+        return output.formattedReport(symbol: DerivSymbols.display(sym))
+    }
+
+    // MARK: - Song Helpers
 
     private func chordPattern(root: String, minor: Bool) -> String {
         let third = minor ? "Eb" : "E"

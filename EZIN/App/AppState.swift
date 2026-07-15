@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
     let botConfig = BotConfigStore.shared
     let signalHistory = SignalHistoryStore.shared
     let signalPerformance = SignalPerformanceStore.shared
+    let brain = BrainEngine.shared
 
     // Runtime
     let deriv = DerivClient()
