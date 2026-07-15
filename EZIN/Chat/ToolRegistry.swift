@@ -7,14 +7,17 @@ struct ToolRegistry {
 
     func run(_ name: String, args: [String: Any]) async -> String {
         switch name {
-        case "analyze":     return await analyze(args)
-        case "signals":     return signals()
-        case "price":       return price(args)
-        case "instruments": return instruments(args)
-        case "history":     return history()
-        case "place_trade": return await placeTrade(args)
-        case "mcp":         return await mcp(args)
-        default:            return "Unknown tool: \(name)"
+        case "analyze":        return await analyze(args)
+        case "signals":        return signals()
+        case "price":          return price(args)
+        case "instruments":    return instruments(args)
+        case "history":        return history()
+        case "place_trade":    return await placeTrade(args)
+        case "mcp":            return await mcp(args)
+        case "signal_performance": return signalPerformance(args)
+        case "agent_leaderboard":  return agentLeaderboard()
+        case "inject_news":        return injectNews(args)
+        default:               return "Unknown tool: \(name)"
         }
     }
 
@@ -109,5 +112,53 @@ struct ToolRegistry {
         }
         do { return try await MCPClient(connector: conn).callTool(tool, args: toolArgs) }
         catch { return "MCP call failed: \(error.localizedDescription)" }
+    }
+
+    // MARK: - Signal Performance
+
+    private func signalPerformance(_ args: [String: Any]) -> String {
+        let sym = resolveSymbol(str(args, "symbol"))
+        if !sym.isEmpty {
+            let signals = app.signalPerformance.signalsForSymbol(sym)
+            let wr = app.signalPerformance.winRate(for: sym)
+            return "\(DerivSymbols.display(sym)): \(signals.count) tracked, \(Int(wr * 100))% win rate."
+        }
+        let overallWR = Int(app.signalPerformance.overallWinRate * 100)
+        let recs = app.signalPerformance.recommendations()
+        var result = "Overall Signal Performance: \(overallWR)% win rate.\n"
+        result += "Active: \(app.signalPerformance.activeSignals().count) | Resolved: \(app.signalPerformance.resolvedSignals().count)\n"
+        result += "Avg R:R: \(String(format: "%.1f", app.signalPerformance.averageRR))\n"
+        if !recs.isEmpty {
+            result += "\nInsights:\n" + recs.map { "• \($0)" }.joined(separator: "\n")
+        }
+        return result
+    }
+
+    // MARK: - Agent Leaderboard
+
+    private func agentLeaderboard() -> String {
+        let board = app.engine.agentLeaderboard()
+        guard !board.isEmpty else { return "No agent performance data yet. Signals need to resolve first." }
+        return board.map { (name, accuracy, total) in
+            "• \(name): \(Int(accuracy * 100))% (\(total) signals)"
+        }.joined(separator: "\n")
+    }
+
+    // MARK: - News Injection
+
+    private func injectNews(_ args: [String: Any]) -> String {
+        let headline = str(args, "headline")
+        let impactStr = str(args, "impact").lowercased()
+        let confidence = (args["confidence"] as? Double) ?? Double(str(args, "confidence")) ?? 0.7
+
+        let impact: NewsReactiveAgent.NewsEvent.Impact
+        switch impactStr {
+        case "bullish", "positive", "up": impact = .bullish
+        case "bearish", "negative", "down": impact = .bearish
+        default: impact = .neutral
+        }
+
+        NewsReactiveAgent.injectEvent(headline: headline, impact: impact, confidence: confidence)
+        return "Injected news event: '\(headline.prefix(60))' (\(impactStr), \(Int(confidence * 100))% confidence)."
     }
 }
