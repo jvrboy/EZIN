@@ -22,6 +22,9 @@ struct ToolRegistry {
         case "brain_insights":     return brainInsights()
         case "brain_report":       return brainReport()
         case "ultra_confirm":      return ultraConfirmation(args)
+        case "quant_analysis":     return quantitativeAnalysis(args)
+        case "backtest":           return backtest(args)
+        case "risk_plan":          return riskPlan(args)
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -313,6 +316,46 @@ struct ToolRegistry {
         let output = pipeline.run(input: input, report: report)
 
         return output.formattedReport(symbol: DerivSymbols.display(sym))
+    }
+
+    // MARK: - Quantitative Backend Tools
+
+    private func marketData(for symbol: String, timeframe: Timeframe) -> MarketData? {
+        let candles = app.deriv.priceCache[symbol]?.candles ?? []
+        let price = app.deriv.priceCache[symbol]?.prices.last ?? app.deriv.prices[symbol] ?? candles.last?.close ?? 0
+        guard candles.count >= 30, price > 0 else { return nil }
+        return MarketData(symbol: symbol, assetClass: DerivSymbols.assetClass(symbol), timeframe: timeframe, candles: candles, currentPrice: price)
+    }
+
+    private func quantitativeAnalysis(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+        guard !symbol.isEmpty else { return "Missing 'symbol' parameter." }
+        guard let md = marketData(for: symbol, timeframe: timeframe) else { return "Insufficient cached candles for \(DerivSymbols.display(symbol)). Open it on Chart first and wait for 30 candles." }
+        let accountSize = (args["account_size"] as? Double) ?? Double(str(args, "account_size")) ?? 0
+        return BackendQuantEngine.report(for: md, accountSize: accountSize)
+    }
+
+    private func backtest(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+        guard !symbol.isEmpty, let md = marketData(for: symbol, timeframe: timeframe) else { return "Need a symbol with at least 30 cached candles." }
+        let fast = Int((args["fast"] as? Double) ?? Double(str(args, "fast")) ?? 10)
+        let slow = Int((args["slow"] as? Double) ?? Double(str(args, "slow")) ?? 30)
+        guard fast >= 2, slow > fast else { return "Use periods where slow > fast >= 2." }
+        let result = BackendQuantEngine.backtest(md.closes, fast: fast, slow: slow)
+        return "Backtest (\(DerivSymbols.display(symbol)) \(timeframe.rawValue), SMA \(fast)/\(slow), estimated costs included): \(result.trades) trades · \(Int(result.winRate * 100))% win rate · \(String(format: "%.2f", result.netReturn * 100))% net · \(String(format: "%.2f", result.maxDrawdown * 100))% max drawdown · PF \(result.profitFactor.isFinite ? String(format: "%.2f", result.profitFactor) : "∞"). Historical replay is not a forecast."
+    }
+
+    private func riskPlan(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+        guard !symbol.isEmpty, let md = marketData(for: symbol, timeframe: timeframe) else { return "Need a symbol with at least 30 cached candles." }
+        let accountSize = (args["account_size"] as? Double) ?? Double(str(args, "account_size")) ?? 0
+        let winRate = (args["win_rate"] as? Double) ?? Double(str(args, "win_rate")) ?? 0.5
+        let payoff = (args["payoff_ratio"] as? Double) ?? Double(str(args, "payoff_ratio")) ?? 1.5
+        let plan = BackendQuantEngine.riskPlan(md, winRate: min(max(winRate, 0.01), 0.99), payoffRatio: max(payoff, 0.1), accountSize: max(accountSize, 0))
+        return "Risk plan for \(DerivSymbols.display(symbol)): stop distance \(String(format: "%.5f", plan.stopDistance)), target \(String(format: "%.5f", plan.targetDistance)), R:R \(String(format: "%.2f", plan.riskReward)), Kelly \(String(format: "%.1f", plan.kellyFraction * 100))%, capped risk \(String(format: "%.1f", plan.cappedRiskFraction * 100))%, 95% VaR \(String(format: "%.2f", plan.valueAtRisk)), CVaR \(String(format: "%.2f", plan.conditionalValueAtRisk))."
     }
 
     // MARK: - Song Helpers

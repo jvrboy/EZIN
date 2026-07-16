@@ -33,6 +33,7 @@ struct ChatConfig: Codable {
     Creation: create_song(prompt[,name,format,tempo]) · create_artifact(kind,name,content)
     Brain (self-learning): brain_insights() · brain_report()
     Ultra-Confirmation: ultra_confirm(symbol,timeframe[,account_size,risk_percent])
+    Quant backend: quant_analysis(symbol,timeframe[,account_size]) · backtest(symbol,timeframe[,fast,slow]) · risk_plan(symbol,timeframe[,account_size,win_rate,payoff_ratio])
     Song format can be "wav" or "midi". For songs, describe notes like "C4 0.5s amp 0.5" or use natural language: "happy C major chord" or "ascending C scale".
     Artifact kinds: wav, midi, csv, json, html, txt, md, py, js, swift, zip, appPrototype.
     The analyze tool performs DEEP multi-timeframe analysis (18 agents + order flow + volatility regime + market structure) and returns a fully formatted Markdown report — preserve its headings, tables and structure.
