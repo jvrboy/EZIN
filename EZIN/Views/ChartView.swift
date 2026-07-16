@@ -3,7 +3,9 @@ import SwiftUI
 /// Chart tab — candlestick chart with advanced indicators: Volume Profile, Heatmap, Jump Markers.
 struct ChartView: View {
     @EnvironmentObject var app: AppState
-    @StateObject private var vm = ChartViewModel()
+    // Shared instance so loaded candles/indicators survive tab switches — RootView's
+    // `switch tab` otherwise destroys and recreates this view, blanking the chart on return.
+    @ObservedObject private var vm = ChartViewModel.shared
 
     var body: some View {
         VStack(spacing: 10) {
@@ -40,23 +42,11 @@ struct ChartView: View {
     }
 
     private var instrumentMenu: some View {
-        Menu {
-            ForEach(DerivSymbols.groups, id: \.0) { group in
-                Section(group.0) {
-                    ForEach(group.1, id: \.self) { sym in
-                        Button(DerivSymbols.display(sym)) { vm.setSymbol(sym) }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Text(DerivSymbols.display(vm.symbol)).font(.system(size: 15, weight: .semibold))
-                Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14).padding(.vertical, 8)
-            .glassCard(corner: 12)
-        }
+        // `.equatable()` short-circuits body re-evaluation when the selected symbol is
+        // unchanged, so live price ticks re-rendering ChartView no longer rebuild the
+        // open menu (which previously reset its scroll position to the top).
+        InstrumentMenu(symbol: vm.symbol, onSelect: { vm.setSymbol($0) })
+            .equatable()
     }
 
     private var timeframeRow: some View {
@@ -138,9 +128,44 @@ struct ChartView: View {
     }
 }
 
+/// Instrument picker isolated as an `Equatable` view so it only rebuilds when the
+/// selected symbol actually changes — not on every live price tick. This prevents the
+/// native menu from scrolling back to the top while the user is browsing instruments.
+private struct InstrumentMenu: View, Equatable {
+    let symbol: String
+    let onSelect: (String) -> Void
+
+    static func == (lhs: InstrumentMenu, rhs: InstrumentMenu) -> Bool {
+        lhs.symbol == rhs.symbol
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(DerivSymbols.groups, id: \.0) { group in
+                Section(group.0) {
+                    ForEach(group.1, id: \.self) { sym in
+                        Button(DerivSymbols.display(sym)) { onSelect(sym) }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(DerivSymbols.display(symbol)).font(.system(size: 15, weight: .semibold))
+                Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .glassCard(corner: 12)
+        }
+    }
+}
+
 /// Chart data + gesture state. Streams live ticks and pages history on demand.
 @MainActor
 final class ChartViewModel: ObservableObject {
+    /// Shared across the app so chart state persists across tab switches.
+    static let shared = ChartViewModel()
+
     @Published var symbol = "R_100"
     @Published var timeframe: Timeframe = .m1
     @Published var candles: [Candle] = []

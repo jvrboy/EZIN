@@ -19,6 +19,8 @@ struct ToolRegistry {
         case "inject_news":        return injectNews(args)
         case "create_artifact":    return createArtifact(args)
         case "create_song":        return createSong(args)
+        case "create_tone":        return createTone(args)
+        case "market_overview":    return marketOverview()
         case "brain_insights":     return brainInsights()
         case "brain_report":       return brainReport()
         case "ultra_confirm":      return await ultraConfirmation(args)
@@ -56,6 +58,9 @@ struct ToolRegistry {
         let sym = resolveSymbol(str(args, "symbol"))
         let tf = resolveTF(str(args, "timeframe"))
         guard !sym.isEmpty else { return "Please specify a symbol." }
+        // Ensure the socket is subscribed to this instrument so live ticks/prices flow
+        // even when the user hasn't opened it on the Chart tab yet.
+        app.deriv.subscribeTicks(sym)
         let mtf = MultiTimeframeEngine(deriv: app.deriv, engine: app.engine)
         guard let report = await mtf.analyze(symbol: sym, requested: tf) else {
             return "No market data available for \(DerivSymbols.display(sym)). Open it on the Chart tab to subscribe, or check the connection."
@@ -232,6 +237,42 @@ struct ToolRegistry {
         return "Created \(art.name) (\(art.sizeDisplay)) from: '\(prompt.prefix(60))'."
     }
 
+    /// Generate a pure sine-wave tone WAV artifact (frequency + duration + volume).
+    /// This is the direct, reliable path for "create a WAV tone" requests — no MCP server needed.
+    private func createTone(_ args: [String: Any]) -> String {
+        let freq = (args["frequency"] as? Double) ?? Double(str(args, "frequency")) ?? 440
+        let dur = (args["duration"] as? Double) ?? Double(str(args, "duration")) ?? 1.0
+        let vol = (args["volume"] as? Double) ?? Double(str(args, "volume")) ?? 0.5
+        let name = (args["name"] as? String) ?? "tone"
+        let clampedVol = max(0.0, min(1.0, vol))
+        let clampedDur = max(0.05, min(60.0, dur))
+        let clampedFreq = max(1.0, min(20000.0, freq))
+        let note = AudioGenerationService.Note(frequency: clampedFreq, duration: clampedDur, amplitude: clampedVol)
+        guard let data = AudioGenerationService.generateWAV(notes: [note]) else {
+            return "Failed to generate tone."
+        }
+        guard let art = saveAudioArtifact(data: data, name: name, ext: "wav") else {
+            return "Failed to save tone."
+        }
+        return "Created \(art.name) (\(art.sizeDisplay)) — \(Int(clampedFreq)) Hz sine tone for \(String(format: "%.2f", clampedDur))s at \(Int(clampedVol * 100))% volume."
+    }
+
+    /// Live market overview across the main instruments (reads cached tick prices).
+    private func marketOverview() -> String {
+        let symbols = DerivSymbols.volatility
+        var rows: [String] = ["| Instrument | Live Price |", "|---|---|"]
+        for sym in symbols {
+            if let p = app.deriv.prices[sym] ?? app.deriv.priceCache[sym]?.prices.last, p > 0 {
+                let fmt = p > 100 ? String(format: "%.2f", p) : String(format: "%.4f", p)
+                rows.append("| \(DerivSymbols.display(sym)) | \(fmt) |")
+            }
+        }
+        guard rows.count > 2 else {
+            return "No live prices are cached yet. Open the Chart tab (or run `price(symbol)`) to subscribe to an instrument first."
+        }
+        return "## Market Overview\n\n" + rows.joined(separator: "\n")
+    }
+
     private func saveAudioArtifact(data: Data, name: String, ext: String) -> Artifact? {
         let dir = FileStore.shared.artifactsDir
         let fileName = "\(name).\(ext)"
@@ -292,6 +333,8 @@ struct ToolRegistry {
         let accountSize = args["account_size"] as? Double ?? Double(str(args, "account_size"))
         let riskPct = args["risk_percent"] as? Double ?? Double(str(args, "risk_percent"))
 
+        // Ensure the socket is subscribed so live data flows for symbols not yet opened on Chart.
+        app.deriv.subscribeTicks(sym)
         // Build the deep multi-timeframe report (async pipeline).
         let mtf = MultiTimeframeEngine(deriv: app.deriv, engine: app.engine)
         guard let report = await mtf.analyze(symbol: sym, requested: tf) else {

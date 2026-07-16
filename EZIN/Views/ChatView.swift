@@ -168,6 +168,17 @@ final class ChatViewModel: ObservableObject {
         var system = cfg.systemPrompt + "\n\n" + AgentRegistry.systemContext()
         system += memory.contextBlock(scope: store.currentID)
         if let pid = store.current?.projectID, let proj = store.project(pid) { system += projectContext(proj) }
+        // Always-current tool addendum (keeps newest tools discoverable even if a stale
+        // systemPrompt is persisted in UserDefaults from an earlier build).
+        system += """
+
+
+        ADDITIONAL TOOLS (current build): \
+        create_tone(frequency,duration[,volume,name]) makes a pure sine-wave WAV tone \
+        (use this for any "tone"/"beep"/"WAV tone" request — never invent an MCP server for audio). \
+        market_overview() lists live prices for the main instruments. \
+        Remember: call a tool with a single line `ACTION: {"tool":"<name>","args":{...}}` and nothing else.
+        """
 
         let tools = ToolRegistry(app: app)
         var turns: [ChatTurn] = (store.current?.messages ?? []).filter { $0.role != "tool" }.map {

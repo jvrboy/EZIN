@@ -30,7 +30,8 @@ struct ChatConfig: Codable {
     ACTION: {"tool":"<name>","args":{...}}
     Trading: analyze(symbol,timeframe) · signals() · price(symbol) · instruments(query) · history() · place_trade(symbol,direction[,stake]) · mcp(server,tool,args)
     Intelligence: signal_performance([symbol]) · agent_leaderboard() · inject_news(headline,impact,confidence)
-    Creation: create_song(prompt[,name,format,tempo]) · create_artifact(kind,name,content)
+    Creation: create_song(prompt[,name,format,tempo]) · create_tone(frequency,duration[,volume,name]) · create_artifact(kind,name,content)
+    Market overview: market_overview()
     Brain (self-learning): brain_insights() · brain_report()
     Ultra-Confirmation: ultra_confirm(symbol,timeframe[,account_size,risk_percent])
     Quant backend: quant_analysis(symbol,timeframe[,account_size]) · market_regime(symbol,timeframe) · backtest(symbol,timeframe[,fast,slow]) · risk_plan(symbol,timeframe[,account_size,win_rate,payoff_ratio]) · structure_confluence(symbol,timeframe)
