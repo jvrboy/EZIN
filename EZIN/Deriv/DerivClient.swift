@@ -14,6 +14,11 @@ enum DerivConnectionState: Equatable {
 }
 
 /// A live open contract (position) tracked via proposal_open_contract.
+struct DerivCandleCache {
+    var candles: [Candle]
+    var prices: [Double]
+}
+
 struct DerivPosition: Identifiable, Equatable {
     let id: Int              // contract_id
     var symbol: String
@@ -66,6 +71,7 @@ final class DerivClient: NSObject, ObservableObject {
     @Published var balance: Double = 0
     @Published var currency: String = "USD"
     @Published var prices: [String: Double] = [:]           // live tick prices
+    @Published var priceCache: [String: DerivCandleCache] = [:] // latest requested candle series
     @Published var positions: [Int: DerivPosition] = [:]    // live open contracts
     @Published var lastError: String?
 
@@ -200,7 +206,10 @@ final class DerivClient: NSObject, ObservableObject {
             if let err = resp["error"] as? [String: Any] { throw DerivError.api(err["message"] as? String ?? "candles error") }
             return []
         }
-        return arr.compactMap(Self.parseCandle)
+        let parsed = arr.compactMap(Self.parseCandle)
+        let closes = parsed.map(\.close)
+        await MainActor.run { self.priceCache[symbol] = DerivCandleCache(candles: parsed, prices: closes) }
+        return parsed
     }
 
     func subscribeTicks(_ symbol: String) { subscribedSymbols.insert(symbol); send(["ticks": symbol, "subscribe": 1]) }

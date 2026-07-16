@@ -46,7 +46,7 @@ actor LocalLLMInferenceService {
         }
         
         // Verify the model file is readable
-        guard FileManager.default.isReadableFileAtPath(modelPath) else {
+        guard FileManager.default.isReadableFile(atPath: modelPath) else {
             throw LocalLLMError.failedToLoadModel("Model file is not readable.")
         }
         
@@ -163,9 +163,7 @@ final class LocalLLMManager {
     }
     
     /// Get the currently loaded model.
-    func getCurrentModel() -> LLMModel? {
-        return Task {
-            await service.getCurrentModel()
-        }.result.success ?? nil
+    func getCurrentModel() async -> LLMModel? {
+        await service.getCurrentModel()
     }
 }

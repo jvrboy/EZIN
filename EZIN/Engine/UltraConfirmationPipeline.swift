@@ -125,7 +125,7 @@ struct UltraConfirmationPipeline {
         let isBullish = direction.isBullish
 
         // Calculate levels
-        let atr = report.requestedFocus.atrEffective
+        let atr = max(abs(price) * report.requestedFocus.realizedVol, abs(price) * 0.001)
         let (entry, sl, tp1, tp2, tp3, invalidation) = calculateLevels(
             direction: direction, price: price, atr: atr,
             support: report.requestedFocus.support,

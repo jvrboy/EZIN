@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 import Combine
+import UIKit
 
 /// Real push notification manager for EZIN trading signals and alerts.
 /// Registers with APNs, schedules local notifications for signal events,
@@ -27,7 +28,7 @@ final class PushNotificationManager: NSObject, ObservableObject {
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
             await MainActor.run { self.isEnabled = granted }
             if granted {
-                await UIApplication.shared.registerForRemoteNotifications()
+                UIApplication.shared.registerForRemoteNotifications()
             }
             return granted
         } catch {
@@ -121,7 +122,11 @@ final class PushNotificationManager: NSObject, ObservableObject {
 
     func clearBadge() {
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
-        UNUserNotificationCenter.current().setBadgeCount(0)
+        if #available(iOS 16.0, *) {
+            UNUserNotificationCenter.current().setBadgeCount(0)
+        } else {
+            UIApplication.shared.applicationIconBadgeNumber = 0
+        }
     }
 
     // MARK: - Private

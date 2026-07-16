@@ -218,11 +218,9 @@ struct ActiveSignalRow: View {
 
             // Floating P&L
             VStack(alignment: .trailing, spacing: 2) {
-                if let pnl = tracked.floatingPnL {
-                    Text(fmt(pnl))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(pnl >= 0 ? Glass.buy : Glass.sell)
-                }
+                Text(fmt(tracked.floatingPnL))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tracked.floatingPnL >= 0 ? Glass.buy : Glass.sell)
                 Text("\(Int(tracked.signal.confidence))%")
                     .font(.system(size: 10))
                     .foregroundStyle(.white.opacity(0.4))
@@ -260,11 +258,9 @@ struct ResolvedSignalRow: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white.opacity(0.88))
                     Spacer()
-                    if let pnl = tracked.floatingPnL {
-                        Text(fmt(pnl))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(pnl >= 0 ? Glass.buy : Glass.sell)
-                    }
+                    Text(fmt(tracked.floatingPnL))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(tracked.floatingPnL >= 0 ? Glass.buy : Glass.sell)
                 }
                 HStack(spacing: 6) {
                     Text(statusLabel)
