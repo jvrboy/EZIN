@@ -9,7 +9,7 @@ struct TradingSignal: Codable, Identifiable {
     let entry: Double
     let stopLoss: Double
     let takeProfit: Double
-    let confidence: Double        // 0...100 for display
+    var confidence: Double        // 0...100 for display
     let strategy: String
     let timeframe: Timeframe
     let createdAt: Date

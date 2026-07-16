@@ -283,8 +283,8 @@ struct PerformanceAnalyticsView: View {
     }
 
     private func refreshData() async {
-        // Refresh data from store
-        objectWillChange.send()
+        // Refresh data from store; the @StateObject store drives view updates.
+        await MainActor.run { store.objectWillChange.send() }
     }
 }
 
@@ -427,16 +427,6 @@ struct ExportView: View {
             }
         }
     }
-}
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Navigation Extension

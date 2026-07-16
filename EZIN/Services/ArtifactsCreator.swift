@@ -160,9 +160,9 @@ enum ArtifactsCreator {
             zipData.append(contentsOf: timestamp.littleEndianBytes)
             zipData.append(contentsOf: timestamp.littleEndianBytes)
             zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // CRC-32 (simplified)
-            zipData.append(UInt32(fileData.count).littleEndianBytes) // compressed size
-            zipData.append(UInt32(fileData.count).littleEndianBytes) // uncompressed size
-            zipData.append(UInt32(nameData.count).littleEndianBytes) // name length
+            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes) // compressed size
+            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes) // uncompressed size
+            zipData.append(contentsOf: UInt32(nameData.count).littleEndianBytes) // name length
             zipData.append(contentsOf: [0x00, 0x00]) // extra length
             zipData.append(nameData)
             zipData.append(fileData)
@@ -186,15 +186,15 @@ enum ArtifactsCreator {
             centralDir.append(contentsOf: timestamp.littleEndianBytes)
             centralDir.append(contentsOf: timestamp.littleEndianBytes)
             centralDir.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // CRC
-            centralDir.append(UInt32(0).littleEndianBytes) // compressed size
-            centralDir.append(UInt32(0).littleEndianBytes) // uncompressed
-            centralDir.append(UInt32(nameData.count).littleEndianBytes)
+            centralDir.append(contentsOf: UInt32(0).littleEndianBytes) // compressed size
+            centralDir.append(contentsOf: UInt32(0).littleEndianBytes) // uncompressed
+            centralDir.append(contentsOf: UInt32(nameData.count).littleEndianBytes)
             centralDir.append(contentsOf: [0x00, 0x00]) // extra length
             centralDir.append(contentsOf: [0x00, 0x00]) // comment length
             centralDir.append(contentsOf: [0x00, 0x00]) // disk number
             centralDir.append(contentsOf: [0x00, 0x00]) // internal attrs
             centralDir.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // external attrs
-            centralDir.append(UInt32(centralOffset).littleEndianBytes) // local header offset
+            centralDir.append(contentsOf: UInt32(centralOffset).littleEndianBytes) // local header offset
             centralDir.append(nameData)
 
             centralOffset += 30 + nameData.count
@@ -207,10 +207,10 @@ enum ArtifactsCreator {
         zipData.append(contentsOf: [0x50, 0x4B, 0x05, 0x06]) // signature
         zipData.append(contentsOf: [0x00, 0x00]) // disk number
         zipData.append(contentsOf: [0x00, 0x00]) // disk with central dir
-        zipData.append(UInt16(fileList.filter { !$0.isEmpty }.count).littleEndianBytes) // entries on disk
-        zipData.append(UInt16(fileList.filter { !$0.isEmpty }.count).littleEndianBytes) // total entries
-        zipData.append(UInt32(centralDirSize).littleEndianBytes)
-        zipData.append(UInt32(centralDirOffset).littleEndianBytes)
+        zipData.append(contentsOf: UInt16(fileList.filter { !$0.isEmpty }.count).littleEndianBytes) // entries on disk
+        zipData.append(contentsOf: UInt16(fileList.filter { !$0.isEmpty }.count).littleEndianBytes) // total entries
+        zipData.append(contentsOf: UInt32(centralDirSize).littleEndianBytes)
+        zipData.append(contentsOf: UInt32(centralDirOffset).littleEndianBytes)
         zipData.append(contentsOf: [0x00, 0x00]) // comment length
 
         return zipData
@@ -253,10 +253,10 @@ enum ArtifactsCreator {
             zipData.append(contentsOf: [0x00, 0x00]) // flags
             zipData.append(contentsOf: [0x00, 0x00]) // stored
             zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // time
-            zipData.append(UInt32(crc).littleEndianBytes)
-            zipData.append(UInt32(fileData.count).littleEndianBytes)
-            zipData.append(UInt32(fileData.count).littleEndianBytes)
-            zipData.append(UInt32(nameData.count).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(crc).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(nameData.count).littleEndianBytes)
             zipData.append(contentsOf: [0x00, 0x00])
             zipData.append(nameData)
             zipData.append(fileData)
@@ -277,15 +277,15 @@ enum ArtifactsCreator {
             zipData.append(contentsOf: [0x00, 0x00])
             zipData.append(contentsOf: [0x00, 0x00])
             zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
-            zipData.append(UInt32(0).littleEndianBytes)
-            zipData.append(UInt32(size).littleEndianBytes)
-            zipData.append(UInt32(size).littleEndianBytes)
-            zipData.append(UInt32(nameSize).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(0).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(size).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(size).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(nameSize).littleEndianBytes)
             zipData.append(contentsOf: [0x00, 0x00])
             zipData.append(contentsOf: [0x00, 0x00])
             zipData.append(contentsOf: [0x00, 0x00])
             zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
-            zipData.append(UInt32(offset).littleEndianBytes)
+            zipData.append(contentsOf: UInt32(offset).littleEndianBytes)
             zipData.append(nameData)
         }
 
@@ -293,10 +293,10 @@ enum ArtifactsCreator {
         let centralSize = zipData.count - centralStart
         zipData.append(contentsOf: [0x50, 0x4B, 0x05, 0x06])
         zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
-        zipData.append(UInt16(fileOffsets.count).littleEndianBytes)
-        zipData.append(UInt16(fileOffsets.count).littleEndianBytes)
-        zipData.append(UInt32(centralSize).littleEndianBytes)
-        zipData.append(UInt32(centralStart).littleEndianBytes)
+        zipData.append(contentsOf: UInt16(fileOffsets.count).littleEndianBytes)
+        zipData.append(contentsOf: UInt16(fileOffsets.count).littleEndianBytes)
+        zipData.append(contentsOf: UInt32(centralSize).littleEndianBytes)
+        zipData.append(contentsOf: UInt32(centralStart).littleEndianBytes)
         zipData.append(contentsOf: [0x00, 0x00])
 
         return zipData

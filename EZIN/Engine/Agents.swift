@@ -10,7 +10,7 @@ protocol SignalAgent {
     func analyze(_ md: MarketData, _ ind: TechnicalIndicators) -> AgentVote
 }
 
-private func vote(_ name: String, _ w: Double, _ score: Double, _ conf: Double, _ why: String) -> AgentVote {
+func vote(_ name: String, _ w: Double, _ score: Double, _ conf: Double, _ why: String) -> AgentVote {
     let dir: Direction
     switch score {
     case let s where s >= 1.5: dir = .strongBullish

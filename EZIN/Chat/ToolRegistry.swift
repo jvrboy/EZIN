@@ -21,7 +21,7 @@ struct ToolRegistry {
         case "create_song":        return createSong(args)
         case "brain_insights":     return brainInsights()
         case "brain_report":       return brainReport()
-        case "ultra_confirm":      return ultraConfirmation(args)
+        case "ultra_confirm":      return await ultraConfirmation(args)
         case "quant_analysis":     return quantitativeAnalysis(args)
         case "market_regime":      return marketRegime(args)
         case "performance_snapshot": return performanceSnapshot(args)
@@ -285,30 +285,18 @@ struct ToolRegistry {
 
     // MARK: - Ultra-Confirmation Pipeline
 
-    private func ultraConfirmation(_ args: [String: Any]) -> String {
+    private func ultraConfirmation(_ args: [String: Any]) async -> String {
         let sym = resolveSymbol(str(args, "symbol"))
         guard !sym.isEmpty else { return "Missing 'symbol' parameter." }
         let tf = Timeframe(rawValue: str(args, "timeframe")) ?? .m5
         let accountSize = args["account_size"] as? Double ?? Double(str(args, "account_size"))
         let riskPct = args["risk_percent"] as? Double ?? Double(str(args, "risk_percent"))
 
-        // Get current market data
-        let candles = app.deriv.priceCache[sym]?.candles ?? []
-        let prices = app.deriv.priceCache[sym]?.prices ?? []
-        let md = MarketData(symbol: sym, assetClass: DerivSymbols.assetClass(sym), timeframe: tf,
-                            candles: candles, currentPrice: prices.last ?? 0)
-
-        guard candles.count > 30 else { return "Insufficient data for \(sym). Need at least 30 candles." }
-
-        // Run the deep analysis
-        let ind = TechnicalAnalyzer().analyze(md)
-        let agents = ExtendedAgentFactory.fullCouncil().filter { $0.isActive }
-        let votes = agents.map { $0.analyze(md, ind) }
-        let report = AnalysisReport.build(
-            marketData: md, indicators: ind, votes: votes,
-            higherTFData: nil, higherTFIndicators: nil,
-            requestedTF: tf
-        )
+        // Build the deep multi-timeframe report (async pipeline).
+        let mtf = MultiTimeframeEngine(deriv: app.deriv, engine: app.engine)
+        guard let report = await mtf.analyze(symbol: sym, requested: tf) else {
+            return "No market data available for \(DerivSymbols.display(sym)). Open it on the Chart tab to subscribe, or check the connection."
+        }
 
         // Run ultra-confirmation pipeline
         let input = UltraConfirmationPipeline.PipelineInput(

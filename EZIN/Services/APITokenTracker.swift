@@ -134,8 +134,7 @@ final class APITokenTracker: ObservableObject {
         let calendar = Calendar.current
         var changed = false
         for (key, var stats) in keyStats {
-            if let lastReset = stats.lastResetAt,
-               !calendar.isDate(lastReset, inSameDayAs: Date()) {
+            if !calendar.isDate(stats.lastResetAt, inSameDayAs: Date()) {
                 stats.requestsToday = 0
                 stats.tokensUsed = 0
                 stats.isRateLimited = false

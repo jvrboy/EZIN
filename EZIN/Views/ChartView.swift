@@ -165,9 +165,9 @@ final class ChartViewModel: ObservableObject {
     var scaleBase: CGFloat = 1
     var needsBackfill = false
 
-    private weak var deriv: DerivClient?
+    weak var deriv: DerivClient?
     private var ticker: Task<Void, Never>?
-    private var loading = false
+    var loading = false
     private var backfilling = false
 
     func attach(_ deriv: DerivClient) async {

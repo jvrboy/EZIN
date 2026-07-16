@@ -85,7 +85,7 @@ enum AudioGenerationService {
         guard !trimmed.isEmpty else { return 0 }
         // Extract note letter and octave
         let letter = trimmed.prefix { $0.isLetter || $0 == "#" || $0 == "b" }
-        let octaveStr = trimmed.suffix { $0.isNumber }
+        let octaveStr = String(trimmed.reversed().prefix { $0.isNumber }.reversed())
         guard let octave = Int(octaveStr), let baseFreq = map[String(letter)] else { return 0 }
         // Adjust for octave
         let octaveDiff = octave - 4
@@ -170,28 +170,28 @@ enum AudioGenerationService {
 
         // RIFF header
         data.append(contentsOf: Array("RIFF".utf8))
-        data.append(UInt32(totalSize - 8).littleEndianBytes)
+        data.append(contentsOf: UInt32(totalSize - 8).littleEndianBytes)
         data.append(contentsOf: Array("WAVE".utf8))
 
         // fmt chunk
         data.append(contentsOf: Array("fmt ".utf8))
-        data.append(UInt32(16).littleEndianBytes) // chunk size
-        data.append(UInt16(1).littleEndianBytes)  // PCM
-        data.append(UInt16(1).littleEndianBytes)  // mono
-        data.append(UInt32(sampleRate).littleEndianBytes)
-        data.append(UInt32(sampleRate * bytesPerSample).littleEndianBytes) // byte rate
-        data.append(UInt16(bytesPerSample).littleEndianBytes) // block align
-        data.append(UInt16(16).littleEndianBytes) // bits per sample
+        data.append(contentsOf: UInt32(16).littleEndianBytes) // chunk size
+        data.append(contentsOf: UInt16(1).littleEndianBytes)  // PCM
+        data.append(contentsOf: UInt16(1).littleEndianBytes)  // mono
+        data.append(contentsOf: UInt32(sampleRate).littleEndianBytes)
+        data.append(contentsOf: UInt32(sampleRate * bytesPerSample).littleEndianBytes) // byte rate
+        data.append(contentsOf: UInt16(bytesPerSample).littleEndianBytes) // block align
+        data.append(contentsOf: UInt16(16).littleEndianBytes) // bits per sample
 
         // data chunk
         data.append(contentsOf: Array("data".utf8))
-        data.append(UInt32(dataSize).littleEndianBytes)
+        data.append(contentsOf: UInt32(dataSize).littleEndianBytes)
 
         // Convert float samples to 16-bit PCM
         for sample in samples {
             let clamped = max(-1.0, min(1.0, Double(sample)))
             let pcm = Int16(clamped * 32767.0)
-            data.append(pcm.littleEndianBytes)
+            data.append(contentsOf: pcm.littleEndianBytes)
         }
 
         return data
@@ -237,10 +237,10 @@ enum AudioGenerationService {
 
         // MThd header
         data.append(contentsOf: Array("MThd".utf8))
-        data.append(UInt32(6).bigEndianBytes)
-        data.append(UInt16(0).bigEndianBytes) // format 0
-        data.append(UInt16(1).bigEndianBytes) // 1 track
-        data.append(ticksPerQuarter.bigEndianBytes)
+        data.append(contentsOf: UInt32(6).bigEndianBytes)
+        data.append(contentsOf: UInt16(0).bigEndianBytes) // format 0
+        data.append(contentsOf: UInt16(1).bigEndianBytes) // 1 track
+        data.append(contentsOf: ticksPerQuarter.bigEndianBytes)
 
         // MTrk header
         data.append(contentsOf: Array("MTrk".utf8))
@@ -249,7 +249,7 @@ enum AudioGenerationService {
 
         // Tempo meta event
         let microsecondsPerQuarter = 60000000 / Int(tempoBPM)
-        trackData.append(variableLengthQuantity(0)) // delta time
+        trackData.append(contentsOf: variableLengthQuantity(0)) // delta time
         trackData.append(0xFF) // meta event
         trackData.append(0x51) // set tempo
         trackData.append(0x03) // 3 bytes
@@ -258,7 +258,7 @@ enum AudioGenerationService {
         trackData.append(UInt8(microsecondsPerQuarter & 0xFF))
 
         // Program change (piano = 0)
-        trackData.append(variableLengthQuantity(0))
+        trackData.append(contentsOf: variableLengthQuantity(0))
         trackData.append(0xC0)
         trackData.append(0x00)
 
@@ -266,16 +266,16 @@ enum AudioGenerationService {
         for note in notes {
             if note.noteNumber == 0 {
                 // Rest - just advance time
-                trackData.append(variableLengthQuantity(note.duration))
+                trackData.append(contentsOf: variableLengthQuantity(note.duration))
             } else {
                 // Note on
-                trackData.append(variableLengthQuantity(0))
+                trackData.append(contentsOf: variableLengthQuantity(0))
                 trackData.append(0x90) // note on channel 0
                 trackData.append(note.noteNumber)
                 trackData.append(note.velocity)
 
                 // Note off (after duration)
-                trackData.append(variableLengthQuantity(note.duration))
+                trackData.append(contentsOf: variableLengthQuantity(note.duration))
                 trackData.append(0x80) // note off channel 0
                 trackData.append(note.noteNumber)
                 trackData.append(0x00)
@@ -283,12 +283,12 @@ enum AudioGenerationService {
         }
 
         // End of track
-        trackData.append(variableLengthQuantity(0))
+        trackData.append(contentsOf: variableLengthQuantity(0))
         trackData.append(0xFF)
         trackData.append(0x2F)
         trackData.append(0x00)
 
-        data.append(UInt32(trackData.count).bigEndianBytes)
+        data.append(contentsOf: UInt32(trackData.count).bigEndianBytes)
         data.append(trackData)
 
         return data

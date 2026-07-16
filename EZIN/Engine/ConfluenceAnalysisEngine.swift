@@ -41,7 +41,7 @@ enum ConfluenceAnalysisEngine {
         let nearbyResistance = resistances.contains { latest >= $0.lower * 0.998 && latest <= $0.upper }
         let systematic = BackendQuantEngine.systematic(md)
         let score = directionValue(systematic.direction) * 0.5 + divergenceScore * 0.25 + (nearbySupport ? 0.25 : 0) - (nearbyResistance ? 0.25 : 0)
-        let direction = score > 0.6 ? .bullish : score < -0.6 ? .bearish : .neutral
+        let direction: Direction = score > 0.6 ? .bullish : (score < -0.6 ? .bearish : .neutral)
         var rationale = ["Systematic backend: \(label(systematic.direction)) (\(systematic.confidence)/100)."]
         if nearbySupport { rationale.append("Price is interacting with clustered support.") }
         if nearbyResistance { rationale.append("Price is interacting with clustered resistance.") }

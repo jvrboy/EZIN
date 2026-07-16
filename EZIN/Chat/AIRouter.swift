@@ -70,10 +70,10 @@ enum AIRouter {
             case .localLLM: throw AIProviderError.noKey
             default: result = try await callOpenAICompatible(provider, key: key, system: system, messages: messages)
             }
-            trackSuccess(provider: provider, key: key, response: ["result": result])
+            await trackSuccess(provider: provider, key: key, response: ["result": result])
             return result
         } catch {
-            trackError(provider: provider, key: key, error: error)
+            await trackError(provider: provider, key: key, error: error)
             throw error
         }
     }
@@ -142,6 +142,7 @@ enum AIRouter {
 
     // MARK: - Usage Tracking
 
+    @MainActor
     private static func trackSuccess(provider: CredentialKey, key: String, response: [String: Any]) {
         let keyHash = String(key.prefix(8)) + "..." + String(key.suffix(4))
         var headers: [AnyHashable: Any] = [:]
@@ -154,6 +155,7 @@ enum AIRouter {
         APITokenTracker.shared.markHealthy(provider: provider, keyId: keyHash)
     }
 
+    @MainActor
     private static func trackError(provider: CredentialKey, key: String, error: Error) {
         let keyHash = String(key.prefix(8)) + "..." + String(key.suffix(4))
         if let err = error as? AIProviderError, case .http(let msg) = err, msg.contains("429") {

@@ -339,7 +339,18 @@ struct MetaOrchestrator {
 
     /// Blend votes using dynamic weights. Returns a net score -1...1 and confidence.
     static func blend(votes: [AgentVote], symbol: String, timeframe: Timeframe) -> (score: Double, confidence: Double, breakdown: String) {
-        let dynamic = dynamicWeights(for: votes.map { $0 })
+        // Compute dynamic weights directly from the votes' track records.
+        var dynamic: [String: Double] = [:]
+        for v in votes {
+            let perf = performanceDB[v.agentName] ?? AgentPerformance()
+            let multiplier: Double
+            switch perf.accuracy {
+            case let a where a > 0.6: multiplier = 1.2
+            case let a where a < 0.4: multiplier = 0.8
+            default: multiplier = 1.0
+            }
+            dynamic[v.agentName] = v.weight * multiplier
+        }
 
         var bullishScore = 0.0, bearishScore = 0.0, totalWeight = 0.0
         var parts: [String] = []

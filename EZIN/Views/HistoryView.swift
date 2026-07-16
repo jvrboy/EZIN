@@ -30,9 +30,9 @@ struct HistoryView: View {
     private var tradesSection: some View {
         VStack(spacing: 14) {
             HStack(spacing: 12) {
-                StatCard(value: "\(winRate)%", label: "Win rate", color: .white)
-                StatCard(value: "\(wins)", label: "Wins", color: Glass.buy)
-                StatCard(value: "\(app.history.count - wins)", label: "Losses", color: Glass.sell)
+                HistoryStatCard(value: "\(winRate)%", label: "Win rate", color: .white)
+                HistoryStatCard(value: "\(wins)", label: "Wins", color: Glass.buy)
+                HistoryStatCard(value: "\(app.history.count - wins)", label: "Losses", color: Glass.sell)
             }
 
             if app.history.isEmpty {
@@ -160,16 +160,16 @@ struct HistoryView: View {
 
         return VStack(spacing: 8) {
             HStack(spacing: 12) {
-                StatCard(value: "\(wr)%", label: "Win rate", color: .white)
-                StatCard(value: "\(wins)", label: "Wins", color: Glass.buy)
-                StatCard(value: "\(losses)", label: "Losses", color: Glass.sell)
+                HistoryStatCard(value: "\(wr)%", label: "Win rate", color: .white)
+                HistoryStatCard(value: "\(wins)", label: "Wins", color: Glass.buy)
+                HistoryStatCard(value: "\(losses)", label: "Losses", color: Glass.sell)
             }
             if resolved.count >= 5 {
                 HStack(spacing: 12) {
                     let rr = performance.averageRR
-                    StatCard(value: String(format: "%.1f", rr), label: "Avg R:R", color: Glass.accent2)
-                    StatCard(value: "\(resolved.count)", label: "Total", color: .white.opacity(0.7))
-                    StatCard(value: "\(performance.activeSignals().count)", label: "Active", color: .yellow)
+                    HistoryStatCard(value: String(format: "%.1f", rr), label: "Avg R:R", color: Glass.accent2)
+                    HistoryStatCard(value: "\(resolved.count)", label: "Total", color: .white.opacity(0.7))
+                    HistoryStatCard(value: "\(performance.activeSignals().count)", label: "Active", color: .yellow)
                 }
             }
         }
@@ -327,7 +327,7 @@ struct ResolvedSignalRow: View {
     }
 }
 
-struct StatCard: View {
+struct HistoryStatCard: View {
     let value: String; let label: String; let color: Color
     var body: some View {
         VStack(spacing: 4) {
