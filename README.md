@@ -7,7 +7,7 @@ real-time chart, an AI assistant, and MCP tooling.
 ## Tabs
 
 1. **Chart** — clean candlestick chart with advanced overlays: instrument picker, timeframe selector, pan + pinch-zoom,
-   live tick updates, unlimited historical backfill, **Volume Profile**, **Heatmap**, and **Jump Markers**.
+   live tick updates, unlimited historical backfill, **Volume Profile**, **Heatmap**, **Jump Markers**, and persistent on-chart **support/resistance lines, time markers, supply/demand rectangles, and trend rays**.
 2. **Signals** — live council signals with **Multi-Timeframe Analysis** and **Real-Time Performance Tracking**.
 3. **Chat** — a simple chat surface backed by a powerful agent/tool orchestrator with **Local LLM support** and **Nvidia NIM/Cerebras** integration.
 4. **History** — *Trades* (real closed trades from your Deriv account) and *Signals* (app-generated
@@ -53,7 +53,7 @@ DEX, Drift Switch, plus Forex, Commodities (metals), Crypto and Stock Indices.
   so a single key's rate limit never blocks you.
 - **36 specialist agents + 50 pipelines** power an orchestration loop.
 - **In-app tools** the assistant can call: `analyze`, `signals`, `price`, `instruments`, `history`,
-  `place_trade` (guarded), and `mcp`.
+  `quant_analysis`, `backtest`, `risk_plan`, `structure_confluence`, `place_trade` (guarded), and `mcp`.
 
 ## MCP connectors
 
@@ -70,6 +70,10 @@ MCP servers you connect — the correct architecture for a sandboxed iOS app.
 
 8 themes (Aurora, Liquid Glass, Midnight, Sunset, Ocean, Forest, Mono, Neon) with gradient palettes and
 an animated-background motion toggle.
+
+## Quantitative & structure backends
+
+The on-device quantitative backend exposes repeatable trend, momentum, breakout and mean-reversion scores; descriptive statistics; ACF/Hurst/cycle estimates; chi-square, entropy, runs and Markov-style transition diagnostics; ATR/Kelly/VaR/CVaR risk inputs; and a cost-aware crossover replay. The structure backend combines clustered support/resistance, supply/demand impulses, and RSI/MACD divergences. These are decision-support tools, not predictions or execution authority.
 
 ## Real-time & production
 

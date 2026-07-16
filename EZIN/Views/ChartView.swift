@@ -33,6 +33,7 @@ struct ChartView: View {
                 timeframeRow
                 Spacer()
                 indicatorToggles
+                drawingTools
             }
         }
         .padding(.horizontal, 16)
@@ -112,6 +113,26 @@ struct ChartView: View {
         }
     }
 
+    private var drawingTools: some View {
+        HStack(spacing: 4) {
+            drawingButton("minus", kind: .horizontalLine, label: "S/R")
+            drawingButton("lineweight", kind: .verticalLine, label: "Time")
+            drawingButton("rectangle.dashed", kind: .rectangle, label: "Zone")
+            drawingButton("chart.line.uptrend.xyaxis", kind: .trendLine, label: "Trend")
+            Button { vm.clearDrawings() } label: { Image(systemName: "trash").font(.system(size: 11)) }
+                .buttonStyle(.plain).foregroundStyle(.white.opacity(0.55)).padding(6)
+        }
+        .glassCard(corner: 10)
+    }
+
+    private func drawingButton(_ icon: String, kind: ChartDrawing.Kind, label: String) -> some View {
+        Button { vm.addDrawing(kind: kind, label: label) } label: {
+            Image(systemName: icon).font(.system(size: 11, weight: .semibold)).padding(6)
+        }
+        .buttonStyle(.plain).foregroundStyle(Glass.accent)
+        .accessibilityLabel(label)
+    }
+
     private func fmt(_ v: Double) -> String {
         v > 100 ? String(format: "%.2f", v) : String(format: "%.4f", v)
     }
@@ -137,6 +158,7 @@ final class ChartViewModel: ObservableObject {
     @Published var volumeProfileData: Microstructure.VolumeProfile?
     @Published var liquidityLevels: [Microstructure.LiquidityLevel]?
     @Published var jumpEvents: [Microstructure.JumpEvent]?
+    @Published var drawings: [ChartDrawing] = ChartDrawingStore.shared.drawings
 
     // Gesture bases (not published — avoid redraw storms)
     var dragBase: CGFloat = 0
@@ -227,6 +249,24 @@ final class ChartViewModel: ObservableObject {
         }
     }
 
+    func addDrawing(kind: ChartDrawing.Kind, label: String) {
+        guard !candles.isEmpty else { return }
+        let index = candles.count - 1
+        let price = lastPrice ?? candles[index].close
+        let span = max(1, min(20, candles.count / 8))
+        let range = max((candles.suffix(14).map { $0.high }.max() ?? price) - (candles.suffix(14).map { $0.low }.min() ?? price), abs(price) * 0.001)
+        let drawing: ChartDrawing
+        switch kind {
+        case .horizontalLine: drawing = ChartDrawing(kind: kind, startIndex: 0, endIndex: index, startPrice: price, endPrice: price, label: label)
+        case .verticalLine: drawing = ChartDrawing(kind: kind, startIndex: index, endIndex: index, startPrice: price - range, endPrice: price + range, label: label)
+        case .rectangle: drawing = ChartDrawing(kind: kind, startIndex: max(0, index - span), endIndex: index, startPrice: price - range * 0.35, endPrice: price + range * 0.35, label: label)
+        case .trendLine, .ray: drawing = ChartDrawing(kind: kind, startIndex: max(0, index - span), endIndex: index, startPrice: price - range * 0.25, endPrice: price, label: label)
+        }
+        ChartDrawingStore.shared.add(drawing)
+        drawings = ChartDrawingStore.shared.drawings
+    }
+
+    func clearDrawings() { ChartDrawingStore.shared.removeAll(); drawings = [] }
     func stop() { ticker?.cancel(); ticker = nil }
 }
 
@@ -326,6 +366,8 @@ struct CandleChart: View {
             ctx.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(col))
         }
 
+        drawAnnotations(ctx: &ctx, drawings: vm.drawings, x: x, y: y, plotW: plotW)
+
         // Volume profile (right side)
         if vm.showVolumeProfile, let profile = vm.volumeProfileData {
             drawVolumeProfile(ctx: &ctx, profile: profile, lo: lo, hi: hi, plotW: plotW, y: y)
@@ -350,6 +392,26 @@ struct CandleChart: View {
                 let i = firstV + (lastV - firstV) * k / labelCount
                 ctx.draw(Text(timeLabel(candles[i].timestamp)).font(.system(size: 9)).foregroundColor(.white.opacity(0.45)),
                          at: CGPoint(x: x(i), y: plotH + 11), anchor: .center)
+            }
+        }
+    }
+
+    private func drawAnnotations(ctx: inout GraphicsContext, drawings: [ChartDrawing], x: (Int) -> CGFloat, y: (Double) -> CGFloat, plotW: CGFloat) {
+        for drawing in drawings {
+            let color = Color.orange.opacity(0.85)
+            switch drawing.kind {
+            case .horizontalLine:
+                var path = Path(); path.move(to: CGPoint(x: 0, y: y(drawing.startPrice))); path.addLine(to: CGPoint(x: plotW, y: y(drawing.startPrice)))
+                ctx.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            case .verticalLine:
+                var path = Path(); path.move(to: CGPoint(x: x(drawing.startIndex), y: 0)); path.addLine(to: CGPoint(x: x(drawing.startIndex), y: y(drawing.endPrice)))
+                ctx.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            case .rectangle:
+                let rect = CGRect(x: min(x(drawing.startIndex), x(drawing.endIndex)), y: min(y(drawing.startPrice), y(drawing.endPrice)), width: abs(x(drawing.endIndex) - x(drawing.startIndex)), height: abs(y(drawing.endPrice) - y(drawing.startPrice)))
+                ctx.fill(Path(rect), with: .color(color.opacity(0.14))); ctx.stroke(Path(rect), with: .color(color), lineWidth: 1)
+            case .trendLine, .ray:
+                var path = Path(); path.move(to: CGPoint(x: x(drawing.startIndex), y: y(drawing.startPrice))); path.addLine(to: CGPoint(x: drawing.kind == .ray ? plotW : x(drawing.endIndex), y: drawing.kind == .ray ? y(drawing.endPrice) : y(drawing.endPrice)))
+                ctx.stroke(path, with: .color(color), lineWidth: 1.5)
             }
         }
     }
