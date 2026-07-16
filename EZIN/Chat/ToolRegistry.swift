@@ -72,21 +72,38 @@ struct ToolRegistry {
         case "session_liquidity":   return sessionLiquidity(args)
         case "anomaly_scan":        return anomalyScan(args)
         case "games_list":          return gamesList()
+
+        // APEX second-generation analysis layer.
+        case "master_confluence":   return masterConfluenceTool(args)
+        case "pattern_scan":        return patternScanTool(args)
+        case "market_profile":      return marketProfileTool(args)
+        case "liquidity_map":       return liquidityMapTool(args)
+        case "range_forecast":      return rangeForecastTool(args)
+        case "entropy_analysis":    return entropyAnalysisTool(args)
+        case "symbol_scanner":      return symbolScannerTool(args)
+
+        // VINNY — the Unified Sound Intelligence Engine.
+        case "vinny_loop":          return await vinnyLoopTool(args)
+        case "vinny_patch":         return await vinnyPatchTool(args)
+        case "vinny_reference":     return await vinnyReferenceTool(args)
+        case "vinny_stems":         return await vinnyStemsTool(args)
+        case "vinny_library":       return vinnyLibraryTool(args)
         default:               return "Unknown tool: \(name)"
         }
     }
 
     // MARK: helpers
-    private func str(_ a: [String: Any], _ k: String) -> String { (a[k] as? String) ?? "" }
+    // (internal so tool extensions in ApexChatTools/VinnyChatTools can reuse them)
+    func str(_ a: [String: Any], _ k: String) -> String { (a[k] as? String) ?? "" }
 
-    private func resolveSymbol(_ s: String) -> String {
+    func resolveSymbol(_ s: String) -> String {
         if DerivSymbols.all.contains(s) { return s }
         if let m = DerivSymbols.all.first(where: { DerivSymbols.display($0).lowercased() == s.lowercased() }) { return m }
         if let m = DerivSymbols.all.first(where: { DerivSymbols.display($0).lowercased().contains(s.lowercased()) && !s.isEmpty }) { return m }
         return s
     }
 
-    private func resolveTF(_ s: String) -> Timeframe { Timeframe(rawValue: s) ?? .m5 }
+    func resolveTF(_ s: String) -> Timeframe { Timeframe(rawValue: s) ?? .m5 }
 
     // MARK: tools
 
@@ -396,7 +413,7 @@ struct ToolRegistry {
 
     // MARK: - Quantitative Backend Tools
 
-    private func marketData(for symbol: String, timeframe: Timeframe) -> MarketData? {
+    func marketData(for symbol: String, timeframe: Timeframe) -> MarketData? {
         let candles = app.deriv.priceCache[symbol]?.candles ?? []
         let price = app.deriv.priceCache[symbol]?.prices.last ?? app.deriv.prices[symbol] ?? candles.last?.close ?? 0
         guard candles.count >= 30, price > 0 else { return nil }
@@ -743,7 +760,9 @@ struct ToolRegistry {
 
     private func gamesList() -> String {
         """
-        ## EZIN Arcade
+        ## EZIN Games & Apps
+        **Built-in app:** VINNY — the Unified Sound Intelligence Engine: 12 modules (Genesis text-to-patch AI, WaveForge wavetable lab, Organica granular, TempoShift time-warp, Earprint audio identifier, FlowState modulation, Spaceship FX rack, Hybridizer fusion, Stage performance pads, Vault presets, Vinny AI coach). I can also drive it here: `vinny_loop`, `vinny_patch`, `vinny_reference`, `vinny_stems`, `vinny_library`.
+        **Arcade:**
         - Quantum Cat Box — quantum prediction and collapse
         - Frequency Frog — scales, chords and intervals
         - Fraction Fighter — math combat

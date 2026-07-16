@@ -13,26 +13,48 @@ struct GamesView: View {
         .init(title: "Taxonomy Tetris", subtitle: "Sort organisms into the tree of life before the stack rises", icon: "leaf.fill", tint: .green, concept: "Biology")
     ]
 
+    private let apps: [GameInfo] = [
+        .init(title: "VINNY", subtitle: "The Unified Sound Intelligence Engine — synth, sampler, loop factory, FX rack and audio identifier", icon: "waveform.circle.fill", tint: .pink, concept: "Sound workstation")
+    ]
+
     var body: some View {
-        ZStack {
-            AuroraBackground()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    header
-                    ForEach(games) { game in
-                        NavigationLink { destination(for: game) } label: {
-                            GameCard(game: game)
+        NavigationView {
+            ZStack {
+                AuroraBackground()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        header
+                        sectionLabel("Built-in Apps")
+                        ForEach(apps) { app in
+                            NavigationLink { VinnyHomeView() } label: {
+                                GameCard(game: app)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                        sectionLabel("Arcade")
+                        ForEach(games) { game in
+                            NavigationLink { destination(for: game) } label: {
+                                GameCard(game: game)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        footer
                     }
-                    footer
+                    .padding(16)
+                    .padding(.bottom, 24)
                 }
-                .padding(16)
-                .padding(.bottom, 24)
             }
+            .navigationTitle("Games")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarHidden(true)
         }
-        .navigationTitle("Games")
-        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(.white.opacity(0.45))
+            .padding(.leading, 4)
     }
 
     private var header: some View {
@@ -128,6 +150,7 @@ private struct GameScreen<Content: View>: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(false)
     }
 }
 

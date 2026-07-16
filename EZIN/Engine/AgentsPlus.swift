@@ -395,7 +395,7 @@ struct MetaOrchestrator {
 // MARK: - Extended Agent Factory
 
 enum ExtendedAgentFactory {
-    /// The full council: original 12 agents + 6 new specialist agents.
+    /// The full council: original 12 agents + 6 specialist agents + 6 APEX agents.
     static func fullCouncil() -> [SignalAgent] {
         AgentFactory.standardCouncil() + [
             OrderFlowAgent(),
@@ -403,7 +403,14 @@ enum ExtendedAgentFactory {
             NewsReactiveAgent(),
             RiskGuardianAgent(),
             WhaleSmartMoneyAgent(),
-            MacroCorrelationAgent()
+            MacroCorrelationAgent(),
+            // APEX second-generation specialists.
+            PatternAgent(),
+            MarketProfileAgent(),
+            TrendQualityAgent(),
+            LiquidityAgent(),
+            RegimeSwitchAgent(),
+            TapeSpeedAgent()
         ]
     }
 

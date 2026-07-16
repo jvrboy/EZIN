@@ -75,7 +75,7 @@ struct ChatView: View {
             Text("Ask me to analyze any instrument, explain signals, manage trades, generate files, or anything else. Backed by \(AgentRegistry.agents.count) agents, \(AgentRegistry.pipelines.count) pipelines, your AI keys and MCP tools. Conversations, projects and memory are saved automatically.")
                 .font(.caption).foregroundStyle(.white.opacity(0.6))
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(["Analyze Volatility 75 on 5m", "What are my top live signals?", "Explain the Ichimoku cloud", "Create a WAV tone artifact"], id: \.self) { s in
+                ForEach(["Analyze Volatility 75 on 5m", "Master confluence on Volatility 100", "Create a dusty lo-fi loop with VINNY", "Scan my watchlist for the strongest setup"], id: \.self) { s in
                     Button { vm.input = s } label: {
                         Text(s).font(.system(size: 13)).foregroundStyle(Glass.accent2)
                             .padding(.horizontal, 12).padding(.vertical, 8).glassCard(corner: 12)
@@ -129,7 +129,12 @@ struct ChatBubble: View {
                 VStack(alignment: .leading, spacing: 8) {
                     MarkdownView(text: message.text)
                     if let name = message.artifactName, let path = message.artifactPath {
-                        ArtifactChip(name: name, relativePath: path)
+                        let ext = (name as NSString).pathExtension.lowercased()
+                        if ["wav", "mp3", "aac", "m4a", "aif", "aiff", "caf"].contains(ext) {
+                            AudioArtifactPlayer(name: name, relativePath: path)
+                        } else {
+                            ArtifactChip(name: name, relativePath: path)
+                        }
                     }
                 }
                 .textSelection(.enabled)
@@ -186,6 +191,8 @@ final class ChatViewModel: ObservableObject {
         read_file(name|path[,chars]) and summarize_file(name|path[,sentences]) read imported/uploaded files; summarize_file extracts PDF text with PDFKit. \
         list_files([scope]), rename_file(from,to), delete_file(name|path), app_state(), set_setting(key,value), memory_add(text), memory_search(query), skills_list(), skill_create(name,content[,format,summary,tools]), skill_import(text|content[,name]), web_scrape(url), sentiment_score(text). \
         Advanced hidden backend tools: full_backend_report, math_analysis, forex_math, synthetics_analysis, rng_analysis, neural_inference, chaos_analysis, quantum_inspired, bayesian_update, fuzzy_signal, order_flow, harmonic_patterns, elliott_wave, astro_cycles, deep_risk, walkforward, correlation_matrix, session_liquidity, anomaly_scan. \
+        APEX analysis layer: master_confluence(symbol,timeframe) runs EVERY engine at once for the deepest verdict; pattern_scan, market_profile, liquidity_map, range_forecast, entropy_analysis (each symbol+timeframe); symbol_scanner([symbols],timeframe) ranks instruments by confluence. \
+        VINNY sound engine: vinny_loop(prompt[,bars,variation]) creates a full playable loop (WAV+MIDI) from a style description; vinny_patch(prompt) grows a synth patch + preview; vinny_reference([file]) analyzes an uploaded reference WAV and generates a similar loop; vinny_stems() exports the last loop as a STEMS ZIP; vinny_library() lists Vault presets. Audio artifacts play inline with skip/rewind. \
         market_overview() lists live prices. \
         Remember: call a tool with a single line `ACTION: {"tool":"<name>","args":{...}}` and nothing else.
         """
@@ -206,9 +213,13 @@ final class ChatViewModel: ObservableObject {
             case .success(let reply):
                 if let action = parseAction(reply) {
                     store.appendToCurrent(ChatMessage(role: "tool", text: "⚙️ \(action.tool)(\(compact(action.args)))"))
+                    // Clear any stale artifact pointer (e.g. a user upload) so only files
+                    // actually produced by THIS tool run attach to a bubble.
+                    ArtifactStore.shared.lastArtifact = nil
                     let out = await tools.run(action.tool, args: action.args)
-                    // If a tool produced an artifact, attach it to a dedicated bubble.
-                    if let art = ArtifactStore.shared.lastArtifact, action.tool.hasPrefix("create_") {
+                    // If a tool produced an artifact (file, loop, stems zip, …), attach it to a
+                    // dedicated bubble. Audio artifacts get an inline player with skip/rewind.
+                    if let art = ArtifactStore.shared.lastArtifact {
                         var m = ChatMessage(role: "assistant", text: "Created **\(art.name)** — tap to download or share.")
                         m.artifactPath = art.relativePath; m.artifactName = art.name
                         store.appendToCurrent(m)

@@ -138,86 +138,21 @@ enum ArtifactsCreator {
     }
 
     private static func createSimpleZip(files: String) -> Data? {
-        // Create a minimal zip structure
-        // This is a simplified implementation - a real one would use ZipFoundation
+        // One line per entry: each becomes a real file inside a fully valid archive
+        // (real CRC-32 checksums, correct sizes/offsets) via the shared ZipWriter.
         let fileList = files.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        var zipData = Data()
-        var offset = 0
-        let timestamp = UInt16(0) // Simplified
-
-        // Local file headers + data
-        for (index, fileName) in fileList.enumerated() {
-            let cleanName = fileName.trimmingCharacters(in: .whitespaces)
+        var entries: [ZipWriter.Entry] = []
+        for (index, line) in fileList.enumerated() {
+            let cleanName = line.trimmingCharacters(in: .whitespaces)
             guard !cleanName.isEmpty else { continue }
-            let fileData = "// File \(index + 1): \(cleanName)\n".data(using: .utf8) ?? Data()
-            let nameData = cleanName.data(using: .utf8) ?? Data()
-
-            // Local file header
-            zipData.append(contentsOf: [0x50, 0x4B, 0x03, 0x04]) // signature
-            zipData.append(contentsOf: [0x0A, 0x00]) // version needed
-            zipData.append(contentsOf: [0x00, 0x00]) // flags
-            zipData.append(contentsOf: [0x00, 0x00]) // compression (stored)
-            zipData.append(contentsOf: timestamp.littleEndianBytes)
-            zipData.append(contentsOf: timestamp.littleEndianBytes)
-            zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // CRC-32 (simplified)
-            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes) // compressed size
-            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes) // uncompressed size
-            zipData.append(contentsOf: UInt32(nameData.count).littleEndianBytes) // name length
-            zipData.append(contentsOf: [0x00, 0x00]) // extra length
-            zipData.append(nameData)
-            zipData.append(fileData)
-
-            offset += 30 + nameData.count + fileData.count
+            let body = "// File \(index + 1): \(cleanName)\n".data(using: .utf8) ?? Data()
+            entries.append(ZipWriter.Entry(name: cleanName, data: body))
         }
-
-        // Central directory
-        var centralDir = Data()
-        var centralOffset = 0
-        for (index, fileName) in fileList.enumerated() {
-            let cleanName = fileName.trimmingCharacters(in: .whitespaces)
-            guard !cleanName.isEmpty else { continue }
-            let nameData = cleanName.data(using: .utf8) ?? Data()
-
-            centralDir.append(contentsOf: [0x50, 0x4B, 0x01, 0x02]) // signature
-            centralDir.append(contentsOf: [0x0A, 0x00]) // version made by
-            centralDir.append(contentsOf: [0x0A, 0x00]) // version needed
-            centralDir.append(contentsOf: [0x00, 0x00]) // flags
-            centralDir.append(contentsOf: [0x00, 0x00]) // compression
-            centralDir.append(contentsOf: timestamp.littleEndianBytes)
-            centralDir.append(contentsOf: timestamp.littleEndianBytes)
-            centralDir.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // CRC
-            centralDir.append(contentsOf: UInt32(0).littleEndianBytes) // compressed size
-            centralDir.append(contentsOf: UInt32(0).littleEndianBytes) // uncompressed
-            centralDir.append(contentsOf: UInt32(nameData.count).littleEndianBytes)
-            centralDir.append(contentsOf: [0x00, 0x00]) // extra length
-            centralDir.append(contentsOf: [0x00, 0x00]) // comment length
-            centralDir.append(contentsOf: [0x00, 0x00]) // disk number
-            centralDir.append(contentsOf: [0x00, 0x00]) // internal attrs
-            centralDir.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // external attrs
-            centralDir.append(contentsOf: UInt32(centralOffset).littleEndianBytes) // local header offset
-            centralDir.append(nameData)
-
-            centralOffset += 30 + nameData.count
-        }
-        zipData.append(centralDir)
-
-        // End of central directory
-        let centralDirSize = centralDir.count
-        let centralDirOffset = zipData.count - centralDirSize
-        zipData.append(contentsOf: [0x50, 0x4B, 0x05, 0x06]) // signature
-        zipData.append(contentsOf: [0x00, 0x00]) // disk number
-        zipData.append(contentsOf: [0x00, 0x00]) // disk with central dir
-        zipData.append(contentsOf: UInt16(fileList.filter { !$0.isEmpty }.count).littleEndianBytes) // entries on disk
-        zipData.append(contentsOf: UInt16(fileList.filter { !$0.isEmpty }.count).littleEndianBytes) // total entries
-        zipData.append(contentsOf: UInt32(centralDirSize).littleEndianBytes)
-        zipData.append(contentsOf: UInt32(centralDirOffset).littleEndianBytes)
-        zipData.append(contentsOf: [0x00, 0x00]) // comment length
-
-        return zipData
+        return ZipWriter.makeZip(entries: entries)
     }
 
     private static func createAppPrototype(spec: ArtifactSpec) -> Data? {
-        // Generate a professional HTML/JS/CSS app prototype as a zip
+        // Generate a professional HTML/JS/CSS app prototype as a valid zip archive.
         let appName = spec.name.isEmpty ? "AppPrototype" : spec.name
         let safeName = appName.replacingOccurrences(of: " ", with: "_")
 
@@ -229,8 +164,6 @@ enum ArtifactsCreator {
         let css = generateAppCSS()
         let js = generateAppJS(features: features)
 
-        // Create zip with all files
-        var zipData = Data()
         let files: [(name: String, content: String)] = [
             ("\(safeName)/index.html", html),
             ("\(safeName)/style.css", css),
@@ -238,69 +171,13 @@ enum ArtifactsCreator {
             ("\(safeName)/README.md", "# \(appName)\n\nGenerated app prototype.\n\n## Features\n\(features.map { "- \($0)" }.joined(separator: "\n"))\n\n## Running\nOpen `index.html` in any modern browser.")
         ]
 
-        var fileOffsets: [(name: String, offset: Int, size: Int, nameSize: Int)] = []
-        var currentOffset = 0
-
-        for (name, content) in files {
-            guard let fileData = content.data(using: .utf8),
-                  let nameData = name.data(using: .utf8) else { continue }
-
-            let crc = crc32(fileData)
-
-            // Local file header
-            zipData.append(contentsOf: [0x50, 0x4B, 0x03, 0x04])
-            zipData.append(contentsOf: [0x14, 0x00]) // version
-            zipData.append(contentsOf: [0x00, 0x00]) // flags
-            zipData.append(contentsOf: [0x00, 0x00]) // stored
-            zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00]) // time
-            zipData.append(contentsOf: UInt32(crc).littleEndianBytes)
-            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes)
-            zipData.append(contentsOf: UInt32(fileData.count).littleEndianBytes)
-            zipData.append(contentsOf: UInt32(nameData.count).littleEndianBytes)
-            zipData.append(contentsOf: [0x00, 0x00])
-            zipData.append(nameData)
-            zipData.append(fileData)
-
-            fileOffsets.append((name, currentOffset, fileData.count, nameData.count))
-            currentOffset += 30 + nameData.count + fileData.count
+        let entries = files.compactMap { name, content -> ZipWriter.Entry? in
+            guard let data = content.data(using: .utf8) else { return nil }
+            return ZipWriter.Entry(name: name, data: data)
         }
-
-        // Central directory
-        let centralStart = zipData.count
-        for (name, offset, size, nameSize) in fileOffsets {
-            guard let nameData = name.data(using: .utf8) else { continue }
-            let crc = crc32(Data()) // simplified
-
-            zipData.append(contentsOf: [0x50, 0x4B, 0x01, 0x02])
-            zipData.append(contentsOf: [0x14, 0x00])
-            zipData.append(contentsOf: [0x14, 0x00])
-            zipData.append(contentsOf: [0x00, 0x00])
-            zipData.append(contentsOf: [0x00, 0x00])
-            zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
-            zipData.append(contentsOf: UInt32(0).littleEndianBytes)
-            zipData.append(contentsOf: UInt32(size).littleEndianBytes)
-            zipData.append(contentsOf: UInt32(size).littleEndianBytes)
-            zipData.append(contentsOf: UInt32(nameSize).littleEndianBytes)
-            zipData.append(contentsOf: [0x00, 0x00])
-            zipData.append(contentsOf: [0x00, 0x00])
-            zipData.append(contentsOf: [0x00, 0x00])
-            zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
-            zipData.append(contentsOf: UInt32(offset).littleEndianBytes)
-            zipData.append(nameData)
-        }
-
-        // End of central directory record
-        let centralSize = zipData.count - centralStart
-        zipData.append(contentsOf: [0x50, 0x4B, 0x05, 0x06])
-        zipData.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
-        zipData.append(contentsOf: UInt16(fileOffsets.count).littleEndianBytes)
-        zipData.append(contentsOf: UInt16(fileOffsets.count).littleEndianBytes)
-        zipData.append(contentsOf: UInt32(centralSize).littleEndianBytes)
-        zipData.append(contentsOf: UInt32(centralStart).littleEndianBytes)
-        zipData.append(contentsOf: [0x00, 0x00])
-
-        return zipData
+        return ZipWriter.makeZip(entries: entries)
     }
+
 
     // MARK: - App Prototype Generators
 
@@ -443,23 +320,6 @@ enum ArtifactsCreator {
         });
         """
     }
-
-    private static func crc32(_ data: Data) -> UInt32 {
-        var crcTable: [UInt32] = []
-        for i in 0..<256 {
-            var c = UInt32(i)
-            for _ in 0..<8 {
-                c = (c % 2 == 0) ? (c >> 1) : (0xEDB88320 ^ (c >> 1))
-            }
-            crcTable.append(c)
-        }
-        var crc: UInt32 = 0xFFFFFFFF
-        for byte in data {
-            let idx = UInt8(crc & 0xFF) ^ byte
-            crc = (crc >> 8) ^ crcTable[Int(idx)]
-        }
-        return crc ^ 0xFFFFFFFF
-    }
 }
 
 // MARK: - String Extensions
@@ -473,14 +333,4 @@ private extension String {
     }
 }
 
-private extension UInt32 {
-    var littleEndianBytes: [UInt8] {
-        withUnsafeBytes(of: self.littleEndian, Array.init)
-    }
-}
 
-private extension UInt16 {
-    var littleEndianBytes: [UInt8] {
-        withUnsafeBytes(of: self.littleEndian, Array.init)
-    }
-}

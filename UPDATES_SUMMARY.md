@@ -83,6 +83,46 @@ Implemented `SignalTracker` for performance monitoring and self-improvement:
 - Instant signal closure triggers
 - Zero-latency metric updates
 
+## Phase 5: APEX Analysis Layer + VINNY Sound Engine (v1.3.0)
+
+### APEX — Second-Generation Backend:
+- **9 new engines** in `ApexAnalysisEngines.swift`: candlestick patterns, TPO market profile,
+  liquidity map + sweep detection, Parkinson/Garman–Klass range forecast, Shannon entropy +
+  Kaufman ER + Higuchi fractal dimension, Markov-lite regime switching, tape speed,
+  master confluence scorecard, and a multi-symbol scanner.
+- **6 new council agents** in `ApexAgents.swift` vote alongside the original twelve
+  (council is now 18 agents).
+- **7 new chat tools** in `ApexChatTools.swift`: `master_confluence`, `pattern_scan`,
+  `market_profile`, `liquidity_map`, `range_forecast`, `entropy_analysis`, `symbol_scanner`.
+
+### VINNY — Unified Sound Intelligence Engine:
+- **Pure-Swift DSP core** (`VinnyDSP.swift`): PCM WAV I/O, oscillators + additive wavetables,
+  ADSR, biquad filters, 10 FX (delay, Schroeder reverb, chorus, flanger, distortion, bitcrush,
+  ring mod, compressor, EQ, widener), time warp, granular synthesis, radix-2 FFT/STFT,
+  Krumhansl–Schmuckler key detection, onset-autocorrelation BPM estimation, 8-D sound
+  fingerprints, SMF MIDI writer.
+- **Engines** (`VinnyEngine.swift`, `VinnyStudio.swift`): patch renderer with unison/FM/RM/AM,
+  music-theory engine (scales, chord styles, genre progressions), text→patch Genesis,
+  audio→patch reverse engineering, mutation/breeding, Loop Factory (genre drums, bass, chords,
+  lead, swing, humanize, real per-lane stems), voice-command assistant + coach.
+- **12 UI modules** (`VinnyViews.swift`, `VinnyViews2.swift`): Brain, Genesis, WaveForge,
+  TempoShift, Earprint (import/record + analysis), FlowState, Organica, Spaceship FX rack,
+  Hybridizer, Stage, Vault, VINNY AI.
+- **5 chat tools** (`VinnyChatTools.swift`): `vinny_loop`, `vinny_patch`, `vinny_reference`
+  (upload audio → similar loop), `vinny_stems` (STEMS ZIP), `vinny_library`.
+- **Inline audio playback in chat**: audio artifacts render a player bubble with play/pause,
+  ±10s skip, scrub slider, and share sheet (`AudioArtifactPlayer`).
+
+### Production Fixes:
+- **Games tab navigation repaired** — `NavigationLink`s had no `NavigationView` ancestor anywhere
+  in the app, so every game was unreachable; `GamesView` now hosts its own `NavigationView`.
+- **ZIP artifact corruption fixed** — the old writer emitted zeroed CRC-32/sizes in the central
+  directory (archives failed integrity checks / refused to open in strict tools). New
+  `ZipWriter` emits spec-compliant local headers, central directory, and EOCD with real CRCs.
+- **Artifact attachment correctness** — any tool that produces an artifact now attaches a bubble
+  (previously only `create_*` tools), and the store is cleared before each tool run so user
+  uploads never leak onto unrelated replies.
+
 ## Files Modified/Created:
 
 ### New Files:

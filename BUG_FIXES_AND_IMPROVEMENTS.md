@@ -169,6 +169,70 @@ All changes maintain backward compatibility with existing user data:
 - New chart toggles default to enabled
 - Existing local models continue to work without modification
 
+## 8. v1.3.0 Audit Fixes (APEX + VINNY Release)
+
+### 8.1 Games Tab Navigation Repaired
+
+**Issue:** Every `NavigationLink` in the Games tab was dead — tapping a game did nothing. Root cause:
+the app root (`RootView`) uses a custom `GlassTabBar` with a `switch`, so no `NavigationView` existed
+anywhere in the view hierarchy above `GamesView`.
+
+**Fix:** `GamesView` now wraps its content in its own `NavigationView` (iOS 15-compatible) and game
+screens explicitly restore the navigation bar. Also added the "Built-in Apps" section hosting VINNY.
+
+**File:** `EZIN/Games/GamesView.swift`
+
+### 8.2 ZIP Artifact Corruption Fixed
+
+**Issue:** `ArtifactsCreator.createSimpleZip` / `createAppPrototype` wrote central-directory records
+with **zeroed CRC-32, compressed size, and uncompressed size**. macOS Finder tolerated it, but strict
+unzippers rejected the archives or extracted corrupt files.
+
+**Fix:** New `EZIN/Services/ZipWriter.swift` emits spec-compliant ZIPs: local file headers, central
+directory, and EOCD with real ISO 3309 CRC-32 checksums and sizes. `ArtifactsCreator` now delegates to
+it. Covered by unit tests (PK signatures, EOCD, entry count, known CRC-32 vector).
+
+**Files:** `EZIN/Services/ZipWriter.swift` (new), `EZIN/Services/ArtifactsCreator.swift`,
+`EZINTests/ApexEnginesTests.swift` (`ZipWriterTests`)
+
+### 8.3 Chat Artifact Attachment Correctness
+
+**Issue 1:** Artifact bubbles were only attached when the tool name started with `create_`, so tools
+like the VINNY loop builder produced files silently.
+
+**Issue 2:** Because `ArtifactStore.lastArtifact` persisted, a file the *user* uploaded could be
+attached to the *next unrelated* assistant reply.
+
+**Fix:** Any tool that produces an artifact now attaches a bubble, and `lastArtifact` is cleared
+before every tool run so stale uploads can never leak across replies.
+
+**File:** `EZIN/Views/ChatView.swift`
+
+### 8.4 VINNY DSP Safety Hardening
+
+Audit-pass fixes applied while building the DSP core:
+
+- Triangle oscillator formula could output −3 (out of [−1, 1]) — corrected to `4·|p−0.5|−1`.
+- ADSR release segment could divide by zero on zero-length notes — clamped span.
+- `estimateBPM` could construct an invalid `Range` on very short audio — guarded.
+- `freezePad` could compute a negative slice index on short buffers — guarded.
+- Renderer indexed the wavetable cache with the per-lane index instead of the oscillator index —
+  per-lane tables now built up front.
+- The widener FX doubled buffer length mid-chain (mono→stereo inside a mono pipeline) — stereo
+  widening now happens only at the final render stage.
+- Negative loop-variation seeds could trap on `UInt64` conversion — clamped.
+
+**Files:** `EZIN/Vinny/VinnyDSP.swift`, `EZIN/Vinny/VinnyEngine.swift`, `EZIN/Vinny/VinnyStudio.swift`
+
+### 8.5 New Test Coverage
+
+- `EZINTests/ApexEnginesTests.swift` — pattern detection, market profile, liquidity clustering,
+  range forecast, entropy/ER ordering, regime bias, master confluence bounds, scanner ranking, ZIP
+  integrity.
+- `EZINTests/VinnyDSPTests.swift` — WAV round-trip, oscillator bounds, ADSR lifecycle, all 10 FX,
+  time warp, BPM ±6 on a synthetic 120 BPM click track, key detection on a C-major chord, FFT peak,
+  spectral fusion, MIDI header, loop factory stems, Genesis/mutation/breeding, theory quantize.
+
 ## Conclusion
 
 These improvements significantly enhance the EZIN application's capabilities, particularly in local LLM support and advanced technical analysis visualization. The modular architecture ensures that future enhancements can be added without disrupting existing functionality.
