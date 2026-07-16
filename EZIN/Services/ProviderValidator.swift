@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// Provider validation results for AI API key testing
 struct ProviderValidationResult: Identifiable {

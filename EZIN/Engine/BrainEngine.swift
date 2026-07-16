@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// EZIN Brain — a self-learning system that grows smarter with every signal.
 ///

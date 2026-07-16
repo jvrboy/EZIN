@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // MARK: - Loop Factory (one-shot loops, variations, full arrangements)
 

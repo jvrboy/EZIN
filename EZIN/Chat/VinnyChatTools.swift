@@ -51,8 +51,11 @@ extension ToolRegistry {
         let variation = max(0, min(50, (args["variation"] as? Int) ?? Int(str(args, "variation")) ?? 0))
 
         let patch = GenesisEngine.patch(fromText: prompt, seed: UInt64(Date().timeIntervalSince1970))
+        let seedBase = UInt64(abs(prompt.hashValue) % 100000)
+        let seedVariation = UInt64(variation) &* 977
+        let loopSeed = seedBase &+ seedVariation
         let result: LoopResult = await Task.detached(priority: .userInitiated) {
-            LoopFactory.makeLoop(patch: patch, bars: bars, seed: UInt64(abs(prompt.hashValue) % 100000 &+ UInt64(variation &* 977)), variation: variation)
+            LoopFactory.makeLoop(patch: patch, bars: bars, seed: loopSeed, variation: variation)
         }.value
 
         VinnyChatState.shared.lastLoop = result
@@ -126,8 +129,9 @@ extension ToolRegistry {
         VinnyChatState.shared.lastPatch = patch
         VinnyStore.shared.savePreset(patch)
 
+        let generationPatch = patch   // immutable copy for safe concurrent capture
         let result: LoopResult = await Task.detached(priority: .userInitiated) {
-            LoopFactory.makeLoop(patch: patch, bars: 4, seed: UInt64(abs(artifact.name.hashValue) % 100000))
+            LoopFactory.makeLoop(patch: generationPatch, bars: 4, seed: UInt64(abs(artifact.name.hashValue) % 100000))
         }.value
         VinnyChatState.shared.lastLoop = result
 

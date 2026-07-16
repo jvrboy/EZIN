@@ -317,7 +317,7 @@ final class MultiTimeframeSignalEngine {
             stopLoss: levels.sl,
             takeProfit: levels.tp,
             createdAt: Date(),
-            expiresAt: Date().addingTimeInterval(TimeInterval(max(15, requested.minutes * 8) * 60)),
+            expiresAt: Date().addingTimeInterval(TimeInterval(max(15, (requested.granularity / 60) * 8) * 60)),
             reasoning: buildReasoningString(direction: direction, confluenceScore: confluence, analyses: analyses, timeframes: tfs)
         )
     }

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// How the bot places protective stops.
 enum StopMode: String, Codable, CaseIterable, Identifiable {

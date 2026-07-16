@@ -542,7 +542,9 @@ private struct FractionFighterGame: View {
 // MARK: - Game 4: Gravity Golf
 
 private struct GravityGolfGame: View {
-    struct Body: Identifiable {
+    // Named `CelestialBody` — a nested `Body` type collides with View's `Body`
+    // associatedtype and breaks the protocol conformance.
+    struct CelestialBody: Identifiable {
         let id = UUID()
         let name: String
         let gravity: Double
@@ -550,7 +552,7 @@ private struct GravityGolfGame: View {
         let note: String
     }
 
-    private let bodies: [Body] = [
+    private let bodies: [CelestialBody] = [
         .init(name: "Moon", gravity: 1.62, drag: 0.0, note: "Low gravity: the ball sails far and bounces high. Use less power."),
         .init(name: "Mars", gravity: 3.71, drag: 0.04, note: "Thin atmosphere: dust drag nudges long shots off line."),
         .init(name: "Earth", gravity: 9.81, drag: 0.02, note: "Baseline physics: projectile range ≈ v² sin(2θ) / g."),
@@ -567,7 +569,7 @@ private struct GravityGolfGame: View {
     @State private var lastRange: Double?
     @State private var message = "Set power and angle, then launch. Land within 4 m of the hole."
 
-    private var bodyObj: Body { bodies[bodyIndex % bodies.count] }
+    private var bodyObj: CelestialBody { bodies[bodyIndex % bodies.count] }
 
     var body: some View {
         GameScreen(title: "Gravity Golf", lesson: bodyObj.note) {

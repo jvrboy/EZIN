@@ -29,15 +29,18 @@ final class SettingsStore: ObservableObject {
     /// Symbols scanned for the Signals tab when the bot is not actively trading.
     var watchlist: [String] {
         get {
-            (d.array(forKey: "watchlist") as? [String]) ?? Array(
-                DerivSymbols.volatility.prefix(3) +
-                DerivSymbols.boom.prefix(1) + DerivSymbols.crash.prefix(1) +
-                DerivSymbols.jump.prefix(1) +
-                DerivSymbols.forex.prefix(4) +
-                DerivSymbols.commodity.prefix(2) +
-                DerivSymbols.crypto.prefix(4) +
-                DerivSymbols.stockIndex.prefix(3)
-            )
+            if let saved = d.array(forKey: "watchlist") as? [String] { return saved }
+            // Built stepwise: the single chained expression blew the type-checker's budget.
+            var list: [String] = []
+            list.append(contentsOf: DerivSymbols.volatility.prefix(3))
+            list.append(contentsOf: DerivSymbols.boom.prefix(1))
+            list.append(contentsOf: DerivSymbols.crash.prefix(1))
+            list.append(contentsOf: DerivSymbols.jump.prefix(1))
+            list.append(contentsOf: DerivSymbols.forex.prefix(4))
+            list.append(contentsOf: DerivSymbols.commodity.prefix(2))
+            list.append(contentsOf: DerivSymbols.crypto.prefix(4))
+            list.append(contentsOf: DerivSymbols.stockIndex.prefix(3))
+            return list
         }
         set { d.set(newValue, forKey: "watchlist") }
     }

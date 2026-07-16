@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// Real-time signal performance tracker that monitors signal accuracy and enables self-improvement
 final class SignalTracker: ObservableObject {

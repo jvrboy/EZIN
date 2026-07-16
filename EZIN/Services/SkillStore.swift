@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct Skill: Identifiable, Codable, Hashable {
     var id = UUID()

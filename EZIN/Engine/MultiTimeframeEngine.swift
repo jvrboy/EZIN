@@ -338,7 +338,7 @@ struct MultiTimeframeEngine {
         var warnings: [String] = []
         if anomaly > 0.08 { warnings.append("Backend anomaly/manipulation detector is reducing confidence.") }
         if regime.squeezeScore > 0.7 { warnings.append("Volatility squeeze detected — breakout quality matters more than indicator count.") }
-        if neural.probabilityUp > 0.5 != (score > 0), neural.samples > 30 { warnings.append("Neural vote disagrees with the blended backend vote — reduce size or wait.") }
+        if (neural.probabilityUp > 0.5) != (score > 0), neural.samples > 30 { warnings.append("Neural vote disagrees with the blended backend vote — reduce size or wait.") }
         return (clamp(score, -1, 1), notes, warnings)
     }
 

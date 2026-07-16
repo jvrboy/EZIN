@@ -106,7 +106,7 @@ enum AdvancedBackend {
 
     /// Constant-velocity Kalman filter over log prices.
     static func kalman(_ prices: [Double]) -> KalmanResult {
-        guard let last = prices.last, prices.count > 3 else { return KalmanResult(estimate: last ?? 0, velocity: 0, uncertainty: 1) }
+        guard prices.count > 3 else { return KalmanResult(estimate: prices.last ?? 0, velocity: 0, uncertainty: 1) }
         var x = log(prices[0])
         var v = 0.0
         var p = 1.0
@@ -214,7 +214,7 @@ enum AdvancedBackend {
     static func syntheticsReport(for md: MarketData) -> String {
         let prices = md.closes
         guard prices.count >= 50 else { return "## Synthetics Analysis\nNeed at least 50 cached candles/ticks." }
-        let digits = prices.map { Int(abs($0) * 100).truncatingRemainder(dividingBy: 10) }
+        let digits = prices.map { Int(abs($0) * 100) % 10 }
         var counts = Array(repeating: 0, count: 10)
         digits.forEach { counts[$0] += 1 }
         let expected = Double(digits.count) / 10
@@ -332,13 +332,14 @@ enum AdvancedBackend {
             if (p >= 0.5) == (y >= 0.5) { correct += 1 }
         }
         let latestR = returns(Array(closes.suffix(31)))
-        let x: [Double] = [
-            (ind.rsi14 - 50) / 50,
-            clamp(latestR.suffix(5).reduce(0, +) * 80, -1, 1),
-            clamp(sd(Array(latestR.suffix(10))) * 120, -1, 1),
-            clamp(((closes.last ?? 0) - (closes.dropLast(30).last ?? closes.last ?? 1)) / max(closes.last ?? 1, 1) * 100, -1, 1),
-            1
-        ]
+        // Broken into sub-expressions: a single nested literal here previously
+        // blew the type-checker's time budget.
+        let rsiFeature = (ind.rsi14 - 50) / 50
+        let ret5Feature = clamp(latestR.suffix(5).reduce(0, +) * 80, -1, 1)
+        let vol10Feature = clamp(sd(Array(latestR.suffix(10))) * 120, -1, 1)
+        let driftBase = closes.dropLast(30).last ?? closes.last ?? 1
+        let driftFeature = clamp(((closes.last ?? 0) - driftBase) / max(closes.last ?? 1, 1) * 100, -1, 1)
+        let x: [Double] = [rsiFeature, ret5Feature, vol10Feature, driftFeature, 1]
         let z = zip(w, x).reduce(0) { $0 + $1.0 * $1.1 }
         let p = 1 / (1 + exp(-clamp(z, -30, 30)))
         return NeuralResult(probabilityUp: p, accuracy: Double(correct) / Double(rows.count), samples: rows.count,
