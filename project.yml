@@ -6,7 +6,7 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "1.1.0"
+    MARKETING_VERSION: "1.2.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: ""
@@ -24,7 +24,7 @@ targets:
       path: EZIN/Info.plist
       properties:
         CFBundleDisplayName: EZIN
-        CFBundleShortVersionString: "1.1.0"
+        CFBundleShortVersionString: "1.2.0"
         CFBundleVersion: "1"
         UILaunchScreen: {}
         UIApplicationSceneManifest:
@@ -36,6 +36,13 @@ targets:
         # Expose the app's own directory inside the Files app
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        # Best-effort background refresh/processing for reconnect + signal upkeep.
+        UIBackgroundModes:
+          - fetch
+          - processing
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.ezin.refresh
+          - com.ezin.processing
         # Declare imported LLM file types so users can import .gguf / .safetensors
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: com.ezin.gguf

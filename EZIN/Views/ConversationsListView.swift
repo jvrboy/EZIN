@@ -7,6 +7,7 @@ struct ConversationsListView: View {
     @State private var search = ""
     @State private var renameTarget: Conversation?
     @State private var showArchived = false
+    @State private var showBin = false
 
     private var filtered: [Conversation] {
         let base = showArchived ? store.archivedList : store.active
@@ -15,6 +16,11 @@ struct ConversationsListView: View {
             $0.title.localizedCaseInsensitiveContains(search) ||
             $0.preview.localizedCaseInsensitiveContains(search)
         }
+    }
+
+    private var binItems: [BinItem] {
+        guard !search.isEmpty else { return store.bin }
+        return store.bin.filter { $0.title.localizedCaseInsensitiveContains(search) || $0.type.localizedCaseInsensitiveContains(search) }
     }
 
     var body: some View {
@@ -29,12 +35,27 @@ struct ConversationsListView: View {
                         }
                     }
                 }
-                Section(showArchived ? "Archived" : "Conversations") {
-                    if filtered.isEmpty {
-                        Text(showArchived ? "No archived chats." : "No conversations yet.")
-                            .font(.caption).foregroundStyle(.secondary)
+                if showBin {
+                    Section("Recoverable bin") {
+                        if binItems.isEmpty {
+                            Text("Bin is empty. Deleted chats and projects land here before permanent removal.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        ForEach(binItems) { item in binRow(item) }
+                        if !store.bin.isEmpty {
+                            Button(role: .destructive) { store.emptyBin() } label: {
+                                Label("Empty bin permanently", systemImage: "trash.slash")
+                            }
+                        }
                     }
-                    ForEach(filtered) { c in row(c) }
+                } else {
+                    Section(showArchived ? "Archived" : "Conversations") {
+                        if filtered.isEmpty {
+                            Text(showArchived ? "No archived chats." : "No conversations yet.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        ForEach(filtered) { c in row(c) }
+                    }
                 }
             }
             .listStyle(.insetGrouped)
@@ -42,13 +63,36 @@ struct ConversationsListView: View {
             .navigationTitle("History")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(showArchived ? "Active" : "Archived") { showArchived.toggle() }
+                    Menu {
+                        Button("Active") { showArchived = false; showBin = false }
+                        Button("Archived") { showArchived = true; showBin = false }
+                        Button("Bin") { showBin = true }
+                    } label: {
+                        Text(showBin ? "Bin" : (showArchived ? "Archived" : "Active"))
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { dismiss() } }
             }
             .sheet(item: $renameTarget) { c in
                 RenameSheet(title: "Rename chat", initial: c.title) { store.rename(c.id, to: $0) }
             }
+        }
+    }
+
+    private func binRow(_ item: BinItem) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: item.type.contains("project") ? "folder.fill" : "bubble.left")
+                .foregroundStyle(item.type.contains("project") ? Glass.accent2 : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title).font(.system(size: 15, weight: .medium)).lineLimit(1)
+                Text("\(item.type.replacingOccurrences(of: "archived", with: "archived ")) · \(item.deletedAt.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) { store.deleteBinItem(item) } label: { Label("Delete forever", systemImage: "trash.slash") }
+            Button { store.restoreBinItem(item); dismiss() } label: { Label("Restore", systemImage: "arrow.uturn.backward") }.tint(Glass.buy)
         }
     }
 

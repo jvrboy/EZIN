@@ -52,7 +52,7 @@ enum ArtifactsCreator {
 
         case .zip:
             // For zip, content should be a list of filenames separated by newlines.
-            // We'll create a simple zip with placeholder files.
+            // Each entry becomes a real text file inside the archive.
             guard let data = createSimpleZip(files: spec.content) else { return nil }
             return save(data: data, name: spec.name, ext: "zip")
 

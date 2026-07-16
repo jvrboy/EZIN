@@ -128,27 +128,24 @@ struct ChartView: View {
     }
 }
 
-/// Instrument picker isolated as an `Equatable` view so it only rebuilds when the
-/// selected symbol actually changes — not on every live price tick. This prevents the
-/// native menu from scrolling back to the top while the user is browsing instruments.
+/// Instrument picker as a searchable sheet. A sheet keeps its own scroll position and
+/// never snaps back to the top when live ticks redraw the chart (the old Menu did).
 private struct InstrumentMenu: View, Equatable {
     let symbol: String
     let onSelect: (String) -> Void
+    @State private var open = false
+    @State private var query = ""
 
     static func == (lhs: InstrumentMenu, rhs: InstrumentMenu) -> Bool {
         lhs.symbol == rhs.symbol
     }
 
+    private func matches(_ sym: String) -> Bool {
+        query.isEmpty || DerivSymbols.display(sym).localizedCaseInsensitiveContains(query) || sym.localizedCaseInsensitiveContains(query)
+    }
+
     var body: some View {
-        Menu {
-            ForEach(DerivSymbols.groups, id: \.0) { group in
-                Section(group.0) {
-                    ForEach(group.1, id: \.self) { sym in
-                        Button(DerivSymbols.display(sym)) { onSelect(sym) }
-                    }
-                }
-            }
-        } label: {
+        Button { open = true } label: {
             HStack(spacing: 6) {
                 Text(DerivSymbols.display(symbol)).font(.system(size: 15, weight: .semibold))
                 Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
@@ -156,6 +153,37 @@ private struct InstrumentMenu: View, Equatable {
             .foregroundStyle(.white)
             .padding(.horizontal, 14).padding(.vertical, 8)
             .glassCard(corner: 12)
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $open) {
+            NavigationView {
+                List {
+                    ForEach(DerivSymbols.groups, id: \.0) { group in
+                        let items = group.1.filter(matches)
+                        if !items.isEmpty {
+                            Section(group.0) {
+                                ForEach(items, id: \.self) { sym in
+                                    Button {
+                                        onSelect(sym)
+                                        open = false
+                                    } label: {
+                                        HStack {
+                                            Text(DerivSymbols.display(sym))
+                                            Spacer()
+                                            if sym == symbol { Image(systemName: "checkmark").foregroundStyle(Glass.accent) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .listStyle(.insetGrouped)
+                .searchable(text: $query, prompt: "Search instruments")
+                .navigationTitle("Instrument")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Close") { open = false } } }
+            }
         }
     }
 }
@@ -218,21 +246,23 @@ final class ChartViewModel: ObservableObject {
     func reload() async {
         guard let deriv = deriv, !loading else { return }
         loading = true; defer { loading = false }
-        if let c = try? await deriv.candles(symbol: symbol, timeframe: timeframe, count: 500) {
+        let settings = ChartCustomizationStore.shared.settings
+        if let c = try? await deriv.candles(symbol: symbol, timeframe: timeframe, count: settings.candleLookback) {
             candles = c
             lastPrice = c.last?.close
             
-            // Compute indicators
+            // Compute indicators with user customization (safe clamped values).
             let marketData = MarketData(candles: c)
             volumeProfileData = Microstructure.volumeProfile(
                 high: marketData.highs, low: marketData.lows, close: marketData.closes,
-                volume: marketData.volumes, bins: 24
+                volume: marketData.volumes, bins: settings.volumeProfileBins
             )
+            let adjustedMaxLevels = max(1, Int(Double(settings.heatmapMaxLevels) * settings.heatmapSensitivity))
             liquidityLevels = Microstructure.liquidityLevels(
                 high: marketData.highs, low: marketData.lows, close: marketData.closes,
-                lookback: 120, maxLevels: 6
+                lookback: settings.jumpLookback, maxLevels: adjustedMaxLevels
             )
-            jumpEvents = Microstructure.detectJumps(marketData.closes, mult: 3.0, lookback: 120)
+            jumpEvents = Microstructure.detectJumps(marketData.closes, mult: settings.jumpSensitivity, lookback: settings.jumpLookback)
         }
     }
 

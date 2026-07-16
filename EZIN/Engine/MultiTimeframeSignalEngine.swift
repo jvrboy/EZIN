@@ -5,6 +5,11 @@ import Foundation
 final class MultiTimeframeSignalEngine {
     let baseEngine = SignalEngine()
     let analyzer = TechnicalAnalyzer()
+    let deriv: DerivClient?
+
+    init(deriv: DerivClient? = nil) {
+        self.deriv = deriv
+    }
     
     struct TimeframeAnalysis {
         let timeframe: Timeframe
@@ -253,9 +258,73 @@ final class MultiTimeframeSignalEngine {
         return reasoning
     }
     
+    /// Real async generator: fetches every requested timeframe from Deriv instead of
+    /// silently falling back to 5m. Use this from background scanners and chat tools.
+    func generateMultiTimeframeSignal(
+        symbol: String,
+        requested: Timeframe,
+        deriv: DerivClient? = nil,
+        candleCount: Int = 200
+    ) async -> MultiTimeframeSignal? {
+        let client = deriv ?? self.deriv
+        guard let client else { return nil }
+        let tfs = requested.analysisSet
+        let data = await withTaskGroup(of: (Timeframe, [Candle]).self) { group in
+            for tf in tfs {
+                group.addTask {
+                    let candles = (try? await client.candles(symbol: symbol, timeframe: tf, count: candleCount)) ?? []
+                    return (tf, candles)
+                }
+            }
+            var out: [Timeframe: [Candle]] = [:]
+            for await item in group { out[item.0] = item.1 }
+            return out
+        }
+        guard let requestedCandles = data[requested], requestedCandles.count > 40 else { return nil }
+        var analyses: [TimeframeAnalysis] = []
+        var votes: [Direction] = []
+        var confidences: [Double] = []
+        for tf in tfs {
+            guard let candles = data[tf], candles.count > 40 else { continue }
+            var md = MarketData(symbol: symbol, assetClass: DerivSymbols.assetClass(symbol), timeframe: tf, candles: candles)
+            md.currentPrice = await MainActor.run { client.prices[symbol] } ?? candles.last?.close ?? 0
+            let analysis = analyzeTimeframe(md, timeframe: tf)
+            analyses.append(analysis)
+            if let signal = analysis.signal {
+                votes.append(signal.type.direction)
+                confidences.append(analysis.confidence)
+            }
+        }
+        guard !votes.isEmpty else { return nil }
+        let direction = determineConsensusDirection(votes)
+        guard direction != .neutral else { return nil }
+        let confluence = Double(votes.filter { $0 == direction }.count) / Double(votes.count)
+        guard confluence >= 0.5 else { return nil }
+        var base = MarketData(symbol: symbol, assetClass: DerivSymbols.assetClass(symbol), timeframe: requested, candles: requestedCandles)
+        base.currentPrice = await MainActor.run { client.prices[symbol] } ?? requestedCandles.last?.close ?? 0
+        let price = base.currentPrice > 0 ? base.currentPrice : (requestedCandles.last?.close ?? 0)
+        guard price > 0 else { return nil }
+        let levels = calculateLevels(price: price, direction: direction, analyses: analyses, marketData: base)
+        let avgConfidence = confidences.isEmpty ? 0 : confidences.reduce(0, +) / Double(confidences.count)
+        return MultiTimeframeSignal(
+            symbol: symbol,
+            displayPair: DerivSymbols.display(symbol),
+            direction: direction,
+            confidence: (avgConfidence * confluence * 100).rounded(),
+            timeframeAnalyses: analyses,
+            confluenceScore: confluence,
+            recommendedEntry: levels.entry,
+            stopLoss: levels.sl,
+            takeProfit: levels.tp,
+            createdAt: Date(),
+            expiresAt: Date().addingTimeInterval(TimeInterval(max(15, requested.minutes * 8) * 60)),
+            reasoning: buildReasoningString(direction: direction, confluenceScore: confluence, analyses: analyses, timeframes: tfs)
+        )
+    }
+
     private func fetchMarketDataForTimeframe(_ symbol: String, _ timeframe: Timeframe) -> MarketData? {
-        // This would fetch historical data for the specific timeframe
-        // For now, returning nil as a placeholder
+        // Synchronous callers cannot fetch; use the async generator above. Returning nil is
+        // now explicit rather than a hidden 5m fallback.
         return nil
     }
 }

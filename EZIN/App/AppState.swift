@@ -25,8 +25,10 @@ final class AppState: ObservableObject {
     @Published var history: [DerivClosedTrade] = []
     @Published var connectionState: DerivConnectionState = .disconnected
     @Published var booted = false
+    @Published var lastAutoRefreshAt: Date?
 
     private var historyTimer: Timer?
+    private var autoRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     func boot() async {
@@ -77,13 +79,46 @@ final class AppState: ObservableObject {
             }
             .store(in: &cancellables)
 
+        applyDisabledAgents()
         await connect()
         bot.startScanning()
+        BackgroundRefreshManager.shared.configure(app: self)
+        startAutoRefresh()
 
         // Refresh real closed-trade history periodically.
         await refreshHistory()
         historyTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { await self?.refreshHistory() }
+        }
+    }
+
+    /// Whole-app foreground heartbeat: every 5 seconds the backend refreshes live state,
+    /// heals a dropped socket, re-subscribes symbols and updates tracked signal outcomes.
+    private func startAutoRefresh() {
+        autoRefreshTimer?.invalidate()
+        autoRefreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            Task { await self?.refreshRealtime() }
+        }
+    }
+
+    func refreshRealtime() async {
+        lastAutoRefreshAt = Date()
+        switch deriv.connectionState {
+        case .disconnected, .error:
+            await connect()
+        case .connected:
+            // Re-assert subscriptions in case Deriv dropped one stream after a reconnect.
+            for symbol in deriv.subscribedSymbolsSnapshot { deriv.subscribeTicks(symbol) }
+        case .connecting:
+            break
+        }
+        signalPerformance.updatePrices(deriv.prices)
+    }
+
+    private func applyDisabledAgents() {
+        let disabled = Set(settings.disabledAgentNames)
+        for i in engine.agents.indices {
+            engine.agents[i].isActive = !disabled.contains(engine.agents[i].name)
         }
     }
 

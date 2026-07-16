@@ -58,10 +58,29 @@ struct PipelineStage: Codable, Identifiable, Hashable {
 
     enum Kind: String, Codable, CaseIterable {
         case fetchMarketData = "Fetch Market Data"
+        case fetchMultiTimeframe = "Fetch Multi-Timeframe Data"
         case computeIndicators = "Compute Indicators"
         case detectDivergence = "Detect Divergence"
         case runAgents = "Run Agents"
         case councilVote = "Council Vote"
+        case runSystematic = "Systematic Analysis"
+        case runMathScience = "Mathematical/FX Science"
+        case runRNG = "RNG & Monte Carlo"
+        case runNeural = "On-Device Neural Inference"
+        case runChaos = "Chaos Regime Analysis"
+        case runBayesian = "Bayesian Update"
+        case runFuzzy = "Fuzzy Confluence"
+        case runOrderFlow = "Order Flow / Microstructure"
+        case runHarmonic = "Harmonic Pattern Scan"
+        case runElliott = "Elliott Wave Count"
+        case runSessionLiquidity = "Session & Liquidity"
+        case runAnomaly = "Anomaly Scan"
+        case runRisk = "Risk & Money Management"
+        case runBacktest = "Backtest / Walk-Forward"
+        case runDocumentIntelligence = "Document Intelligence"
+        case runFileTool = "File Tool"
+        case runWebScrape = "Web Scrape"
+        case runMemoryRecall = "Memory Recall"
         case llmReview = "LLM Review"
         case emitSignal = "Emit Signal"
         case autoTrade = "Auto Trade"
@@ -75,12 +94,27 @@ struct Pipeline: Codable, Identifiable, Hashable {
     var enabled: Bool = true
 
     static var `default`: Pipeline {
-        Pipeline(name: "Default Council Pipeline", stages: [
-            .init(kind: .fetchMarketData),
+        Pipeline(name: "Full Backend Confluence Pipeline", stages: [
+            .init(kind: .fetchMultiTimeframe),
             .init(kind: .computeIndicators),
             .init(kind: .detectDivergence),
             .init(kind: .runAgents),
             .init(kind: .councilVote),
+            .init(kind: .runSystematic),
+            .init(kind: .runMathScience),
+            .init(kind: .runRNG),
+            .init(kind: .runNeural),
+            .init(kind: .runChaos),
+            .init(kind: .runBayesian),
+            .init(kind: .runFuzzy),
+            .init(kind: .runOrderFlow),
+            .init(kind: .runHarmonic),
+            .init(kind: .runElliott),
+            .init(kind: .runSessionLiquidity),
+            .init(kind: .runAnomaly),
+            .init(kind: .runRisk),
+            .init(kind: .runBacktest),
+            .init(kind: .llmReview),
             .init(kind: .emitSignal),
         ])
     }

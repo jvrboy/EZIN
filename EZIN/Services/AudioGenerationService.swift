@@ -307,27 +307,107 @@ enum AudioGenerationService {
         return result
     }
 
-    // MARK: - Stem Operations (Placeholders for future DSP integration)
+    // MARK: - Stem Operations (DSP-lite)
 
-    /// Split a stereo audio buffer into separate frequency bands (mock stem separation).
-    /// Real implementation would use a DSP library like Soundpipe or external API.
+    private struct WAVPCM { let samples: [Float]; let sampleRate: Int }
+
+    /// Read uncompressed 16-bit PCM WAV (mono or stereo) into mono Float samples.
+    private static func readWAVPCM(_ data: Data) -> WAVPCM? {
+        guard data.count > 44 else { return nil }
+        let bytes = [UInt8](data)
+        func ascii(_ range: Range<Int>) -> String { String(bytes: bytes[range], encoding: .ascii) ?? "" }
+        guard ascii(0..<4) == "RIFF", ascii(8..<12) == "WAVE" else { return nil }
+        func u16(_ offset: Int) -> Int { Int(bytes[offset]) | (Int(bytes[offset + 1]) << 8) }
+        func u32(_ offset: Int) -> Int { Int(bytes[offset]) | (Int(bytes[offset + 1]) << 8) | (Int(bytes[offset + 2]) << 16) | (Int(bytes[offset + 3]) << 24) }
+        var offset = 12
+        var sampleRate = 44100
+        var channels = 1
+        var bits = 16
+        var pcmStart = -1
+        var pcmCount = 0
+        while offset + 8 <= bytes.count {
+            let id = ascii(offset..<(offset + 4))
+            let size = u32(offset + 4)
+            if id == "fmt " {
+                channels = u16(offset + 10)
+                sampleRate = u32(offset + 12)
+                bits = u16(offset + 22)
+            } else if id == "data" {
+                pcmStart = offset + 8
+                pcmCount = min(size, bytes.count - pcmStart)
+                break
+            }
+            offset += 8 + size + (size % 2)
+        }
+        guard pcmStart >= 0, bits == 16, channels == 1 || channels == 2 else { return nil }
+        let frames = pcmCount / (2 * channels)
+        var samples: [Float] = []
+        samples.reserveCapacity(frames)
+        for i in 0..<frames {
+            let base = pcmStart + i * 2 * channels
+            func sample(_ ch: Int) -> Float {
+                let o = base + ch * 2
+                let v = Int16(bitPattern: UInt16(bytes[o]) | (UInt16(bytes[o + 1]) << 8))
+                return Float(v) / 32768.0
+            }
+            samples.append(channels == 1 ? sample(0) : (sample(0) + sample(1)) * 0.5)
+        }
+        return WAVPCM(samples: samples, sampleRate: sampleRate)
+    }
+
+    private static func onePoleLowPass(_ x: [Float], cutoff: Double, sampleRate: Int) -> [Float] {
+        guard !x.isEmpty else { return [] }
+        let rc = 1.0 / (2.0 * Double.pi * max(cutoff, 1.0))
+        let dt = 1.0 / Double(max(sampleRate, 1))
+        let alpha = Float(dt / (rc + dt))
+        var y = x
+        var prev = x[0]
+        for i in x.indices {
+            prev = prev + alpha * (x[i] - prev)
+            y[i] = prev
+        }
+        return y
+    }
+
+    private static func sub(_ a: [Float], _ b: [Float]) -> [Float] {
+        zip(a, b).map { max(-1, min(1, $0.0 - $0.1)) }
+    }
+
+    private static func gain(_ x: [Float], _ g: Float) -> [Float] { x.map { max(-1, min(1, $0 * g)) } }
+
+    /// Split audio into useful frequency-band stems with real one-pole DSP filtering.
+    /// This is not ML source separation, but it is deterministic local DSP rather than a mock.
     static func splitStems(wavData: Data) -> [String: Data] {
-        // Placeholder: returns the original data tagged as different stems.
-        // A full implementation would use FFT-based separation or ML model.
+        guard let pcm = readWAVPCM(wavData) else { return ["full": wavData] }
+        let bass = onePoleLowPass(pcm.samples, cutoff: 180, sampleRate: pcm.sampleRate)
+        let lowMid = onePoleLowPass(pcm.samples, cutoff: 900, sampleRate: pcm.sampleRate)
+        let mids = sub(lowMid, bass)
+        let air = sub(pcm.samples, lowMid)
+        let drums = gain(sub(pcm.samples, onePoleLowPass(pcm.samples, cutoff: 60, sampleRate: pcm.sampleRate)), 0.9)
+        let vocals = gain(sub(pcm.samples, bass), 0.65)
+        let sr = pcm.sampleRate
         return [
             "full": wavData,
-            "vocals_placeholder": wavData,
-            "drums_placeholder": wavData,
-            "bass_placeholder": wavData,
-            "other_placeholder": wavData
+            "bass": writeWAVData(samples: bass, sampleRate: sr),
+            "vocals_band": writeWAVData(samples: vocals, sampleRate: sr),
+            "drums_transient": writeWAVData(samples: drums, sampleRate: sr),
+            "mids": writeWAVData(samples: mids, sampleRate: sr),
+            "air": writeWAVData(samples: air, sampleRate: sr)
         ]
     }
 
-    /// Create a stem mix from multiple audio sources.
+    /// Create a stem mix by summing decoded PCM stems with per-stem gain.
     static func mixStems(stems: [(data: Data, volume: Float)]) -> Data? {
-        // Placeholder: returns the first stem's data.
-        // Full implementation would mix PCM samples.
-        return stems.first?.data
+        var mixed: [Float] = []
+        var sampleRate = 44100
+        for (data, volume) in stems {
+            guard let pcm = readWAVPCM(data) else { continue }
+            sampleRate = pcm.sampleRate
+            if mixed.count < pcm.samples.count { mixed.append(contentsOf: repeatElement(0, count: pcm.samples.count - mixed.count)) }
+            for i in pcm.samples.indices { mixed[i] = max(-1, min(1, mixed[i] + pcm.samples[i] * volume)) }
+        }
+        guard !mixed.isEmpty else { return nil }
+        return writeWAVData(samples: mixed, sampleRate: sampleRate)
     }
 }
 

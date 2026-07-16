@@ -31,6 +31,47 @@ struct ToolRegistry {
         case "backtest":           return backtest(args)
         case "risk_plan":          return riskPlan(args)
         case "structure_confluence": return structureConfluence(args)
+
+        // Real file/document tools — no MCP required to create, read, summarize, rename or delete files.
+        case "create_file":        return createFile(args)
+        case "read_file":          return readFile(args)
+        case "summarize_file":     return summarizeFile(args)
+        case "list_files":         return listFiles(args)
+        case "rename_file":        return renameFile(args)
+        case "delete_file":        return deleteFile(args)
+
+        // App control / memory / web.
+        case "app_state":          return appState()
+        case "set_setting":        return setSetting(args)
+        case "memory_add":         return memoryAdd(args)
+        case "memory_search":      return memorySearch(args)
+        case "skills_list":        return skillsList()
+        case "skill_create":       return skillCreate(args)
+        case "skill_import":       return skillImport(args)
+        case "web_scrape":         return await webScrape(args)
+        case "sentiment_score":    return sentimentScore(args)
+
+        // Advanced hidden backend engines.
+        case "full_backend_report": return fullBackendReport(args)
+        case "math_analysis":       return mathAnalysis(args)
+        case "forex_math":          return forexMath(args)
+        case "synthetics_analysis": return syntheticsAnalysis(args)
+        case "rng_analysis":        return rngAnalysis(args)
+        case "neural_inference":    return neuralInference(args)
+        case "chaos_analysis":      return chaosAnalysis(args)
+        case "quantum_inspired":    return quantumInspired(args)
+        case "bayesian_update":     return bayesianUpdate(args)
+        case "fuzzy_signal":        return fuzzySignal(args)
+        case "order_flow":          return orderFlow(args)
+        case "harmonic_patterns":   return harmonicPatterns(args)
+        case "elliott_wave":        return elliottWave(args)
+        case "astro_cycles":        return astroCycles(args)
+        case "deep_risk":           return deepRisk(args)
+        case "walkforward":         return walkforward(args)
+        case "correlation_matrix":  return correlationMatrix(args)
+        case "session_liquidity":   return sessionLiquidity(args)
+        case "anomaly_scan":        return anomalyScan(args)
+        case "games_list":          return gamesList()
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -432,6 +473,285 @@ struct ToolRegistry {
         let payoff = (args["payoff_ratio"] as? Double) ?? Double(str(args, "payoff_ratio")) ?? 1.5
         let plan = BackendQuantEngine.riskPlan(md, winRate: min(max(winRate, 0.01), 0.99), payoffRatio: max(payoff, 0.1), accountSize: max(accountSize, 0))
         return "Risk plan for \(DerivSymbols.display(symbol)): stop distance \(String(format: "%.5f", plan.stopDistance)), target \(String(format: "%.5f", plan.targetDistance)), R:R \(String(format: "%.2f", plan.riskReward)), Kelly \(String(format: "%.1f", plan.kellyFraction * 100))%, capped risk \(String(format: "%.1f", plan.cappedRiskFraction * 100))%, 95% VaR \(String(format: "%.2f", plan.valueAtRisk)), CVaR \(String(format: "%.2f", plan.conditionalValueAtRisk))."
+    }
+
+
+    // MARK: - File / document tools (no MCP required)
+
+    private func sanitizedFileName(_ raw: String, fallbackExt: String = "txt") -> String {
+        let cleaned = raw.replacingOccurrences(of: "[^A-Za-z0-9._-]", with: "-", options: .regularExpression)
+        let name = cleaned.isEmpty ? "file-\(Int(Date().timeIntervalSince1970))" : cleaned
+        return name.contains(".") ? name : "\(name).\(fallbackExt)"
+    }
+
+    private func createFile(_ args: [String: Any]) -> String {
+        let name = sanitizedFileName(str(args, "name").isEmpty ? str(args, "filename") : str(args, "name"), fallbackExt: str(args, "kind").isEmpty ? "txt" : str(args, "kind"))
+        let content = str(args, "content")
+        let folder = str(args, "folder").lowercased()
+        let dir = folder.contains("project") ? FileStore.shared.projectsDir : FileStore.shared.artifactsDir
+        let data = Data(content.utf8)
+        let url = FileStore.shared.saveData(data, name: name, in: dir)
+        let rel = FileStore.shared.relativePath(url)
+        let artifact = Artifact(name: name, relativePath: rel, kind: (name as NSString).pathExtension.lowercased(), byteSize: Int64(data.count))
+        ArtifactStore.shared.add(artifact)
+        return "Created \(name) (\(artifact.sizeDisplay)) at \(rel). No MCP server was needed — the app has real file tools."
+    }
+
+    private func readFile(_ args: [String: Any]) -> String {
+        let query = str(args, "name").isEmpty ? str(args, "path") : str(args, "name")
+        let chars = Int((args["chars"] as? Double) ?? Double(str(args, "chars")) ?? 2000)
+        return DocumentIntelligence.filePreview(query, chars: max(200, min(chars, 12000)))
+    }
+
+    private func summarizeFile(_ args: [String: Any]) -> String {
+        let query = str(args, "name").isEmpty ? str(args, "path") : str(args, "name")
+        let sentences = Int((args["sentences"] as? Double) ?? Double(str(args, "sentences")) ?? 10)
+        return DocumentIntelligence.summarizeFile(query, maxSentences: max(3, min(sentences, 20)))
+    }
+
+    private func listFiles(_ args: [String: Any]) -> String {
+        let scope = str(args, "scope").lowercased()
+        let root = scope.contains("project") ? FileStore.shared.projectsDir : scope.contains("chat") ? FileStore.shared.chatDir : FileStore.shared.artifactsDir
+        let fm = FileStore.shared.fm
+        guard let items = try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey], options: [.skipsHiddenFiles]) else {
+            return "No files found."
+        }
+        func modDate(_ url: URL) -> Date { (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast }
+        let rows = items.sorted { modDate($0) > modDate($1) }.prefix(40).map { url -> String in
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            return "• \(url.lastPathComponent) (\(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)))"
+        }
+        return rows.isEmpty ? "No files found." : "## Files\n" + rows.joined(separator: "\n")
+    }
+
+    private func renameFile(_ args: [String: Any]) -> String {
+        let from = str(args, "from").isEmpty ? str(args, "name") : str(args, "from")
+        let to = sanitizedFileName(str(args, "to"))
+        guard let src = DocumentIntelligence.resolveFile(from) else { return "No file found for '\(from)'." }
+        let dst = src.deletingLastPathComponent().appendingPathComponent(to)
+        do {
+            try FileStore.shared.fm.moveItem(at: src, to: dst)
+            let rel = FileStore.shared.relativePath(dst)
+            let artifact = Artifact(name: to, relativePath: rel, kind: dst.pathExtension.lowercased(), byteSize: FileStore.shared.fileSize(atRelative: rel))
+            ArtifactStore.shared.add(artifact)
+            return "Renamed \(src.lastPathComponent) → \(to)."
+        } catch {
+            return "Rename failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func deleteFile(_ args: [String: Any]) -> String {
+        let query = str(args, "name").isEmpty ? str(args, "path") : str(args, "name")
+        guard let src = DocumentIntelligence.resolveFile(query) else { return "No file found for '\(query)'." }
+        let bin = FileStore.shared.chatDir.appendingPathComponent("Bin", isDirectory: true)
+        let dst = bin.appendingPathComponent("\(Int(Date().timeIntervalSince1970))-\(src.lastPathComponent)")
+        do {
+            try FileStore.shared.fm.createDirectory(at: bin, withIntermediateDirectories: true)
+            try FileStore.shared.fm.moveItem(at: src, to: dst)
+            return "Moved \(src.lastPathComponent) to the file bin: \(FileStore.shared.relativePath(dst)). It can be recovered from Chat/Bin."
+        } catch {
+            return "Delete failed: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - App state / settings / memory / web
+
+    private func appState() -> String {
+        let cfg = ChatConfigStore.shared.config
+        return """
+        ## App State
+        - Connection: \(app.connectionState.label) · authorized: \(app.deriv.authorized ? "yes" : "no") · last auto-refresh: \(app.lastAutoRefreshAt?.formatted(date: .omitted, time: .standard) ?? "pending")
+        - Bot: \(app.bot.running ? "running" : "not running") · live signals: \(app.signals.count) · closed trades cached: \(app.history.count)
+        - Watchlist: \(app.settings.watchlist.map { DerivSymbols.display($0) }.joined(separator: ", "))
+        - Chat: autoRoute \(cfg.autoRoute ? "on" : "off") · trading \(cfg.allowTrading ? "enabled" : "disabled") · temperature \(String(format: "%.2f", cfg.temperature))
+        - Note: iOS permits best-effort background refresh, not guaranteed 24/7 execution while suspended; foreground heartbeat is every 5s and system background tasks are registered.
+        """
+    }
+
+    private func setSetting(_ args: [String: Any]) -> String {
+        let key = str(args, "key").lowercased()
+        let value = str(args, "value")
+        func boolValue() -> Bool { ["1", "true", "yes", "on", "enabled"].contains(value.lowercased()) }
+        switch key {
+        case "push_alerts", "pushalerts":
+            app.settings.pushAlerts = boolValue()
+            return "Push alerts set to \(app.settings.pushAlerts)."
+        case "allow_trading", "allowtrading":
+            ChatConfigStore.shared.config.allowTrading = boolValue()
+            return "Chat trading set to \(ChatConfigStore.shared.config.allowTrading)."
+        case "auto_route", "autoroute":
+            ChatConfigStore.shared.config.autoRoute = boolValue()
+            return "Auto-route set to \(ChatConfigStore.shared.config.autoRoute)."
+        case "temperature":
+            let t = max(0, min(1.5, Double(value) ?? 0.4))
+            ChatConfigStore.shared.config.temperature = t
+            return "Temperature set to \(String(format: "%.2f", t))."
+        case "watchlist":
+            let symbols = value.split(separator: ",").map { resolveSymbol(String($0).trimmingCharacters(in: .whitespaces)) }.filter { DerivSymbols.all.contains($0) }
+            guard !symbols.isEmpty else { return "No valid symbols in value. Use comma-separated Deriv symbols." }
+            app.settings.watchlist = Array(Set(symbols)).sorted()
+            return "Watchlist updated: \(app.settings.watchlist.map { DerivSymbols.display($0) }.joined(separator: ", "))."
+        default:
+            return "Supported settings: push_alerts, allow_trading, auto_route, temperature, watchlist."
+        }
+    }
+
+    private var memoryFileURL: URL { FileStore.shared.chatDir.appendingPathComponent("memory.jsonl") }
+
+    private func memoryAdd(_ args: [String: Any]) -> String {
+        let text = str(args, "text").isEmpty ? str(args, "memory") : str(args, "text")
+        guard !text.isEmpty else { return "Missing memory text." }
+        let record: [String: Any] = ["date": ISO8601DateFormatter().string(from: Date()), "text": text]
+        guard let data = try? JSONSerialization.data(withJSONObject: record) else { return "Failed to encode memory." }
+        if let handle = try? FileHandle(forWritingTo: memoryFileURL) {
+            defer { try? handle.close() }
+            try? handle.seekToEnd()
+            try? handle.write(contentsOf: data + Data("\n".utf8))
+        } else {
+            try? (data + Data("\n".utf8)).write(to: memoryFileURL)
+        }
+        return "Memory saved. I can search it with memory_search(query)."
+    }
+
+    private func memorySearch(_ args: [String: Any]) -> String {
+        let query = str(args, "query").lowercased()
+        guard let raw = try? String(contentsOf: memoryFileURL, encoding: .utf8), !raw.isEmpty else { return "No saved memories yet." }
+        let lines = raw.split(separator: "\n").map(String.init)
+        let matches = lines.filter { query.isEmpty || $0.lowercased().contains(query) }.suffix(8)
+        return matches.isEmpty ? "No memories matched '\(query)'." : "## Memory\n" + matches.joined(separator: "\n")
+    }
+
+    private func skillsList() -> String {
+        "## Installed Skills\n" + SkillStore.shared.promptSummary(limit: 30)
+    }
+
+    private func skillCreate(_ args: [String: Any]) -> String {
+        let name = str(args, "name")
+        let content = str(args, "content")
+        guard !name.isEmpty, !content.isEmpty else { return "skill_create requires name and content." }
+        let skill = SkillStore.shared.create(
+            name: name,
+            format: str(args, "format").isEmpty ? "md" : str(args, "format"),
+            summary: str(args, "summary").isEmpty ? "Custom chat skill" : str(args, "summary"),
+            content: content,
+            tools: (args["tools"] as? [String]) ?? str(args, "tools").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) },
+            executionScripts: (args["execution_scripts"] as? [String]) ?? []
+        )
+        return "Installed skill '\(skill.name)' [\(skill.format)]. It is now available to the assistant via skills_list."
+    }
+
+    private func skillImport(_ args: [String: Any]) -> String {
+        let text = str(args, "text").isEmpty ? str(args, "content") : str(args, "text")
+        guard !text.isEmpty else { return "skill_import requires text/content (MD, SKILL, JSON, and more text formats are supported)." }
+        let skill = SkillStore.shared.importText(text, suggestedName: str(args, "name").isEmpty ? "Imported Skill" : str(args, "name"))
+        return "Imported skill '\(skill.name)' [\(skill.format)]."
+    }
+
+    private func webScrape(_ args: [String: Any]) async -> String {
+        let raw = str(args, "url")
+        guard let url = URL(string: raw), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
+            return "Provide a valid http(s) URL."
+        }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let html = String(data: data.prefix(250_000), encoding: .utf8) ?? ""
+            let title = (html.range(of: "<title>(.*?)</title>", options: [.regularExpression, .caseInsensitive]).map { String(html[$0]) } ?? "untitled")
+                .replacingOccurrences(of: "</?title>", with: "", options: .regularExpression)
+            let text = html
+                .replacingOccurrences(of: "<script[\\s\\S]*?</script>", with: " ", options: .regularExpression)
+                .replacingOccurrences(of: "<style[\\s\\S]*?</style>", with: " ", options: .regularExpression)
+                .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+                .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let summary = DocumentIntelligence.summarize(text, maxSentences: 6, maxChars: 1800)
+            return "## Web Scrape\n**\(title)**\n\(url.absoluteString)\n\n" + (summary.isEmpty ? String(text.prefix(1200)) : summary)
+        } catch {
+            return "Web scrape failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func sentimentScore(_ args: [String: Any]) -> String {
+        let text = str(args, "text").isEmpty ? str(args, "headline") : str(args, "text")
+        guard !text.isEmpty else { return "Missing text/headline." }
+        let positive: Set<String> = ["beat", "beats", "surge", "surges", "rally", "rallies", "growth", "strong", "upgrade", "upgraded", "record", "profit", "dovish", "stimulus", "approval", "bullish", "expands", "wins", "breakthrough"]
+        let negative: Set<String> = ["miss", "misses", "crash", "crashes", "selloff", "sell-off", "weak", "downgrade", "downgraded", "loss", "hawkish", "ban", "banned", "lawsuit", "fraud", "bearish", "contracts", "fear", "default", "war"]
+        let toks = text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        let pos = toks.filter { positive.contains($0) }.count
+        let neg = toks.filter { negative.contains($0) }.count
+        let score = max(-1.0, min(1.0, Double(pos - neg) / Double(max(2, pos + neg + 1))))
+        let label = score > 0.25 ? "bullish/positive" : score < -0.25 ? "bearish/negative" : "neutral/mixed"
+        return "Sentiment score: \(String(format: "%.2f", score)) (\(label)) · positive hits \(pos) · negative hits \(neg). Use inject_news to push this into the news-reactive agent."
+    }
+
+    // MARK: - Advanced backend tools
+
+    private func mdFor(_ args: [String: Any]) -> (MarketData?, String) {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+        guard !symbol.isEmpty else { return (nil, "Missing 'symbol' parameter.") }
+        app.deriv.subscribeTicks(symbol)
+        guard let md = marketData(for: symbol, timeframe: timeframe) else {
+            return (nil, "Need at least 30 cached candles for \(DerivSymbols.display(symbol)). Run analyze(symbol,timeframe) first or open the chart for a few seconds.")
+        }
+        return (md, "")
+    }
+
+    private func fullBackendReport(_ args: [String: Any]) -> String {
+        let (md, err) = mdFor(args); guard let md else { return err }
+        let account = (args["account_size"] as? Double) ?? Double(str(args, "account_size")) ?? 0
+        return AdvancedBackend.fullBackendReport(for: md, accountSize: account)
+    }
+
+    private func mathAnalysis(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.mathematicalReport(for: md) }
+    private func forexMath(_ args: [String: Any]) -> String {
+        let (md, err) = mdFor(args); guard let md else { return err }
+        let domestic = (args["domestic_rate"] as? Double) ?? Double(str(args, "domestic_rate")) ?? 0.05
+        let foreign = (args["foreign_rate"] as? Double) ?? Double(str(args, "foreign_rate")) ?? 0.03
+        let days = (args["days"] as? Double) ?? Double(str(args, "days")) ?? 30
+        return AdvancedBackend.forexMathReport(for: md, domesticRate: domestic, foreignRate: foreign, days: days)
+    }
+    private func syntheticsAnalysis(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.syntheticsReport(for: md) }
+    private func rngAnalysis(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.rngReport(for: md) }
+    private func neuralInference(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.neuralReport(for: md) }
+    private func chaosAnalysis(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.chaosReport(for: md) }
+    private func quantumInspired(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.quantumInspiredReport(for: md) }
+    private func bayesianUpdate(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.bayesianReport(for: md) }
+    private func fuzzySignal(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.fuzzyReport(for: md) }
+    private func orderFlow(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.orderFlowReport(for: md) }
+    private func harmonicPatterns(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.harmonicReport(for: md) }
+    private func elliottWave(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.elliottReport(for: md) }
+    private func astroCycles(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.astroReport(for: md) }
+    private func deepRisk(_ args: [String: Any]) -> String {
+        let (md, err) = mdFor(args); guard let md else { return err }
+        let account = (args["account_size"] as? Double) ?? Double(str(args, "account_size")) ?? 0
+        return AdvancedBackend.deepRiskReport(for: md, accountSize: account)
+    }
+    private func walkforward(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.walkforwardReport(for: md) }
+    private func sessionLiquidity(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.sessionLiquidityReport(for: md) }
+    private func anomalyScan(_ args: [String: Any]) -> String { let (md, err) = mdFor(args); guard let md else { return err }; return AdvancedBackend.anomalyReport(for: md) }
+
+    private func correlationMatrix(_ args: [String: Any]) -> String {
+        let raw = str(args, "symbols")
+        let symbols = raw.isEmpty ? app.settings.watchlist : raw.split(separator: ",").map { resolveSymbol(String($0).trimmingCharacters(in: .whitespaces)) }
+        var series: [String: [Double]] = [:]
+        for symbol in Set(symbols).sorted() {
+            if let closes = app.deriv.priceCache[symbol]?.prices, closes.count >= 30 { series[symbol] = closes }
+        }
+        guard series.count >= 2 else { return "Need cached candles for at least two watchlist symbols. Run analyze on two instruments or open charts first." }
+        return AdvancedBackend.correlationMatrix(series: series)
+    }
+
+    private func gamesList() -> String {
+        """
+        ## EZIN Arcade
+        - Quantum Cat Box — quantum prediction and collapse
+        - Frequency Frog — scales, chords and intervals
+        - Fraction Fighter — math combat
+        - Gravity Golf — projectile physics across planets
+        - Tower of Babel — translations and false friends
+        - Taxonomy Tetris — classify organisms before the stack rises
+        Open the GAMES tab to play them inside the app.
+        """
     }
 
     // MARK: - Song Helpers

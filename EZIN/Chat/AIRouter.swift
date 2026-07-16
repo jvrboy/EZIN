@@ -20,6 +20,10 @@ enum AIRouter {
 
     static func availableProviders() -> [CredentialKey] {
         var providers = priority.filter { APIKeyStore.shared.count(for: $0) > 0 }
+        // Add a user-hosted OpenAI-compatible endpoint (llama.cpp server, Ollama, vLLM, etc.)
+        if CredentialStore.shared.has(.customEndpoint) {
+            providers.insert(.customEndpoint, at: 0)
+        }
         // Add local LLM if any models are imported
         if !LLMModelStore.shared.models.isEmpty {
             providers.insert(.localLLM, at: 0)
@@ -42,8 +46,18 @@ enum AIRouter {
             }
         }
         
+        // Prefer a user-hosted real LLM endpoint before cloud providers.
+        if CredentialStore.shared.has(.customEndpoint) {
+            do {
+                let text = try await callCustomEndpoint(system: system, messages: messages)
+                if !text.isEmpty { return .success(text) }
+            } catch {
+                // Continue to cloud providers.
+            }
+        }
+
         // Fall back to remote providers
-        var order = availableProviders().filter { $0 != .localLLM }
+        var order = availableProviders().filter { $0 != .localLLM && $0 != .customEndpoint }
         if let p = preferred, order.contains(p) { order.removeAll { $0 == p }; order.insert(p, at: 0) }
         guard !order.isEmpty else { return .failure(AIProviderError.noKey) }
         for provider in order {
@@ -173,6 +187,24 @@ enum AIRouter {
         }
         prompt += "Assistant: "
         return prompt
+    }
+
+    /// User-hosted OpenAI-compatible endpoint. Store either `https://host/v1/chat/completions`
+    /// or `https://host/v1/chat/completions|api_key` in Settings → Custom Endpoint. This is
+    /// the production path for a real self-hosted LLM (llama.cpp/Ollama/vLLM) on-device or LAN.
+    private static func callCustomEndpoint(system: String, messages: [ChatTurn]) async throws -> String {
+        guard let stored = CredentialStore.shared.value(for: .customEndpoint), !stored.isEmpty else { throw AIProviderError.noKey }
+        let parts = stored.split(separator: "|", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+        let url = parts[0]
+        let key = parts.count > 1 ? parts[1] : ""
+        var msgs: [[String: Any]] = [["role": "system", "content": system]]
+        for m in messages { msgs.append(["role": m.role == "assistant" ? "assistant" : "user", "content": m.content]) }
+        let body: [String: Any] = ["model": "local-llm", "messages": msgs, "temperature": ChatConfigStore.shared.config.temperature, "max_tokens": 1200]
+        let obj = try await postJSON(url, headers: key.isEmpty ? [:] : ["Authorization": "Bearer \(key)"], body: body)
+        guard let choices = obj["choices"] as? [[String: Any]], let first = choices.first,
+              let msg = first["message"] as? [String: Any], let content = msg["content"] as? String else { throw AIProviderError.parse }
+        await trackSuccess(provider: .customEndpoint, key: key.isEmpty ? "local-endpoint" : key, response: obj)
+        return content
     }
 
     // MARK: - Transport

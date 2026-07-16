@@ -85,6 +85,17 @@ struct MarketData {
     var latest: Candle? { candles.last }
 }
 
+extension MarketData {
+    /// Convenience used by chart-only indicator paths where symbol context is not needed.
+    init(candles: [Candle], symbol: String = "", assetClass: AssetClass = .synthetic, timeframe: Timeframe = .m1) {
+        self.symbol = symbol
+        self.assetClass = assetClass
+        self.timeframe = timeframe
+        self.candles = candles
+        self.currentPrice = candles.last?.close ?? 0
+    }
+}
+
 // MARK: - Agent vote & council decision (ported from AgentVote / CouncilDecision)
 
 struct AgentVote {

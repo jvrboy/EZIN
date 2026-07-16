@@ -17,7 +17,7 @@ struct BotConfig: Codable {
     /// Multiplier leverage for Deriv Multiplier contracts.
     var multiplier: Int = 100
     /// Symbols the bot is allowed to trade (Deriv symbol codes).
-    var instruments: [String] = ["R_75", "R_100", "R_50"]
+    var instruments: [String] = Array(DerivSymbols.volatility.prefix(3) + DerivSymbols.boom.prefix(1) + DerivSymbols.crash.prefix(1) + DerivSymbols.forex.prefix(3) + DerivSymbols.crypto.prefix(2) + DerivSymbols.commodity.prefix(1))
     /// Maximum simultaneously-open positions.
     var maxOpenPositions: Int = 3
     /// Stop configuration.

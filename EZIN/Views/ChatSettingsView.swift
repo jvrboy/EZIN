@@ -33,9 +33,17 @@ struct ChatSettingsView: View {
             }
 
             GlassSection(title: "Backend") {
-                GlassNavRow(icon: "person.3.fill", title: "Specialist agents", value: "\(AgentRegistry.agents.count)")
+                NavigationLink { AgentSettingsView() } label: {
+                    GlassNavRow(icon: "person.3.fill", title: "Specialist agents", value: "\(AgentRegistry.agents.count)")
+                }.buttonStyle(.plain)
                 Divider().overlay(Color.white.opacity(0.08))
-                GlassNavRow(icon: "point.3.connected.trianglepath.dotted", title: "Pipelines", value: "\(AgentRegistry.pipelines.count)")
+                NavigationLink { PipelinesView() } label: {
+                    GlassNavRow(icon: "point.3.connected.trianglepath.dotted", title: "Pipelines", value: "\(AgentRegistry.pipelines.count)")
+                }.buttonStyle(.plain)
+                Divider().overlay(Color.white.opacity(0.08))
+                NavigationLink { SkillsView() } label: {
+                    GlassNavRow(icon: "brain.head.profile", title: "Skills & Skill Creator", value: "\(SkillStore.shared.skills.count)")
+                }.buttonStyle(.plain)
                 Divider().overlay(Color.white.opacity(0.08))
                 NavigationLink { MCPConnectorsView() } label: {
                     GlassNavRow(icon: "puzzlepiece.extension.fill", title: "MCP Connectors", value: "\(mcp.connectors.count)")

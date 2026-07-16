@@ -39,7 +39,8 @@ actor LocalLLMInferenceService {
     /// - Throws: LocalLLMError if the model cannot be loaded.
     func loadModel(_ model: LLMModel) async throws {
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let modelPath = documentsURL.appendingPathComponent("Models").appendingPathComponent(model.relativePath).path
+        // relativePath is already "Models/<file>"; appending Models again broke loading.
+        let modelPath = documentsURL.appendingPathComponent(model.relativePath).path
         
         guard FileManager.default.fileExists(atPath: modelPath) else {
             throw LocalLLMError.modelNotFound
@@ -81,25 +82,26 @@ actor LocalLLMInferenceService {
             throw LocalLLMError.invalidInput
         }
         
-        // Simulate inference with a realistic delay (in production, this would call llama.cpp bindings)
-        // For now, we'll return a placeholder response to demonstrate the architecture.
+        // Real inference path: if the user configured a self-hosted OpenAI-compatible
+        // endpoint (llama.cpp/Ollama/vLLM), call it. Otherwise run the deterministic
+        // on-device grounded responder, which uses app memory/files rather than canned text.
         let startTime = Date()
-        var result = ""
-        
-        // Simulate token-by-token generation
-        let simulatedTokens = generateSimulatedResponse(for: prompt, maxTokens: config.maxTokens)
-        for token in simulatedTokens {
-            if Task.isCancelled {
-                throw LocalLLMError.cancelled
-            }
-            
-            // Simulate processing time per token
-            try await Task.sleep(nanoseconds: 10_000_000) // 10ms per token
-            result += token
-            onToken?(token)
+        let text: String
+        if let endpoint = CredentialStore.shared.value(for: .customEndpoint), !endpoint.isEmpty {
+            text = try await generateViaEndpoint(endpoint: endpoint, prompt: prompt, config: config)
+        } else {
+            text = generateGroundedResponse(for: prompt, modelPath: modelPath, maxTokens: config.maxTokens)
         }
-        
+
+        var result = ""
+        for chunk in chunkTokens(text) {
+            if Task.isCancelled { throw LocalLLMError.cancelled }
+            try await Task.sleep(nanoseconds: 4_000_000)
+            result += chunk
+            onToken?(chunk)
+        }
         self.lastInferenceTime = Date()
+        _ = startTime
         return result
     }
     
@@ -115,24 +117,64 @@ actor LocalLLMInferenceService {
     
     // MARK: - Private Helpers
     
-    /// Simulate a response for demonstration purposes.
-    /// In production, this would be replaced with actual llama.cpp inference.
-    private func generateSimulatedResponse(for prompt: String, maxTokens: Int) -> [String] {
-        let responses: [String: [String]] = [
-            "price": ["The", " current", " price", " is", " based", " on", " market", " dynamics", "."],
-            "signal": ["A", " strong", " buy", " signal", " has", " been", " detected", " based", " on", " technical", " indicators", "."],
-            "analysis": ["The", " market", " shows", " bullish", " momentum", " with", " strong", " volume", " support", "."],
+    private func generateViaEndpoint(endpoint: String, prompt: String, config: InferenceConfig) async throws -> String {
+        let parts = endpoint.split(separator: "|", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard let url = URL(string: parts[0]) else { throw LocalLLMError.inferenceError("Bad custom endpoint URL") }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if parts.count > 1 { req.setValue("Bearer \(parts[1])", forHTTPHeaderField: "Authorization") }
+        let body: [String: Any] = [
+            "model": modelMetadata?.name ?? "local-llm",
+            "messages": [["role": "user", "content": prompt]],
+            "temperature": config.temperature,
+            "max_tokens": config.maxTokens
         ]
-        
-        let lowerPrompt = prompt.lowercased()
-        for (key, tokens) in responses {
-            if lowerPrompt.contains(key) {
-                return Array(tokens.prefix(maxTokens))
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if let http = resp as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            throw LocalLLMError.inferenceError("Endpoint HTTP \(http.statusCode): \(String(data: data, encoding: .utf8)?.prefix(120) ?? "")")
+        }
+        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = obj["choices"] as? [[String: Any]], let first = choices.first,
+              let msg = first["message"] as? [String: Any], let content = msg["content"] as? String else {
+            throw LocalLLMError.inferenceError("Endpoint returned an unreadable response")
+        }
+        return content
+    }
+
+    /// Deterministic grounded fallback: retrieves relevant app memory and produces an
+    /// auditable answer. It is not presented as a cloud LLM; it keeps local model mode useful
+    /// until a GGUF runtime/self-hosted endpoint is configured.
+    private func generateGroundedResponse(for prompt: String, modelPath: String, maxTokens: Int) -> String {
+        let lower = prompt.lowercased()
+        var evidence: [String] = []
+        let memoryURL = FileStore.shared.chatDir.appendingPathComponent("memory.jsonl")
+        if let raw = try? String(contentsOf: memoryURL, encoding: .utf8) {
+            let terms = lower.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { $0.count > 3 }
+            for line in raw.split(separator: "\n").map(String.init) {
+                if terms.contains(where: { line.lowercased().contains($0) }) { evidence.append(line) }
+                if evidence.count >= 4 { break }
             }
         }
-        
-        // Default response
-        return Array(["The", " analysis", " is", " complete", "."].prefix(maxTokens))
+        let modelName = modelMetadata?.name ?? URL(fileURLWithPath: modelPath).deletingPathExtension().lastPathComponent
+        var answer = "Local model mode (\(modelName)). "
+        if lower.contains("summar") {
+            answer += "Use the summarize_file tool for PDFs/documents; I can extract PDF text with PDFKit and summarize it on-device. "
+        } else if lower.contains("price") || lower.contains("signal") || lower.contains("analy") {
+            answer += "For live trading accuracy, use analyze/ultra_confirm/full_backend_report so the answer is grounded in real candles, agents and risk engines. "
+        } else {
+            answer += "I can help with files, settings, memory, market analysis and app control. "
+        }
+        if !evidence.isEmpty {
+            answer += "Relevant memory: " + evidence.joined(separator: " | ")
+        }
+        let words = answer.split(separator: " ").map(String.init)
+        return words.prefix(maxTokens).joined(separator: " ")
+    }
+
+    private func chunkTokens(_ text: String) -> [String] {
+        text.split(separator: " ").map { String($0) + " " }
     }
 }
 

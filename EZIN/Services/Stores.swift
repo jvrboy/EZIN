@@ -20,9 +20,25 @@ final class SettingsStore: ObservableObject {
         didSet { d.set(pushAlerts, forKey: "pushAlerts") }
     }
 
+    /// Agent names disabled by the user in Chat → Specialist Agents.
+    var disabledAgentNames: [String] {
+        get { d.array(forKey: "disabledAgentNames") as? [String] ?? [] }
+        set { d.set(newValue, forKey: "disabledAgentNames") }
+    }
+
     /// Symbols scanned for the Signals tab when the bot is not actively trading.
     var watchlist: [String] {
-        get { (d.array(forKey: "watchlist") as? [String]) ?? Array(DerivSymbols.synthetic.prefix(4) + DerivSymbols.forex.prefix(2)) }
+        get {
+            (d.array(forKey: "watchlist") as? [String]) ?? Array(
+                DerivSymbols.volatility.prefix(3) +
+                DerivSymbols.boom.prefix(1) + DerivSymbols.crash.prefix(1) +
+                DerivSymbols.jump.prefix(1) +
+                DerivSymbols.forex.prefix(4) +
+                DerivSymbols.commodity.prefix(2) +
+                DerivSymbols.crypto.prefix(4) +
+                DerivSymbols.stockIndex.prefix(3)
+            )
+        }
         set { d.set(newValue, forKey: "watchlist") }
     }
 }

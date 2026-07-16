@@ -41,6 +41,21 @@ enum AgentRegistry {
         .init(name: "CodeRunner", role: "runs code/scripts via an MCP executor"),
         .init(name: "DataWrangler", role: "transforms and summarizes datasets"),
         .init(name: "Explainer", role: "teaches trading concepts"),
+        .init(name: "QuantMathematician", role: "statistics, regression, ARIMA/GARCH-lite, Kalman, Fourier"),
+        .init(name: "ForexMathScientist", role: "IRP, PPP, carry, currency strength and pip velocity"),
+        .init(name: "SyntheticsRNGAuditor", role: "digit distributions, streaks, entropy, Markov transitions"),
+        .init(name: "NeuralSignalEngineer", role: "on-device signal classifier and ensemble voting"),
+        .init(name: "ChaosRegimeAnalyst", role: "Hurst, Lyapunov proxy, fractal dimension and regime flips"),
+        .init(name: "BayesianUpdater", role: "prior/posterior signal confidence as candles arrive"),
+        .init(name: "FuzzyConfluenceAgent", role: "linguistic gray-area signal scoring"),
+        .init(name: "OrderFlowAnalyst", role: "aggressor imbalance, volume profile and microstructure"),
+        .init(name: "HarmonicPatternScanner", role: "XABCD Fibonacci pattern scoring"),
+        .init(name: "SessionLiquidityAnalyst", role: "killzones, sweeps and session policy"),
+        .init(name: "ManipulationAnomalyDetector", role: "spikes, gaps, spoof-like signatures and confidence penalties"),
+        .init(name: "DocumentIntelligenceAgent", role: "PDF/text extraction and on-device summarization"),
+        .init(name: "FileToolRunner", role: "creates, reads, renames, deletes and recovers files without MCP"),
+        .init(name: "MemoryKeeper", role: "global/project/conversation memory and recall"),
+        .init(name: "ArcadeHost", role: "runs the built-in educational games"),
         .init(name: "GeneralAssistant", role: "handles anything outside trading")
     ]
 
@@ -94,6 +109,20 @@ enum AgentRegistry {
         .init(name: "Performance Review", steps: ["trades", "stats", "insights"]),
         .init(name: "Regime Switch", steps: ["detect", "adapt", "reconfigure"]),
         .init(name: "News + Technicals Fusion", steps: ["news", "technicals", "decide"]),
+        .init(name: "Full Backend Confluence", steps: ["fetch", "systematic", "structure", "regime", "neural", "chaos", "bayesian", "fuzzy", "orderflow", "session", "anomaly", "risk", "verdict"]),
+        .init(name: "Math Science FX", steps: ["returns", "irp", "ppp", "carry", "strength", "pip_velocity"]),
+        .init(name: "Synthetics RNG Audit", steps: ["digits", "chi_square", "runs", "entropy", "markov", "monte_carlo"]),
+        .init(name: "Neural Ensemble", steps: ["features", "train_on_device", "probability", "ensemble_vote"]),
+        .init(name: "Chaos Regime Watch", steps: ["hurst", "lyapunov", "fractal_dimension", "regime_pressure"]),
+        .init(name: "Bayesian Confidence", steps: ["prior", "evidence", "posterior", "calibrate"]),
+        .init(name: "Harmonic Elliott Fusion", steps: ["pivots", "xabcd", "waves", "invalidation"]),
+        .init(name: "Session Liquidity Sweep", steps: ["killzone", "prior_high_low", "sweep", "route"]),
+        .init(name: "Walkforward Optimizer", steps: ["anchor", "genetic_optimize", "test", "stress"]),
+        .init(name: "PDF Intelligence", steps: ["import", "extract_text", "summarize", "cite_file"]),
+        .init(name: "File Creator", steps: ["spec", "write", "register_artifact", "attach"]),
+        .init(name: "Memory Recall", steps: ["query", "search_memory", "ground_answer"]),
+        .init(name: "Web Grounding", steps: ["scrape", "clean", "summarize", "sentiment"]),
+        .init(name: "Recovery Bin", steps: ["delete_to_bin", "restore", "permanent_delete"]),
         .init(name: "General QA", steps: ["understand", "answer"])
     ]
 

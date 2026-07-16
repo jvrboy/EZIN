@@ -81,6 +81,8 @@ final class DerivClient: NSObject, ObservableObject {
     private var token: String?
     private var reqID = 0
     private var subscribedSymbols = Set<String>()
+    /// Read-only snapshot used by the 5s app heartbeat to re-assert live tick streams.
+    var subscribedSymbolsSnapshot: Set<String> { subscribedSymbols }
 
     // Reconnection
     private var shouldReconnect = true

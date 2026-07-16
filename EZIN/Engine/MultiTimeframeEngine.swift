@@ -241,7 +241,8 @@ struct MultiTimeframeEngine {
         // Blend: confluence (top-down authority) + requested-TF focus + 1m execution.
         let focusSigned = Double(focus.direction.rawValue) / 2.0 * max(focus.consensus, 0.5)
         let execSigned = Double(execRead.direction.rawValue) / 2.0
-        let blended = clamp(confluence.alignmentScore * 0.55 + focusSigned * 0.30 + execSigned * 0.15, -1, 1)
+        let backend = backendConfluence(md: md)
+        let blended = clamp(confluence.alignmentScore * 0.48 + focusSigned * 0.24 + execSigned * 0.12 + backend.score * 0.16, -1, 1)
 
         let direction: Direction
         switch blended {
@@ -286,9 +287,10 @@ struct MultiTimeframeEngine {
         rationale.append("Requested \(requested.longLabel): \(focus.biasText), momentum \(focus.momentumLabel), trend strength \(Int(focus.trendStrength)), \(focus.volumeBiasText), \(focus.regime.rawValue) volatility.")
         rationale.append("Order flow on \(requested.longLabel): \(dirWord(focus.orderFlowBias)) (net aggression \(String(format: "%.2f", focus.netAggressiveVolume)), buy-bar ratio \(Int(focus.tradeDirectionRatio * 100))%).")
         rationale.append("1-minute execution: \(execRead.text)")
+        rationale.append(contentsOf: backend.notes)
         rationale.append("Merged directional score \(String(format: "%.2f", blended)) ⇒ \(action.rawValue).")
 
-        var warnings: [String] = []
+        var warnings: [String] = backend.warnings
         if confluence.dominantDirection == .neutral { warnings.append("Timeframes conflict — treat any entry as lower-probability.") }
         if execRead.direction != direction && direction != .neutral {
             warnings.append("1m timing (\(dirWord(execRead.direction))) disagrees with the merged bias — consider waiting for 1m to align.")
@@ -300,6 +302,78 @@ struct MultiTimeframeEngine {
         return FinalVerdict(action: action, direction: direction, confidence: confidence,
                             requestedTimeframe: requested, entry: price, stopLoss: sl, takeProfit: tp,
                             riskReward: rr, rationale: rationale, warnings: warnings)
+    }
+
+    // MARK: - Backend confluence layer
+
+    /// Hidden backend engines contribute one bounded vote and auditable notes. This keeps
+    /// the app UI clean while the pipeline uses systematic + structure + regime + neural +
+    /// chaos + Bayesian + fuzzy + order-flow + session + anomaly + risk tools together.
+    private func backendConfluence(md: MarketData) -> (score: Double, notes: [String], warnings: [String]) {
+        let system = BackendQuantEngine.systematic(md)
+        let structure = ConfluenceAnalysisEngine.analyze(md)
+        let regime = BackendQuantEngine.regime(md)
+        let neural = AdvancedBackend.neuralSignal(md)
+        let fuzzy = fuzzyScore(md)
+        let anomaly = anomalyPenalty(md)
+        let session = TradingSession.policy(for: md.assetClass)
+        let bayes = bayesianScore(md)
+
+        var score = 0.0
+        score += Double(system.direction.rawValue) / 2.0 * 0.22
+        score += Double(structure.direction.rawValue) / 2.0 * 0.20
+        score += (neural.probabilityUp - 0.5) * 2.0 * 0.20
+        score += fuzzy * 0.14
+        score += bayes * 0.14
+        score += regime.state.contains("Trending up") ? 0.05 : regime.state.contains("Trending down") ? -0.05 : 0
+        score -= anomaly
+
+        var notes: [String] = []
+        notes.append("Backend confluence: systematic \(dirWord(system.direction)), structure \(dirWord(structure.direction)), neural P(up) \(String(format: "%.2f", neural.probabilityUp)), Bayesian \(String(format: "%.2f", bayes)), fuzzy \(String(format: "%.2f", fuzzy)).")
+        notes.append("Regime/session: \(regime.state) · \(TradingSession.label()) · min confidence \(Int(session.minConfidence)).")
+        if neural.samples > 0 {
+            notes.append("On-device neural head trained on \(neural.samples) cached samples; diagnostic accuracy \(String(format: "%.2f", neural.accuracy)).")
+        }
+
+        var warnings: [String] = []
+        if anomaly > 0.08 { warnings.append("Backend anomaly/manipulation detector is reducing confidence.") }
+        if regime.squeezeScore > 0.7 { warnings.append("Volatility squeeze detected — breakout quality matters more than indicator count.") }
+        if neural.probabilityUp > 0.5 != (score > 0), neural.samples > 30 { warnings.append("Neural vote disagrees with the blended backend vote — reduce size or wait.") }
+        return (clamp(score, -1, 1), notes, warnings)
+    }
+
+    private func fuzzyScore(_ md: MarketData) -> Double {
+        let ind = analyzer.analyze(md)
+        let trend = clamp(ind.trendStrength / 100, 0, 1)
+        let direction = ind.supertrendUp ? 1.0 : -1.0
+        let momentum = ind.macdHistogram > 0 ? 0.35 : ind.macdHistogram < 0 ? -0.35 : 0
+        return clamp(direction * trend + momentum + ((ind.rsi14 - 50) / 50) * 0.25, -1, 1)
+    }
+
+    private func bayesianScore(_ md: MarketData) -> Double {
+        let system = BackendQuantEngine.systematic(md)
+        let neural = AdvancedBackend.neuralSignal(md)
+        var p = 0.5
+        p = bayesUpdate(prior: p, likelihoodPositive: 0.5 + Double(system.direction.rawValue) / 2.0 * 0.25, evidence: abs(Double(system.direction.rawValue)) / 2.0)
+        p = bayesUpdate(prior: p, likelihoodPositive: neural.probabilityUp, evidence: abs(neural.probabilityUp - 0.5) * 2)
+        return clamp((p - 0.5) * 2, -1, 1)
+    }
+
+    private func bayesUpdate(prior: Double, likelihoodPositive: Double, evidence: Double) -> Double {
+        let pos = clamp(likelihoodPositive, 0.01, 0.99)
+        let posterior = (prior * pos) / max(prior * pos + (1 - prior) * (1 - pos), 0.000001)
+        return clamp(prior + (posterior - prior) * clamp(evidence, 0, 1), 0.01, 0.99)
+    }
+
+    private func anomalyPenalty(_ md: MarketData) -> Double {
+        let r = zip(md.closes, md.closes.dropFirst()).compactMap { old, new in old > 0 && new > 0 ? log(new / old) : nil }
+        guard r.count > 30 else { return 0 }
+        let m = r.reduce(0, +) / Double(r.count)
+        let variance = r.reduce(0) { $0 + ($1 - m) * ($1 - m) } / Double(max(1, r.count - 1))
+        let sd = sqrt(max(variance, 0.0000000001))
+        let z = ((r.last ?? 0) - m) / max(sd, 0.000001)
+        let jumps = Microstructure.detectJumps(md.closes, mult: 3.0, lookback: min(180, md.closes.count)).count
+        return clamp(abs(z) > 3 ? 0.08 : 0 + min(0.12, Double(jumps) * 0.02), 0, 0.2)
     }
 
     // MARK: - Helpers

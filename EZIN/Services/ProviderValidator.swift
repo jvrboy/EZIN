@@ -37,12 +37,34 @@ final class ProviderValidator: ObservableObject {
         batchStatus.results = []
         batchStatus.currentProvider = nil
 
-        let providersToTest: [CredentialKey] = [.nvidianim, .cerebras, .freemodel]
+        var providersToTest = Set(APIKeyStore.shared.activeProviders)
+        providersToTest.formUnion([.nvidianim, .cerebras, .freemodel])
+        if CredentialStore.shared.has(.customEndpoint) { providersToTest.insert(.customEndpoint) }
 
-        for provider in providersToTest {
+        if providersToTest.isEmpty {
+            batchStatus.results.append(ProviderValidationResult(
+                provider: .openAI, isValid: false,
+                message: "No AI keys configured. Add a key or a custom endpoint first.",
+                latencyMs: nil, modelUsed: nil, capabilities: nil
+            ))
+        }
+
+        for provider in providersToTest.sorted(by: { $0.rawValue < $1.rawValue }) {
             batchStatus.currentProvider = provider
+            if provider == .customEndpoint {
+                let result = await validateCustomEndpoint(startTime: Date())
+                batchStatus.results.append(result)
+                continue
+            }
             let keys = APIKeyStore.shared.keys(for: provider)
-
+            if keys.isEmpty {
+                batchStatus.results.append(ProviderValidationResult(
+                    provider: provider, isValid: false,
+                    message: "No key stored for \(provider.display).",
+                    latencyMs: nil, modelUsed: nil, capabilities: nil
+                ))
+                continue
+            }
             for key in keys {
                 let result = await validateKey(provider: provider, key: key)
                 batchStatus.results.append(result)
@@ -67,6 +89,8 @@ final class ProviderValidator: ObservableObject {
             return await validateCerebras(key: key, startTime: startTime)
         case .freemodel:
             return await validateFreeModel(key: key, startTime: startTime)
+        case .customEndpoint:
+            return await validateCustomEndpoint(startTime: startTime)
         default:
             return ProviderValidationResult(
                 provider: provider,
@@ -157,7 +181,7 @@ final class ProviderValidator: ObservableObject {
                     isValid: true,
                     message: "Cerebras connection successful",
                     latencyMs: latency,
-                    modelUsed: "cerebras-7b",
+                    modelUsed: "llama-3.3-70b",
                     capabilities: ["chat", "fast_inference", "cost_effective"]
                 )
             } else {
@@ -166,7 +190,7 @@ final class ProviderValidator: ObservableObject {
                     isValid: false,
                     message: "Cerebras responded but returned unexpected content",
                     latencyMs: latency,
-                    modelUsed: "cerebras-7b",
+                    modelUsed: "llama-3.3-70b",
                     capabilities: nil
                 )
             }
@@ -193,7 +217,7 @@ final class ProviderValidator: ObservableObject {
 
     private func callCerebras(key: String, prompt: String, maxTokens: Int) async throws -> String {
         let urlStr = "https://api.cerebras.ai/v1/chat/completions"
-        let model = "cerebras-7b"
+        let model = "llama-3.3-70b"
 
         let body: [String: Any] = [
             "model": model,
@@ -268,6 +292,43 @@ final class ProviderValidator: ObservableObject {
         return try await callProviderAPI(url: urlStr, key: key, body: body)
     }
 
+    // MARK: - Custom endpoint validation
+
+    private func validateCustomEndpoint(startTime: Date) async -> ProviderValidationResult {
+        guard let stored = CredentialStore.shared.value(for: .customEndpoint), !stored.isEmpty else {
+            return ProviderValidationResult(provider: .customEndpoint, isValid: false, message: "No custom endpoint stored", latencyMs: nil, modelUsed: nil, capabilities: nil)
+        }
+        let parts = stored.split(separator: "|", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+        let body: [String: Any] = [
+            "model": "local-llm",
+            "messages": [["role": "user", "content": "Reply with exactly: ENDPOINT_VALIDATION_SUCCESS"]],
+            "max_tokens": 30,
+            "temperature": 0.1
+        ]
+        do {
+            let content = try await callProviderAPI(url: parts[0], key: parts.count > 1 ? parts[1] : "", body: body)
+            let latency = Int(Date().timeIntervalSince(startTime) * 1000)
+            let ok = content.lowercased().contains("endpoint_validation_success") || !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return ProviderValidationResult(
+                provider: .customEndpoint,
+                isValid: ok,
+                message: ok ? "Custom endpoint responded" : "Custom endpoint returned an empty response",
+                latencyMs: latency,
+                modelUsed: "local-llm",
+                capabilities: ["self_hosted", "openai_compatible", "real_llm"]
+            )
+        } catch {
+            return ProviderValidationResult(
+                provider: .customEndpoint,
+                isValid: false,
+                message: "Custom endpoint failed: \(error.localizedDescription)",
+                latencyMs: Int(Date().timeIntervalSince(startTime) * 1000),
+                modelUsed: nil,
+                capabilities: nil
+            )
+        }
+    }
+
     // MARK: - Generic API Caller
 
     private func callProviderAPI(url: String, key: String, body: [String: Any]) async throws -> String {
@@ -278,7 +339,7 @@ final class ProviderValidator: ObservableObject {
         var request = URLRequest(url: urlObj)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        if !key.isEmpty { request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization") }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 30
 
@@ -333,14 +394,10 @@ final class ProviderValidator: ObservableObject {
         return summary
     }
 
-    /// Remove invalid keys from store
+    /// Previously this deleted every key for any provider with one failed validation.
+    /// That was destructive: rate limits/network blips could wipe all credentials. Keep keys;
+    /// surface failures to the user instead.
     func removeInvalidKeys() {
-        for result in lastValidationResults where !result.isValid {
-            let keys = APIKeyStore.shared.keys(for: result.provider)
-            // Remove all keys for this provider (simplified - in production would track specific invalid keys)
-            for i in 0..<keys.count {
-                APIKeyStore.shared.remove(at: i, for: result.provider)
-            }
-        }
+        // Intentionally no-op. Invalid keys are reported in lastValidationResults.
     }
 }

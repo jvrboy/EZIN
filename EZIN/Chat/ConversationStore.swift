@@ -1,6 +1,16 @@
 import Foundation
 import Combine
 
+/// Recoverable bin entry for deleted/archived chats and projects.
+struct BinItem: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var type: String              // conversation | project | archivedProject | archivedConversation
+    var title: String
+    var payload: Data             // encoded Conversation or ChatProject
+    var relativeFolder: String? = nil // deleted project folder moved into Chat/Bin
+    var deletedAt = Date()
+}
+
 /// Single source of truth for chat history. Persists conversations + projects to the
 /// app directory so they survive tab switches AND app restarts (fixes the wipe bug).
 final class ConversationStore: ObservableObject {
@@ -8,14 +18,17 @@ final class ConversationStore: ObservableObject {
 
     @Published private(set) var conversations: [Conversation] = []
     @Published private(set) var projects: [ChatProject] = []
+    @Published private(set) var bin: [BinItem] = []
     @Published var currentID: UUID?
 
     private let convFile = "conversations.json"
     private let projFile = "projects.json"
+    private let binFile = "bin.json"
 
     private init() {
         conversations = FileStore.shared.read([Conversation].self, from: convFile, in: FileStore.shared.chatDir) ?? []
         projects = FileStore.shared.read([ChatProject].self, from: projFile, in: FileStore.shared.chatDir) ?? []
+        bin = FileStore.shared.read([BinItem].self, from: binFile, in: FileStore.shared.chatDir) ?? []
         currentID = conversations.sorted { $0.lastActivity > $1.lastActivity }.first?.id
         if currentID == nil { _ = newConversation() }
     }
@@ -94,7 +107,12 @@ final class ConversationStore: ObservableObject {
     }
 
     func delete(_ id: UUID) {
-        conversations.removeAll { $0.id == id }
+        guard let i = conversations.firstIndex(where: { $0.id == id }) else { return }
+        let conv = conversations[i]
+        if let payload = try? JSONEncoder().encode(conv) {
+            bin.insert(BinItem(type: "conversation", title: conv.title, payload: payload), at: 0)
+        }
+        conversations.remove(at: i)
         if currentID == id { currentID = active.first?.id ?? conversations.first?.id }
         if conversations.isEmpty { _ = newConversation() }
         save()
@@ -122,10 +140,79 @@ final class ConversationStore: ObservableObject {
     }
 
     func deleteProject(_ id: UUID) {
-        if let p = projects.first(where: { $0.id == id }) { FileStore.shared.deleteProjectFolder(p) }
+        guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
+        let project = projects[idx]
+        let source = FileStore.shared.projectsDir.appendingPathComponent(project.folderName, isDirectory: true)
+        var movedFolder: String? = nil
+        if FileStore.shared.fm.fileExists(atPath: source.path) {
+            let binDir = FileStore.shared.chatDir.appendingPathComponent("Bin/Projects", isDirectory: true)
+            try? FileStore.shared.fm.createDirectory(at: binDir, withIntermediateDirectories: true)
+            let dest = binDir.appendingPathComponent("\(Int(Date().timeIntervalSince1970))-\(project.folderName)", isDirectory: true)
+            try? FileStore.shared.fm.moveItem(at: source, to: dest)
+            if FileStore.shared.fm.fileExists(atPath: dest.path) { movedFolder = FileStore.shared.relativePath(dest) }
+        }
+        if let payload = try? JSONEncoder().encode(project) {
+            bin.insert(BinItem(type: "project", title: project.name, payload: payload, relativeFolder: movedFolder), at: 0)
+        }
         // Detach conversations from the deleted project (keep the chats).
         for i in conversations.indices where conversations[i].projectID == id { conversations[i].projectID = nil }
-        projects.removeAll { $0.id == id }
+        projects.remove(at: idx)
+        save()
+    }
+
+    /// Archive a project without deleting its folder: it leaves the active list but stays recoverable.
+    func archiveProject(_ id: UUID) {
+        guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
+        let project = projects[idx]
+        if let payload = try? JSONEncoder().encode(project) {
+            bin.insert(BinItem(type: "archivedProject", title: project.name, payload: payload), at: 0)
+        }
+        for i in conversations.indices where conversations[i].projectID == id { conversations[i].projectID = nil }
+        projects.remove(at: idx)
+        save()
+    }
+
+    func restoreBinItem(_ item: BinItem) {
+        switch item.type {
+        case "conversation", "archivedConversation":
+            if let conv = try? JSONDecoder().decode(Conversation.self, from: item.payload) {
+                conversations.insert(conv, at: 0)
+                currentID = conv.id
+            }
+        case "project", "archivedProject":
+            if let project = try? JSONDecoder().decode(ChatProject.self, from: item.payload) {
+                if item.type == "project", let moved = item.relativeFolder {
+                    let src = FileStore.shared.url(forRelative: moved)
+                    let dest = FileStore.shared.projectsDir.appendingPathComponent(project.folderName, isDirectory: true)
+                    if FileStore.shared.fm.fileExists(atPath: src.path), !FileStore.shared.fm.fileExists(atPath: dest.path) {
+                        try? FileStore.shared.fm.moveItem(at: src, to: dest)
+                    }
+                }
+                FileStore.shared.projectFolder(project)
+                projects.insert(project, at: 0)
+            }
+        default:
+            break
+        }
+        bin.removeAll { $0.id == item.id }
+        save()
+    }
+
+    func deleteBinItem(_ item: BinItem) {
+        if let folder = item.relativeFolder {
+            try? FileStore.shared.fm.removeItem(at: FileStore.shared.url(forRelative: folder))
+        }
+        bin.removeAll { $0.id == item.id }
+        save()
+    }
+
+    func emptyBin() {
+        for item in bin {
+            if let folder = item.relativeFolder {
+                try? FileStore.shared.fm.removeItem(at: FileStore.shared.url(forRelative: folder))
+            }
+        }
+        bin.removeAll()
         save()
     }
 
@@ -147,5 +234,6 @@ final class ConversationStore: ObservableObject {
     func save() {
         FileStore.shared.write(conversations, to: convFile, in: FileStore.shared.chatDir)
         FileStore.shared.write(projects, to: projFile, in: FileStore.shared.chatDir)
+        FileStore.shared.write(bin, to: binFile, in: FileStore.shared.chatDir)
     }
 }

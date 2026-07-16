@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Regime-aware signal filtering configuration
 struct RegimeFilterConfig: Codable {
@@ -366,8 +367,6 @@ final class RegimeAwareSignalFilter: ObservableObject {
 }
 
 // MARK: - SwiftUI Settings View
-
-import SwiftUI
 
 struct RegimeFilterSettingsView: View {
     @ObservedObject private var filter = RegimeAwareSignalFilter.shared

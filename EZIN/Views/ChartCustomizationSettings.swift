@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Chart customization settings for Volume Profile, Heatmap, and Jump detection sensitivity
 struct ChartCustomizationSettings: Codable {
@@ -61,8 +62,10 @@ final class ChartCustomizationStore: ObservableObject {
     }
 
     private func save() {
-        settings.validate()
-        if let data = try? JSONEncoder().encode(settings) {
+        // Clamp on a local copy so validation never re-enters @Published.didSet.
+        var snapshot = settings
+        snapshot.validate()
+        if let data = try? JSONEncoder().encode(snapshot) {
             d.set(data, forKey: ChartCustomizationSettings.storageKey)
         }
     }
@@ -88,8 +91,6 @@ final class ChartCustomizationStore: ObservableObject {
 }
 
 // MARK: - Chart Settings View Extension
-
-import SwiftUI
 
 extension ChartCustomizationStore {
     /// Returns a View for chart customization settings

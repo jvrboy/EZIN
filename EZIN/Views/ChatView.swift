@@ -10,6 +10,7 @@ struct ChatView: View {
 
     @State private var showHistory = false
     @State private var showProjects = false
+    @State private var showDocPicker = false
 
     private var messages: [ChatMessage] { store.current?.messages ?? [] }
 
@@ -34,6 +35,7 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showHistory) { ConversationsListView() }
         .sheet(isPresented: $showProjects) { ProjectsView() }
+        .sheet(isPresented: $showDocPicker) { DocumentPicker { urls in vm.importFiles(urls) } }
     }
 
     private var header: some View {
@@ -91,6 +93,12 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
+            Button { showDocPicker = true } label: {
+                Image(systemName: "paperclip.circle.fill").font(.system(size: 28))
+                    .foregroundStyle(.white.opacity(0.65))
+            }
+            .buttonStyle(.plain)
+            .disabled(vm.busy)
             TextField("Message EZIN…", text: $vm.input)
                 .foregroundStyle(.white)
                 .padding(12)
@@ -174,9 +182,11 @@ final class ChatViewModel: ObservableObject {
 
 
         ADDITIONAL TOOLS (current build): \
-        create_tone(frequency,duration[,volume,name]) makes a pure sine-wave WAV tone \
-        (use this for any "tone"/"beep"/"WAV tone" request — never invent an MCP server for audio). \
-        market_overview() lists live prices for the main instruments. \
+        create_file(name,content[,kind,folder]) and create_artifact(kind,name,content) create real local files (HTML/MD/PDF-adjacent text, code, CSV/JSON, audio) directly — never claim an MCP server is required. \
+        read_file(name|path[,chars]) and summarize_file(name|path[,sentences]) read imported/uploaded files; summarize_file extracts PDF text with PDFKit. \
+        list_files([scope]), rename_file(from,to), delete_file(name|path), app_state(), set_setting(key,value), memory_add(text), memory_search(query), skills_list(), skill_create(name,content[,format,summary,tools]), skill_import(text|content[,name]), web_scrape(url), sentiment_score(text). \
+        Advanced hidden backend tools: full_backend_report, math_analysis, forex_math, synthetics_analysis, rng_analysis, neural_inference, chaos_analysis, quantum_inspired, bayesian_update, fuzzy_signal, order_flow, harmonic_patterns, elliott_wave, astro_cycles, deep_risk, walkforward, correlation_matrix, session_liquidity, anomaly_scan. \
+        market_overview() lists live prices. \
         Remember: call a tool with a single line `ACTION: {"tool":"<name>","args":{...}}` and nothing else.
         """
 
@@ -236,5 +246,25 @@ final class ChatViewModel: ObservableObject {
 
     private func compact(_ args: [String: Any]) -> String {
         args.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
+    }
+
+    /// Import PDFs/docs/code from Files into the app container, register them as artifacts,
+    /// and queue a real summarization request. This is the path that fixes PDF summaries.
+    func importFiles(_ urls: [URL]) {
+        var imported: [String] = []
+        for source in urls {
+            let needsScope = source.startAccessingSecurityScopedResource()
+            defer { if needsScope { source.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: source) else { continue }
+            let name = source.lastPathComponent
+            let dest = FileStore.shared.saveData(data, name: name, in: FileStore.shared.artifactsDir)
+            let rel = FileStore.shared.relativePath(dest)
+            let artifact = Artifact(name: name, relativePath: rel, kind: source.pathExtension.lowercased(), byteSize: Int64(data.count))
+            ArtifactStore.shared.add(artifact)
+            imported.append(name)
+        }
+        guard let first = imported.first else { return }
+        let rest = imported.dropFirst()
+        input = rest.isEmpty ? "Summarize the uploaded file \(first)" : "Summarize \(first) and list the other imported files: \(rest.joined(separator: ", "))"
     }
 }

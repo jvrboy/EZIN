@@ -33,6 +33,7 @@ struct ProjectsView: View {
                         }
                         .swipeActions {
                             Button(role: .destructive) { store.deleteProject(p.id) } label: { Label("Delete", systemImage: "trash") }
+                            Button { store.archiveProject(p.id) } label: { Label("Archive", systemImage: "archivebox") }.tint(.orange)
                         }
                     }
                 }
@@ -92,6 +93,7 @@ struct ProjectDetailView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button { showRename = true } label: { Label("Rename", systemImage: "pencil") }
+                    Button { store.archiveProject(projectID); dismiss() } label: { Label("Archive project", systemImage: "archivebox") }
                     Button(role: .destructive) { store.deleteProject(projectID); dismiss() } label: { Label("Delete project", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis.circle") }
             }
