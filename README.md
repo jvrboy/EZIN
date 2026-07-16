@@ -53,7 +53,7 @@ DEX, Drift Switch, plus Forex, Commodities (metals), Crypto and Stock Indices.
   so a single key's rate limit never blocks you.
 - **36 specialist agents + 50 pipelines** power an orchestration loop.
 - **In-app tools** the assistant can call: `analyze`, `signals`, `price`, `instruments`, `history`,
-  `quant_analysis`, `backtest`, `risk_plan`, `structure_confluence`, `place_trade` (guarded), and `mcp`.
+  `quant_analysis`, `market_regime`, `backtest`, `risk_plan`, `structure_confluence`, `performance_snapshot`, `export_signal_data`, `place_trade` (guarded), and `mcp`.
 
 ## MCP connectors
 
@@ -73,7 +73,7 @@ an animated-background motion toggle.
 
 ## Quantitative & structure backends
 
-The on-device quantitative backend exposes repeatable trend, momentum, breakout and mean-reversion scores; descriptive statistics; ACF/Hurst/cycle estimates; chi-square, entropy, runs and Markov-style transition diagnostics; ATR/Kelly/VaR/CVaR risk inputs; and a cost-aware crossover replay. The structure backend combines clustered support/resistance, supply/demand impulses, and RSI/MACD divergences. These are decision-support tools, not predictions or execution authority.
+The on-device quantitative backend exposes repeatable trend, momentum, breakout and mean-reversion scores; descriptive statistics; ACF/Hurst/cycle estimates; chi-square, entropy, runs and Markov-style transition diagnostics; ATR/Kelly/VaR/CVaR risk inputs; a deterministic **market-regime classifier** (trend / squeeze / mean-reversion / transitional state); and a cost-aware crossover replay. The structure backend combines clustered support/resistance, supply/demand impulses, and RSI/MACD divergences. Signal tracking now also supports **performance snapshots** and **CSV export** for later review. These are decision-support tools, not predictions or execution authority.
 
 ## Real-time & production
 
