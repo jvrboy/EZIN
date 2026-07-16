@@ -25,6 +25,7 @@ struct ToolRegistry {
         case "quant_analysis":     return quantitativeAnalysis(args)
         case "backtest":           return backtest(args)
         case "risk_plan":          return riskPlan(args)
+        case "structure_confluence": return structureConfluence(args)
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -345,6 +346,13 @@ struct ToolRegistry {
         guard fast >= 2, slow > fast else { return "Use periods where slow > fast >= 2." }
         let result = BackendQuantEngine.backtest(md.closes, fast: fast, slow: slow)
         return "Backtest (\(DerivSymbols.display(symbol)) \(timeframe.rawValue), SMA \(fast)/\(slow), estimated costs included): \(result.trades) trades · \(Int(result.winRate * 100))% win rate · \(String(format: "%.2f", result.netReturn * 100))% net · \(String(format: "%.2f", result.maxDrawdown * 100))% max drawdown · PF \(result.profitFactor.isFinite ? String(format: "%.2f", result.profitFactor) : "∞"). Historical replay is not a forecast."
+    }
+
+    private func structureConfluence(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+        guard !symbol.isEmpty, let md = marketData(for: symbol, timeframe: timeframe) else { return "Need a symbol with at least 30 cached candles." }
+        return ConfluenceAnalysisEngine.formatted(ConfluenceAnalysisEngine.analyze(md), symbol: DerivSymbols.display(symbol))
     }
 
     private func riskPlan(_ args: [String: Any]) -> String {
