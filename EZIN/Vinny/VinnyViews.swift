@@ -168,7 +168,9 @@ final class VinnySession: ObservableObject {
         status = "Loop Factory is building your loop…"
         let p = patch
         Task.detached(priority: .userInitiated) {
-            let seed = UInt64(abs(p.name.hashValue) % 100000 &+ UInt64(variation &* 977))
+            let seedBase = UInt64(abs(p.name.hashValue) % 100000)
+            let seedVariation = UInt64(variation) &* 977
+            let seed = seedBase &+ seedVariation
             let result = LoopFactory.makeLoop(patch: p, bars: bars, seed: seed, variation: variation, swing: swing)
             await MainActor.run {
                 self.lastLoop = result
