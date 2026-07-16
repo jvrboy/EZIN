@@ -24,6 +24,8 @@ final class SignalPerformanceStore: ObservableObject {
 
     /// Begin tracking a newly generated signal.
     func track(_ signal: TradingSignal, currentPrice: Double) {
+        guard !trackedSignals.contains(where: { $0.id == signal.id && $0.status == .active }) else { return }
+        rotateDailyMetricsIfNeeded()
         let tracked = TrackedSignal(
             signal: signal,
             entryPrice: currentPrice,
@@ -39,6 +41,7 @@ final class SignalPerformanceStore: ObservableObject {
 
     /// Update tracked signals with latest price data.
     func updatePrices(_ prices: [String: Double]) {
+        rotateDailyMetricsIfNeeded()
         var changed = false
         for i in trackedSignals.indices where trackedSignals[i].status == .active {
             let symbol = trackedSignals[i].signal.symbol
@@ -207,6 +210,13 @@ final class SignalPerformanceStore: ObservableObject {
     private func startMonitoring() {
         updateTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             // Price updates are pushed from AppState via updatePrices(_:)
+        }
+    }
+
+    private func rotateDailyMetricsIfNeeded() {
+        let cal = Calendar.current
+        if !cal.isDate(dailyMetrics.date, inSameDayAs: Date()) {
+            dailyMetrics = DailyMetrics(date: Date())
         }
     }
 

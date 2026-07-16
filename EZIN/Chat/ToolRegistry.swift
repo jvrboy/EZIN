@@ -23,6 +23,9 @@ struct ToolRegistry {
         case "brain_report":       return brainReport()
         case "ultra_confirm":      return ultraConfirmation(args)
         case "quant_analysis":     return quantitativeAnalysis(args)
+        case "market_regime":      return marketRegime(args)
+        case "performance_snapshot": return performanceSnapshot(args)
+        case "export_signal_data": return exportSignalData(args)
         case "backtest":           return backtest(args)
         case "risk_plan":          return riskPlan(args)
         case "structure_confluence": return structureConfluence(args)
@@ -335,6 +338,40 @@ struct ToolRegistry {
         guard let md = marketData(for: symbol, timeframe: timeframe) else { return "Insufficient cached candles for \(DerivSymbols.display(symbol)). Open it on Chart first and wait for 30 candles." }
         let accountSize = (args["account_size"] as? Double) ?? Double(str(args, "account_size")) ?? 0
         return BackendQuantEngine.report(for: md, accountSize: accountSize)
+    }
+
+    private func marketRegime(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+        guard !symbol.isEmpty else { return "Missing 'symbol' parameter." }
+        guard let md = marketData(for: symbol, timeframe: timeframe) else { return "Need a symbol with at least 30 cached candles." }
+        return BackendQuantEngine.regimeReport(for: md, symbol: DerivSymbols.display(symbol))
+    }
+
+    private func performanceSnapshot(_ args: [String: Any]) -> String {
+        let symbolRaw = resolveSymbol(str(args, "symbol"))
+        let symbol = symbolRaw.isEmpty ? nil : symbolRaw
+        let tfRaw = str(args, "timeframe")
+        let timeframe = tfRaw.isEmpty ? nil : Timeframe(rawValue: tfRaw)
+        return app.signalPerformance.formattedSnapshot(symbol: symbol, timeframe: timeframe)
+    }
+
+    private func exportSignalData(_ args: [String: Any]) -> String {
+        let format = str(args, "format").lowercased()
+        guard format.isEmpty || format == "csv" else { return "Supported export formats: csv." }
+        let symbolRaw = resolveSymbol(str(args, "symbol"))
+        let symbol = symbolRaw.isEmpty ? nil : symbolRaw
+        let tfRaw = str(args, "timeframe")
+        let timeframe = tfRaw.isEmpty ? nil : Timeframe(rawValue: tfRaw)
+        let csv = app.signalPerformance.exportTrackedSignalsCSV(symbol: symbol, timeframe: timeframe)
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let fileName = "signal-performance-\(stamp).csv"
+        let data = Data(csv.utf8)
+        let url = FileStore.shared.saveData(data, name: fileName, in: FileStore.shared.artifactsDir)
+        let relPath = FileStore.shared.relativePath(url)
+        let artifact = Artifact(name: fileName, relativePath: relPath, kind: "csv", byteSize: Int64(data.count))
+        ArtifactStore.shared.add(artifact)
+        return "Exported \(fileName) (\(artifact.sizeDisplay))."
     }
 
     private func backtest(_ args: [String: Any]) -> String {
