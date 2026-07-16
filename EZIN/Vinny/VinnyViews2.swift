@@ -159,6 +159,12 @@ struct VinnyEarprintView: View {
                 }
             }
         }
+        .sheet(isPresented: $showImporter) {
+            DocumentPicker { urls in
+                guard let url = urls.first, let data = try? Data(contentsOf: url) else { return }
+                analyze(data: data, label: url.lastPathComponent)
+            }
+        }
 
         if !analysis.isEmpty {
             VinnySection(title: "Analysis", icon: "chart.bar.doc.horizontal") {
@@ -188,12 +194,6 @@ struct VinnyEarprintView: View {
                         Text("\(Int((1 - m.distance) * 100))% match").font(.system(size: 10)).foregroundStyle(.white.opacity(0.5))
                     }
                 }
-            }
-        }
-        .sheet(isPresented: $showImporter) {
-            DocumentPicker { urls in
-                guard let url = urls.first, let data = try? Data(contentsOf: url) else { return }
-                analyze(data: data, label: url.lastPathComponent)
             }
         }
     }
