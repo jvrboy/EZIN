@@ -75,11 +75,13 @@ Six new council agents (`PatternAgent`, `MarketProfileAgent`, `TrendQualityAgent
 - **Unlimited API keys per provider** — add as many as you like; EZIN rotates through them (round-robin)
   so a single key's rate limit never blocks you.
 - **36 specialist agents + 50 pipelines** power an orchestration loop, now expanded with a deterministic virtual backend layer exposing 1,500 additional analytics/risk/structure/execution/data-quality/agentic tools.
+- **36 specialist agents + 50 pipelines** power an orchestration loop, now expanded with a deterministic virtual backend layer exposing 500 additional analytics/risk/structure/execution/data-quality/agentic tools.
 - **In-app tools** the assistant can call: `analyze`, `signals`, `price`, `instruments`, `history`,
   `quant_analysis`, `market_regime`, `backtest`, `risk_plan`, `structure_confluence`, `performance_snapshot`, `export_signal_data`, `place_trade` (guarded), and `mcp`.
 - **APEX tools**: `master_confluence`, `pattern_scan`, `market_profile`, `liquidity_map`,
   `range_forecast`, `entropy_analysis`, `symbol_scanner`.
 - **Expanded backend tools**: `backend_tool_catalog`, `agentic_pipeline_catalog`, `agentic_power_plan`, and `backend_tool_001` through `backend_tool_1500` for deterministic specialist diagnostics.
+- **Expanded backend tools**: `backend_tool_catalog`, `agentic_pipeline_catalog`, `agentic_power_plan`, and `backend_tool_001` through `backend_tool_500` for deterministic specialist diagnostics.
 - **VINNY tools**: `vinny_loop` (text → finished loop), `vinny_patch` (text → synth patch),
   `vinny_reference` (upload any audio in chat and ask for a loop "like this"), `vinny_stems`
   (STEMS ZIP export), `vinny_library` (saved loops/presets).

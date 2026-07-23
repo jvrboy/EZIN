@@ -48,6 +48,7 @@ enum BackendToolExpansion {
         guard name.hasPrefix("backend_tool_") else { return nil }
         let raw = name.replacingOccurrences(of: "backend_tool_", with: "")
         guard let id = Int(raw), (1...1500).contains(id) else { return nil }
+        guard let id = Int(raw), (1...500).contains(id) else { return nil }
         return makeTool(id: id)
     }
 
@@ -74,12 +75,15 @@ enum BackendToolExpansion {
     static func catalogMarkdown() -> String {
         var out = "## 1,500 Virtual Backend Tools\n\n"
         out += "Invoke any tool as `backend_tool_001` through `backend_tool_1500` with optional `symbol` and `timeframe`.\n\n"
+        var out = "## 500 Virtual Backend Tools\n\n"
+        out += "Invoke any tool as `backend_tool_001` through `backend_tool_500` with optional `symbol` and `timeframe`.\n\n"
         out += "| Range | Family | Focus |\n|---|---|---|\n"
         for family in VirtualTool.Family.allCases {
             let ids = idsForFamily(family)
             out += "| \(ids.lowerBound)-\(ids.upperBound) | \(family.rawValue) | \(focus(for: family)) |\n"
         }
         out += "\nExamples: `backend_tool_001`, `backend_tool_500`, `backend_tool_1000`, `backend_tool_1250`, `backend_tool_1500`."
+        out += "\nExamples: `backend_tool_001`, `backend_tool_125`, `backend_tool_250`, `backend_tool_375`, `backend_tool_500`."
         return out
     }
 
@@ -115,6 +119,7 @@ enum BackendToolExpansion {
         • Gate all candidate trades through Risk Governor and Data Doctor.
         • Use Execution Marshal for preview-only trade readiness checks.
         • Send confirmed setups to Strategy Lab and Memory Curator for post-outcome learning.
+        • Send confirmed setups to Strategy Lab for post-outcome learning.
         """
     }
 
@@ -128,6 +133,8 @@ enum BackendToolExpansion {
         let index = VirtualTool.Family.allCases.firstIndex(of: family) ?? 0
         let start = index * 214 + 1
         let end = family == .agentic ? 1500 : min(start + 213, 1500)
+        let start = index * 71 + 1
+        let end = family == .agentic ? 500 : min(start + 70, 500)
         return start...end
     }
 
