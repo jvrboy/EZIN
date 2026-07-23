@@ -3,12 +3,20 @@ import SwiftUI
 /// EZIN — Deriv signal intelligence, glass edition.
 /// Native SwiftUI port of the forex-signals / forex-jsx / multi-agent bot suite.
 @main
+@MainActor
 struct EZINApp: App {
-    @StateObject private var appState = AppState()
+    @StateObject private var appState: AppState
 
     init() {
-        // Create the app's own on-device directory (surfaced in the Files app)
+        let state = AppState()
+        _appState = StateObject(wrappedValue: state)
+
+        // Create the app's own on-device directory (surfaced in the Files app).
         FileStore.shared.bootstrap()
+
+        // Register BGTaskScheduler launch handlers during app initialization.
+        // Registering these later from an async startup task can crash on launch.
+        BackgroundRefreshManager.shared.configure(app: state)
     }
 
     var body: some Scene {
