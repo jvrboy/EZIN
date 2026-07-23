@@ -82,7 +82,6 @@ final class AppState: ObservableObject {
         applyDisabledAgents()
         await connect()
         bot.startScanning()
-        BackgroundRefreshManager.shared.configure(app: self)
         startAutoRefresh()
 
         // Refresh real closed-trade history periodically.

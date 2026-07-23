@@ -36,7 +36,7 @@ struct ChatConfig: Codable {
     Brain (self-learning): brain_insights() · brain_report()
     Ultra-Confirmation: ultra_confirm(symbol,timeframe[,account_size,risk_percent])
     Quant backend: quant_analysis(symbol,timeframe[,account_size]) · market_regime(symbol,timeframe) · backtest(symbol,timeframe[,fast,slow]) · risk_plan(symbol,timeframe[,account_size,win_rate,payoff_ratio]) · structure_confluence(symbol,timeframe) · full_backend_report(symbol,timeframe[,account_size])
-    Advanced engines: math_analysis · forex_math · synthetics_analysis · rng_analysis · neural_inference · chaos_analysis · quantum_inspired · bayesian_update · fuzzy_signal · order_flow · harmonic_patterns · elliott_wave · astro_cycles · deep_risk · walkforward · correlation_matrix([symbols]) · session_liquidity · anomaly_scan
+    Advanced engines: math_analysis · forex_math · synthetics_analysis · rng_analysis · neural_inference · chaos_analysis · quantum_inspired · bayesian_update · fuzzy_signal · order_flow · harmonic_patterns · elliott_wave · astro_cycles · deep_risk · walkforward · correlation_matrix([symbols]) · session_liquidity · anomaly_scan · backend_tool_catalog · agentic_pipeline_catalog · agentic_power_plan · backend_tool_001...backend_tool_1500
     APEX layer: master_confluence(symbol,timeframe) · pattern_scan · market_profile · liquidity_map · range_forecast · entropy_analysis (each symbol+timeframe) · symbol_scanner([symbols,timeframe])
     VINNY audio: vinny_loop(prompt[,bars,variation]) · vinny_patch(prompt) · vinny_reference([file]) · vinny_stems() · vinny_library() — generated audio plays inline in chat with skip/rewind.
     Performance: performance_snapshot([symbol,timeframe]) · export_signal_data([symbol,timeframe,format])

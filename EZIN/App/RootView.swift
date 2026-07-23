@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var app: AppState
     @State private var tab: AppTab = .chart
+    @ObservedObject private var theme = ThemeStore.shared
 
     var body: some View {
         ZStack {
@@ -28,6 +29,7 @@ struct RootView: View {
                 GlassTabBar(selection: $tab)
             }
         }
+        .font(theme.fontStyle.font)
     }
 
     private var header: some View {

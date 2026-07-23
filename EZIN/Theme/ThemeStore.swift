@@ -72,13 +72,49 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
+/// App-wide typography choices. Uses system font designs so no bundled font files
+/// are required and startup remains safe on every iOS 15+ device.
+enum AppFontStyle: String, CaseIterable, Identifiable {
+    case rounded, defaultSystem, serif, monospaced, condensed, heavy, elegant, traderMono, neonDisplay, compact
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .rounded: return "Rounded"
+        case .defaultSystem: return "System"
+        case .serif: return "Serif"
+        case .monospaced: return "Mono"
+        case .condensed: return "Condensed"
+        case .heavy: return "Heavy"
+        case .elegant: return "Elegant"
+        case .traderMono: return "Trader Mono"
+        case .neonDisplay: return "Neon Display"
+        case .compact: return "Compact"
+        }
+    }
+
+    var font: Font {
+        switch self {
+        case .rounded: return .system(.body, design: .rounded)
+        case .defaultSystem: return .system(.body, design: .default)
+        case .serif: return .system(.body, design: .serif)
+        case .monospaced, .traderMono: return .system(.body, design: .monospaced)
+        case .condensed, .compact: return .system(size: 15, weight: .regular, design: .default)
+        case .heavy, .neonDisplay: return .system(.body, design: .rounded).weight(.semibold)
+        case .elegant: return .system(.body, design: .serif).weight(.medium)
+        }
+    }
+}
+
 final class ThemeStore: ObservableObject {
     static let shared = ThemeStore()
     @Published var theme: AppTheme { didSet { UserDefaults.standard.set(theme.rawValue, forKey: "app.theme") } }
     @Published var motionEnabled: Bool { didSet { UserDefaults.standard.set(motionEnabled, forKey: "app.motion") } }
+    @Published var fontStyle: AppFontStyle { didSet { UserDefaults.standard.set(fontStyle.rawValue, forKey: "app.fontStyle") } }
 
     private init() {
         theme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "app.theme") ?? "aurora") ?? .aurora
         motionEnabled = (UserDefaults.standard.object(forKey: "app.motion") as? Bool) ?? true
+        fontStyle = AppFontStyle(rawValue: UserDefaults.standard.string(forKey: "app.fontStyle") ?? "rounded") ?? .rounded
     }
 }

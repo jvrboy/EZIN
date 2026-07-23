@@ -6,6 +6,10 @@ struct ToolRegistry {
     let app: AppState
 
     func run(_ name: String, args: [String: Any]) async -> String {
+        if let virtualTool = BackendToolExpansion.virtualTool(named: name) {
+            return BackendToolExpansion.run(virtualTool, args: args, registry: self)
+        }
+
         switch name {
         case "analyze":        return await analyze(args)
         case "signals":        return signals()
@@ -72,6 +76,9 @@ struct ToolRegistry {
         case "session_liquidity":   return sessionLiquidity(args)
         case "anomaly_scan":        return anomalyScan(args)
         case "games_list":          return gamesList()
+        case "backend_tool_catalog": return BackendToolExpansion.catalogMarkdown()
+        case "agentic_pipeline_catalog": return BackendToolExpansion.pipelineMarkdown()
+        case "agentic_power_plan":   return BackendToolExpansion.powerPlan(args: args, registry: self)
 
         // APEX second-generation analysis layer.
         case "master_confluence":   return masterConfluenceTool(args)
