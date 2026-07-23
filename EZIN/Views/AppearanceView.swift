@@ -34,6 +34,30 @@ struct AppearanceView: View {
                 }
             }
 
+            GlassSection(title: "Fonts") {
+                LazyVGrid(columns: cols, spacing: 12) {
+                    ForEach(AppFontStyle.allCases) { style in
+                        Button { withAnimation { theme.fontStyle = style } } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(style.title)
+                                        .font(style.font)
+                                        .foregroundStyle(.white)
+                                    Text("Aa 123 • Signal")
+                                        .font(style.font)
+                                        .foregroundStyle(.white.opacity(0.62))
+                                }
+                                Spacer()
+                                if theme.fontStyle == style { Image(systemName: "checkmark.circle.fill").foregroundStyle(Glass.buy) }
+                            }
+                            .padding(12)
+                            .glassCard()
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
             GlassSection(title: "Motion") {
                 GlassToggle(label: "Animated background", desc: "Aurora blobs drift and pulse", isOn: $theme.motionEnabled)
             }

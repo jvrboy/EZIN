@@ -16,21 +16,23 @@ final class BackgroundRefreshManager {
     private var configured = false
 
     func configure(app: AppState) {
-        guard !configured else { return }
-        configured = true
         self.app = app
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshID, using: nil) { task in
+        guard !configured else { return }
+
+        let refreshRegistered = BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshID, using: nil) { task in
             Task { @MainActor in
                 await self.handleRefresh(task as? BGAppRefreshTask)
             }
         }
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: processingID, using: nil) { task in
+        let processingRegistered = BGTaskScheduler.shared.register(forTaskWithIdentifier: processingID, using: nil) { task in
             Task { @MainActor in
                 await self.handleProcessing(task as? BGProcessingTask)
             }
         }
-        scheduleRefresh()
-        scheduleProcessing()
+
+        configured = refreshRegistered || processingRegistered
+        if refreshRegistered { scheduleRefresh() }
+        if processingRegistered { scheduleProcessing() }
     }
 
     func scheduleRefresh() {

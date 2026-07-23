@@ -345,3 +345,106 @@ extension Indicators {
         return MA.ema(raw, len)
     }
 }
+
+extension Indicators {
+    // MARK: - Additional 2026 indicator pack
+
+    static func aroon(_ high: [Double], _ low: [Double], _ len: Int = 25) -> (up: [Double], down: [Double], oscillator: [Double]) {
+        let n = min(high.count, low.count)
+        var up = [Double](repeating: 0, count: n)
+        var down = [Double](repeating: 0, count: n)
+        for i in 0..<n where i >= len - 1 {
+            let start = i - len + 1
+            let highWindow = high[start...i]
+            let lowWindow = low[start...i]
+            let highOffset = highWindow.enumerated().max(by: { $0.element < $1.element })?.offset ?? len - 1
+            let lowOffset = lowWindow.enumerated().min(by: { $0.element < $1.element })?.offset ?? len - 1
+            up[i] = Double(highOffset + 1) / Double(len) * 100
+            down[i] = Double(lowOffset + 1) / Double(len) * 100
+        }
+        let osc = up.indices.map { up[$0] - down[$0] }
+        return (up, down, osc)
+    }
+
+    static func vortex(_ high: [Double], _ low: [Double], _ close: [Double], _ len: Int = 14) -> (plus: [Double], minus: [Double]) {
+        let n = min(high.count, min(low.count, close.count))
+        guard n > 0 else { return ([], []) }
+        let tr = trueRange(Array(high.prefix(n)), Array(low.prefix(n)), Array(close.prefix(n)))
+        var plusVM = [Double](repeating: 0, count: n)
+        var minusVM = [Double](repeating: 0, count: n)
+        for i in 1..<n {
+            plusVM[i] = abs(high[i] - low[i - 1])
+            minusVM[i] = abs(low[i] - high[i - 1])
+        }
+        var plus = [Double](repeating: 0, count: n)
+        var minus = [Double](repeating: 0, count: n)
+        for i in 0..<n where i >= len - 1 {
+            let start = i - len + 1
+            let sumTR = tr[start...i].reduce(0, +)
+            plus[i] = sumTR != 0 ? plusVM[start...i].reduce(0, +) / sumTR : 0
+            minus[i] = sumTR != 0 ? minusVM[start...i].reduce(0, +) / sumTR : 0
+        }
+        return (plus, minus)
+    }
+
+    static func ppo(_ close: [Double], fast: Int = 12, slow: Int = 26, signal: Int = 9) -> (ppo: [Double], signal: [Double], histogram: [Double]) {
+        let emaFast = MA.ema(close, fast)
+        let emaSlow = MA.ema(close, slow)
+        let ppo = close.indices.map { emaSlow[$0] != 0 ? (emaFast[$0] - emaSlow[$0]) / emaSlow[$0] * 100 : 0 }
+        let sig = MA.ema(ppo, signal)
+        let hist = ppo.indices.map { ppo[$0] - sig[$0] }
+        return (ppo, sig, hist)
+    }
+
+    static func coppockCurve(_ close: [Double], longROC: Int = 14, shortROC: Int = 11, wmaLen: Int = 10) -> [Double] {
+        let combined = close.indices.map { i -> Double in
+            let long = i >= longROC && close[i - longROC] != 0 ? (close[i] - close[i - longROC]) / close[i - longROC] * 100 : 0
+            let short = i >= shortROC && close[i - shortROC] != 0 ? (close[i] - close[i - shortROC]) / close[i - shortROC] * 100 : 0
+            return long + short
+        }
+        return MA.wma(combined, wmaLen)
+    }
+
+    static func fisherTransform(_ high: [Double], _ low: [Double], len: Int = 10) -> [Double] {
+        let n = min(high.count, low.count)
+        var value = [Double](repeating: 0, count: n)
+        var fisher = [Double](repeating: 0, count: n)
+        for i in 0..<n {
+            let start = max(0, i - len + 1)
+            let median = (high[i] + low[i]) / 2
+            let maxH = high[start...i].max() ?? high[i]
+            let minL = low[start...i].min() ?? low[i]
+            let raw = maxH != minL ? 2 * ((median - minL) / (maxH - minL) - 0.5) : 0
+            value[i] = max(-0.999, min(0.999, 0.33 * raw + 0.67 * (i > 0 ? value[i - 1] : 0)))
+            fisher[i] = 0.5 * log((1 + value[i]) / (1 - value[i])) + 0.5 * (i > 0 ? fisher[i - 1] : 0)
+        }
+        return fisher
+    }
+
+    static func zScore(_ src: [Double], _ len: Int = 20) -> [Double] {
+        let mean = MA.sma(src, len)
+        let sd = stdev(src, len)
+        return src.indices.map { sd[$0] != 0 ? (src[$0] - mean[$0]) / sd[$0] : 0 }
+    }
+
+    static func percentB(_ close: [Double], len: Int = 20, mult: Double = 2) -> [Double] {
+        let bands = bollinger(close, len: len, mult: mult)
+        return close.indices.map { i in
+            let width = bands.upper[i] - bands.lower[i]
+            return width != 0 ? (close[i] - bands.lower[i]) / width : 0.5
+        }
+    }
+
+    static func chandelierExit(_ high: [Double], _ low: [Double], _ close: [Double], len: Int = 22, mult: Double = 3) -> (long: [Double], short: [Double]) {
+        let n = min(high.count, min(low.count, close.count))
+        let atrValues = atr(Array(high.prefix(n)), Array(low.prefix(n)), Array(close.prefix(n)), len)
+        var long = [Double](repeating: 0, count: n)
+        var short = [Double](repeating: 0, count: n)
+        for i in 0..<n {
+            let start = max(0, i - len + 1)
+            long[i] = (high[start...i].max() ?? high[i]) - mult * atrValues[i]
+            short[i] = (low[start...i].min() ?? low[i]) + mult * atrValues[i]
+        }
+        return (long, short)
+    }
+}
