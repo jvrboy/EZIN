@@ -79,6 +79,9 @@ struct ToolRegistry {
         case "backend_tool_catalog": return BackendToolExpansion.catalogMarkdown()
         case "agentic_pipeline_catalog": return BackendToolExpansion.pipelineMarkdown()
         case "agentic_power_plan":   return BackendToolExpansion.powerPlan(args: args, registry: self)
+        case "connector_catalog":    return connectorCatalog()
+        case "swarm_status":         return swarmStatus()
+        case "production_health":    return productionHealth()
 
         // APEX second-generation analysis layer.
         case "master_confluence":   return masterConfluenceTool(args)
@@ -224,6 +227,46 @@ struct ToolRegistry {
         return board.map { (name, accuracy, total) in
             "• \(name): \(Int(accuracy * 100))% (\(total) signals)"
         }.joined(separator: "\n")
+    }
+
+
+    private func connectorCatalog() -> String {
+        let rows = MCPStore.shared.connectors.map { connector in
+            let state = connector.enabled ? "enabled" : "disabled"
+            let url = connector.url.isEmpty ? "not configured" : connector.url
+            return "• \(connector.name) [\(connector.kind.title)] — \(state), \(url)"
+        }
+        return "## MCP Connector Catalog\n\n" + (rows.isEmpty ? "No MCP connectors configured." : rows.joined(separator: "\n"))
+    }
+
+    private func swarmStatus() -> String {
+        let activeAgents = app.engine.agents.filter { $0.isActive }.count
+        return "## Swarm Status\n\nChat swarm: \(AgentRegistry.agents.count) specialists · \(AgentRegistry.pipelines.count) pipelines.\nSignal council: \(activeAgents)/\(app.engine.agents.count) active agents.\nRuntime loops: bot scanning=\(botScanningDescription), websocket=\(connectionDescription)."
+    }
+
+    private var botScanningDescription: String { app.bot.running ? "on" : "off" }
+
+    private var connectionDescription: String {
+        switch app.connectionState {
+        case .connected: return "connected"
+        case .connecting: return "connecting"
+        case .disconnected: return "disconnected"
+        case .error(let message): return "error(\(message))"
+        }
+    }
+
+    private func productionHealth() -> String {
+        let enabledConnectors = MCPStore.shared.connectors.filter { $0.enabled }.count
+        let subscribed = app.deriv.subscribedSymbolsSnapshot.count
+        let prices = app.deriv.prices.count
+        let warnings = [
+            app.booted ? nil : "boot has not completed",
+            app.connectionState == .connected ? nil : "Deriv socket is not connected",
+            enabledConnectors > 0 ? nil : "no MCP connectors enabled",
+            prices > 0 ? nil : "no live prices cached yet"
+        ].compactMap { $0 }
+        let warningText = warnings.isEmpty ? "No immediate production warnings detected." : warnings.map { "• \($0)" }.joined(separator: "\n")
+        return "## Production Health\n\nBooted: \(app.booted)\nConnection: \(connectionDescription)\nSubscribed symbols: \(subscribed)\nCached live prices: \(prices)\nEnabled MCP connectors: \(enabledConnectors)\nActive chat agents: \(AgentRegistry.agents.count)\nPipelines: \(AgentRegistry.pipelines.count)\n\nWarnings:\n\(warningText)"
     }
 
     // MARK: - News Injection
