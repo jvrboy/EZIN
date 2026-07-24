@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Root shell — glass tab bar: Chart · Signals · Games · Chat · History · Bot · Settings.
+/// Root shell — glass tab bar: Chart · Signals · Games · Chat · History · Bot · Tools · Settings.
 struct RootView: View {
     @EnvironmentObject var app: AppState
     @State private var tab: AppTab = .chart
@@ -20,6 +20,7 @@ struct RootView: View {
                     case .chat:     ChatView()
                     case .history:  HistoryView()
                     case .bot:      BotView()
+                    case .tools:    ToolsHubView()
                     case .settings: SettingsView()
                     }
                 }
@@ -47,8 +48,19 @@ struct RootView: View {
 }
 
 enum AppTab: String, CaseIterable {
-    case chart, signals, games, chat, history, bot, settings
-    var title: String { rawValue.capitalized }
+    case chart, signals, games, chat, history, bot, tools, settings
+    var title: String {
+        switch self {
+        case .chart:    return "Chart"
+        case .signals:  return "Signals"
+        case .games:    return "Games"
+        case .chat:     return "Chat"
+        case .history:  return "History"
+        case .bot:      return "Bot"
+        case .tools:    return "Tools"
+        case .settings: return "Settings"
+        }
+    }
     var icon: String {
         switch self {
         case .chart:    return "chart.xyaxis.line"
@@ -57,6 +69,7 @@ enum AppTab: String, CaseIterable {
         case .chat:     return "bubble.left.and.bubble.right"
         case .history:  return "clock.arrow.circlepath"
         case .bot:      return "cpu"
+        case .tools:    return "wrench.and.screwdriver.fill"
         case .settings: return "gearshape"
         }
     }
@@ -89,6 +102,62 @@ struct GlassTabBar: View {
         .glassCard(strong: true)
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
+    }
+}
+
+// MARK: - Tools Hub (Journal · Calendar · Calculator)
+
+struct ToolsHubView: View {
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 16) {
+                    GlassSection(title: "Trading Journal") {
+                        NavigationLink(destination: TradeJournalView()) {
+                            GlassNavRow(icon: "book.fill", title: "Trade Journal",
+                                        value: "\(TradeJournalStore.shared.entries.count) entries")
+                        }.buttonStyle(.plain)
+                    }
+
+                    GlassSection(title: "Market Data") {
+                        NavigationLink(destination: EconomicCalendarView()) {
+                            GlassNavRow(icon: "calendar.badge.clock", title: "Economic Calendar",
+                                        value: "\(EconomicCalendarService.shared.highImpactEvents.count) high impact")
+                        }.buttonStyle(.plain)
+                    }
+
+                    GlassSection(title: "Calculators") {
+                        NavigationLink(destination: PositionCalculatorView()) {
+                            GlassNavRow(icon: "function", title: "Position & Risk Calculator",
+                                        value: "Size, P&L, Pip")
+                        }.buttonStyle(.plain)
+                    }
+
+                    GlassSection(title: "About") {
+                        VStack(spacing: 8) {
+                            Text("Tools Hub")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                            Text("Log your trades, track economic events, and calculate position sizes — all on-device.")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.5))
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.vertical, 8)
+                    }
+
+                    Text("Ask the chat assistant about any tool — e.g. 'log a trade' or 'what economic events are coming'".uppercased())
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.35))
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 4)
+                }
+                .padding(16)
+            }
+            .navigationTitle("Tools")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationViewStyle(.stack)
     }
 }
 

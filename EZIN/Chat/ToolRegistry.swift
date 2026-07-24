@@ -122,6 +122,25 @@ struct ToolRegistry {
         // Signal Fusion — unified engine that merges ALL analysis engines into one verdict.
         case "signal_fusion":        return signalFusion(args)
         case "fusion_weights":       return fusionWeights(args)
+
+        // Trade Journal — log, search, close, and analyze your personal trades.
+        case "journal_add":           return journalAdd(args: args)
+        case "journal_list":          return journalList(args: args)
+        case "journal_close":         return journalClose(args: args)
+        case "journal_search":        return journalSearch(args: args)
+        case "journal_stats":         return journalStats(args: args)
+        case "journal_lesson":        return journalLesson(args: args)
+
+        // Economic Calendar — upcoming high-impact events and market-moving data.
+        case "calendar_events":       return calendarEvents(args: args)
+        case "calendar_high_impact":  return calendarHighImpact(args: args)
+        case "calendar_next":         return calendarNext(args: args)
+
+        // Position & Risk Calculator — size your trades, calculate pips, manage risk.
+        case "calculate_position":    return calculatePosition(args: args)
+        case "calculate_risk":        return calculateRisk(args: args)
+        case "calculate_pips":        return calculatePips(args: args)
+        case "calculate_pnl":         return calculatePnL(args: args)
         default:               return "Unknown tool: \(name)"
         }
     }

@@ -46,6 +46,23 @@ struct SettingsView: View {
                             }.buttonStyle(.plain)
                         }
 
+                        GlassSection(title: "Tools") {
+                            NavigationLink { TradeJournalView() } label: {
+                                GlassNavRow(icon: "book.fill", title: "Trade Journal",
+                                            value: "\(TradeJournalStore.shared.entries.count) entries")
+                            }.buttonStyle(.plain)
+                            Divider().overlay(Color.white.opacity(0.08))
+                            NavigationLink { EconomicCalendarView() } label: {
+                                GlassNavRow(icon: "calendar.badge.clock", title: "Economic Calendar",
+                                            value: "\(EconomicCalendarService.shared.highImpactEvents.count) events")
+                            }.buttonStyle(.plain)
+                            Divider().overlay(Color.white.opacity(0.08))
+                            NavigationLink { PositionCalculatorView() } label: {
+                                GlassNavRow(icon: "function", title: "Position & Risk Calculator",
+                                            value: "Size, P&L, Pip")
+                            }.buttonStyle(.plain)
+                        }
+
                         GlassSection(title: "Configuration") {
                             NavigationLink { DerivConfigView() } label: {
                                 GlassNavRow(icon: "antenna.radiowaves.left.and.right", title: "Deriv API & Token (PAT)",
