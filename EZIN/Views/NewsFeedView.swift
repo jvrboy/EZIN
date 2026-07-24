@@ -64,7 +64,7 @@ struct NewsFeedView: View {
 
     private func categoryIcon(_ cat: NewsItem.NewsCategory) -> String {
         switch cat {
-        case .宏观经济: return "globe"
+        case .macroeconomy: return "globe"
         case .earnings: return "chart.bar.fill"
         case .centralBank: return "banknote.fill"
         case .geopolitics: return "flag.fill"
