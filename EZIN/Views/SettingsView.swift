@@ -61,6 +61,11 @@ struct SettingsView: View {
                                 GlassNavRow(icon: "function", title: "Position & Risk Calculator",
                                             value: "Size, P&L, Pip")
                             }.buttonStyle(.plain)
+                            Divider().overlay(Color.white.opacity(0.08))
+                            NavigationLink { NewsFeedView() } label: {
+                                GlassNavRow(icon: "newspaper.fill", title: "Market News Feed",
+                                            value: "\(NewsFeedService.shared.newsItems.count) articles")
+                            }.buttonStyle(.plain)
                         }
 
                         GlassSection(title: "Configuration") {

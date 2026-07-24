@@ -141,6 +141,15 @@ struct ToolRegistry {
         case "calculate_risk":        return calculateRisk(args: args)
         case "calculate_pips":        return calculatePips(args: args)
         case "calculate_pnl":         return calculatePnL(args: args)
+
+        // Market News Feed — browse, search, bookmark, and analyze market news.
+        case "news_list":              return newsList(args: args)
+        case "news_search":            return newsSearch(args: args)
+        case "news_sentiment":         return newsSentiment(args: args)
+        case "news_by_symbol":         return newsBySymbol(args: args)
+        case "news_add":               return newsAdd(args: args)
+        case "news_latest":            return newsLatest(args: args)
+        case "dashboard_summary":      return dashboardSummary()
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -1174,6 +1183,92 @@ struct ToolRegistry {
         Open the GAMES tab to play them inside the app.
         """
     }
+private func newsList(args: [String: Any]) -> String {
+    let feed = NewsFeedService.shared
+    let limit = min((args["limit"] as? Int) ?? 10, 30)
+    let items = feed.filteredNews
+    guard !items.isEmpty else { return "No news articles found." }
+    var result = "## Market News\n\n"
+    for item in items.prefix(limit) {
+        result += "• \(item.title)\n  \(item.source) · \(item.sentiment.rawValue) · \(item.impact.rawValue)\n\n"
+    }
+    return result
+}
+
+private func newsSearch(args: [String: Any]) -> String {
+    let query = str(args, "query")
+    guard !query.isEmpty else { return "Provide a search query." }
+    let feed = NewsFeedService.shared
+    feed.searchQuery = query
+    defer { feed.searchQuery = "" }
+    let matches = feed.filteredNews
+    guard !matches.isEmpty else { return "No news articles match '\(query)'." }
+    var result = "## News Search: '\(query)'\n\n"
+    for item in matches.prefix(8) {
+        result += "• \(item.title)\n  \(item.source) · \(item.sentiment.rawValue)\n\n"
+    }
+    return result
+}
+
+private func newsSentiment(args: [String: Any]) -> String {
+    let feed = NewsFeedService.shared
+    let positive = feed.newsItems.filter { $0.sentiment.score > 0 }.count
+    let negative = feed.newsItems.filter { $0.sentiment.score < 0 }.count
+    let neutral = feed.newsItems.filter { $0.sentiment.score == 0 }.count
+    return "## News Sentiment\n\nTotal: \(feed.newsItems.count)\nBullish: \(positive)\nBearish: \(negative)\nNeutral: \(neutral)"
+}
+
+private func newsBySymbol(args: [String: Any]) -> String {
+    let sym = resolveSymbol(str(args, "symbol"))
+    guard !sym.isEmpty else { return "Provide a symbol." }
+    let items = NewsFeedService.shared.news(for: sym)
+    guard !items.isEmpty else { return "No news for \(DerivSymbols.display(sym))." }
+    var result = "## News: \(DerivSymbols.display(sym))\n\n"
+    for item in items.prefix(5) {
+        result += "• \(item.title) (\(item.sentiment.rawValue))\n\n"
+    }
+    return result
+}
+
+private func newsAdd(args: [String: Any]) -> String {
+    let headline = str(args, "headline")
+    guard !headline.isEmpty else { return "Provide a headline." }
+    let source = str(args, "source").isEmpty ? "AI Feed" : str(args, "source")
+    let item = NewsFeedService.generateFromHeadline(headline, source: source)
+    NewsFeedService.shared.addNews(item)
+    return "Added: '\(headline.prefix(60))' — \(item.sentiment.rawValue)."
+}
+
+private func newsLatest(args: [String: Any]) -> String {
+    let count = min((args["count"] as? Int) ?? 5, 15)
+    let items = NewsFeedService.shared.newsItems.sorted(by: { $0.publishedAt > $1.publishedAt }).prefix(count)
+    guard !items.isEmpty else { return "No news yet." }
+    var result = "## Latest News\n\n"
+    for item in items {
+        result += "• \(item.title) — \(item.source) · \(item.impact.rawValue)\n\n"
+    }
+    return result
+}
+
+private func dashboardSummary() -> String {
+    let journal = TradeJournalStore.shared
+    let entries = journal.entries
+    let open = entries.filter { $0.exitPrice == nil }
+    let closed = entries.filter { $0.exitPrice != nil }
+    let wins = closed.filter { entry in
+        guard let exit = entry.exitPrice else { return false }
+        return entry.direction == "buy" ? exit > entry.entryPrice : exit < entry.entryPrice
+    }
+    let wr = closed.isEmpty ? 0 : Double(wins.count) / Double(closed.count) * 100
+    return """
+    ## Dashboard Summary
+    - Signals: \(app.signals.count) · Watchlist: \(app.settings.watchlist.count)
+    - Journal: \(entries.count) entries (\(open.count) open, \(closed.count) closed)
+    - Win rate: \(String(format: "%.0f", wr))% (\(wins.count)/\(closed.count))
+    - Bot: \(app.bot.running ? "Running" : "Idle") · \(app.connectionState.label)
+    - News: \(NewsFeedService.shared.newsItems.count) articles
+    """
+}
 
     // MARK: - Song Helpers
 

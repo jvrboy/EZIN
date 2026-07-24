@@ -14,6 +14,7 @@ struct RootView: View {
                 header
                 Group {
                     switch tab {
+                    case .dashboard: TradingDashboardView()
                     case .chart:    ChartView()
                     case .signals:  SignalsView()
                     case .games:    GamesView()
@@ -48,9 +49,10 @@ struct RootView: View {
 }
 
 enum AppTab: String, CaseIterable {
-    case chart, signals, games, chat, history, bot, tools, settings
+    case dashboard, chart, signals, games, chat, history, bot, tools, settings
     var title: String {
         switch self {
+        case .dashboard: return "Dashboard"
         case .chart:    return "Chart"
         case .signals:  return "Signals"
         case .games:    return "Games"
@@ -63,6 +65,7 @@ enum AppTab: String, CaseIterable {
     }
     var icon: String {
         switch self {
+        case .dashboard: return "square.grid.2x2.fill"
         case .chart:    return "chart.xyaxis.line"
         case .signals:  return "waveform.path.ecg"
         case .games:    return "gamecontroller.fill"
@@ -133,12 +136,19 @@ struct ToolsHubView: View {
                         }.buttonStyle(.plain)
                     }
 
+                    GlassSection(title: "Market News") {
+                        NavigationLink(destination: NewsFeedView()) {
+                            GlassNavRow(icon: "newspaper.fill", title: "Market News Feed",
+                                        value: "\(NewsFeedService.shared.newsItems.count) articles")
+                        }.buttonStyle(.plain)
+                    }
+
                     GlassSection(title: "About") {
                         VStack(spacing: 8) {
                             Text("Tools Hub")
                                 .font(.headline)
                                 .foregroundStyle(.white)
-                            Text("Log your trades, track economic events, and calculate position sizes — all on-device.")
+                            Text("Log your trades, track economic events, calculate position sizes, and browse market news — all on-device.")
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.5))
                                 .multilineTextAlignment(.center)
