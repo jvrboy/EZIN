@@ -348,7 +348,7 @@ enum BacktestingFramework {
 
             // Track equity curve
             if position != 0 {
-                let unrealizedPct = position * (candle.close - entryPrice) / max(entryPrice, 0.000001)
+                let unrealizedPct = Double(position) * (candle.close - entryPrice) / max(entryPrice, 0.000001)
                 let currentEquity = equity * (1 + unrealizedPct)
                 equityCurve.append(currentEquity)
                 peak = max(peak, currentEquity)
@@ -366,7 +366,7 @@ enum BacktestingFramework {
 
         // Close any open position at last candle
         if position != 0, let lastCandle = candles.last {
-            let grossReturn = position * (lastCandle.close - entryPrice) / max(entryPrice, 0.000001)
+            let grossReturn = Double(position) * (lastCandle.close - entryPrice) / max(entryPrice, 0.000001)
             let costs = costModel.totalRoundTrip
             let netReturn = grossReturn - costs
             let trade = Trade(

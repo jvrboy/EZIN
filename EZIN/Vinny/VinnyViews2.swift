@@ -443,7 +443,8 @@ struct VinnyFlowStateView: View {
     }
 
     private func dice(engine: Bool) {
-        var rng = SeededRNG(UInt64(Date().timeIntervalSince1970))                let p = session.patch
+        var rng = SeededRNG(UInt64(Date().timeIntervalSince1970))
+        var p = session.patch
         if engine {
             p.filterCutoff = 300 + rng.next01() * 9000
             p.fmAmount = rng.next01() * 0.7
