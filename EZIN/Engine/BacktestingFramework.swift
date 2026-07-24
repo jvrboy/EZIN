@@ -360,7 +360,7 @@ enum BacktestingFramework {
             } else {
                 equityCurve.append(equity)
                 peak = max(peak, equity)
-                if equity >= peak * 0.99 { ddStartBar = i }
+                if equity >= peak * Double(0.9)9 { ddStartBar = i }
             }
         }
 
@@ -743,9 +743,9 @@ enum BacktestingFramework {
         let result = backtest(strategy: &strategy, symbol: "", candles: candles, costModel: costModel)
         guard result.totalTrades >= 3 else { return -999 }
 
-        // Fitness: Sharpe * winRate * sqrt(trades) - maxDD * 0.5
+        // Fitness: Sharpe * winRate * sqrt(trades) - maxDD * Double(0.5)
         let tradeBonus = min(sqrt(Double(result.totalTrades)) / 10, 1.0)
-        return result.sharpeRatio * (result.winRate / 100) * tradeBonus - result.maxDrawdownPct / 100 * 0.5
+        return result.sharpeRatio * (result.winRate / 100) * tradeBonus - result.maxDrawdownPct / 100 * Double(0.5)
     }
 
     private static func simpleMA(_ values: [Double]) -> Double {
@@ -753,7 +753,7 @@ enum BacktestingFramework {
         return values.reduce(0, +) / Double(values.count)
     }
 
-    private static func fmt(_ x: Double, _ places: Int = 2) -> String {
+    static func fmt(_ x: Double, _ places: Int = 2) -> String {
         String(format: "%%.\(places)f", x)
     }
 }

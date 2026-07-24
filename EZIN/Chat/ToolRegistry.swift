@@ -1065,7 +1065,7 @@ struct ToolRegistry {
         var rsi: BacktestingFramework.RSIMeanReversionStrategy = .init()
         var macd: BacktestingFramework.MACDStrategy = .init()
 
-        let strategies: [any BacktestingFramework.TradableStrategy] = [sma, rsi, macd]
+        let strategies: [any BacktestingFramework.BacktestStrategy] = [sma, rsi, macd]
 
         return BacktestingFramework.compareStrategies(
             strategies: strategies,
@@ -1427,12 +1427,12 @@ private func dashboardSummary() -> String {
         if !filter.isEmpty {
             let filtered = BotStrategyLibrary.allStrategies.filter {
                 $0.name.lowercased().contains(filter.lowercased()) ||
-                $0.riskLevel.rawValue.lowercased().contains(filter.lowercased())
+                $0.botRiskLevel.rawValue.lowercased().contains(filter.lowercased())
             }
             guard !filtered.isEmpty else { return "No strategies matching '\(filter)'." }
             var result = "## Strategies matching '\(filter)'\n\n"
             for s in filtered {
-                result += "### \(s.name)\n\(s.description)\nRisk: \(s.riskLevel.rawValue)\nTimeframes: \(s.timeframes.map { $0.rawValue }.joined(separator: ", "))\n\n"
+                result += "### \(s.name)\n\(s.description)\nRisk: \(s.botRiskLevel.rawValue)\nTimeframes: \(s.timeframes.map { $0.rawValue }.joined(separator: ", "))\n\n"
             }
             return result
         }
@@ -1446,13 +1446,13 @@ private func dashboardSummary() -> String {
         }
         var detail = "## \(strategy.name)\n\n"
         detail += "**Description:** \(strategy.description)\n"
-        detail += "**Risk Level:** \(strategy.riskLevel.rawValue)\n"
+        detail += "**Risk Level:** \(strategy.botRiskLevel.rawValue)\n"
         detail += "**Timeframes:** \(strategy.timeframes.map { $0.rawValue }.joined(separator: ", "))\n"
         detail += "**Default Parameters:**\n"
         for (key, value) in strategy.defaultParameters {
             detail += "- \(key): \(value)\n"
         }
-        detail += "\n**Max Risk/Trade:** \(strategy.riskLevel.maxRiskPerTrade * 100)%"
+        detail += "\n**Max Risk/Trade:** \(strategy.botRiskLevel.maxRiskPerTrade * 100)%"
         return detail
     }
 

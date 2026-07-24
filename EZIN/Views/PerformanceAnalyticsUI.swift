@@ -86,44 +86,44 @@ struct PerformanceAnalyticsView: View {
                 GridItem(.flexible())
             ], spacing: 12) {
                 StatCard(
-                    title: "Win Rate",
-                    value: String(format: "%.1f%%", snapshot.winRate * 100),
                     icon: "chart.pie",
+                    label: "Win Rate",
+                    value: String(format: "%.1f%%", snapshot.winRate * 100),
                     color: snapshot.winRate >= 0.55 ? .green : (snapshot.winRate >= 0.45 ? .orange : .red)
                 )
 
                 StatCard(
-                    title: "Expectancy",
-                    value: String(format: "%.4f", snapshot.expectancy),
                     icon: "plusminus",
+                    label: "Expectancy",
+                    value: String(format: "%.4f", snapshot.expectancy),
                     color: snapshot.expectancy >= 0 ? .green : .red
                 )
 
                 StatCard(
-                    title: "Sample Size",
-                    value: "\(snapshot.resolvedCount)",
                     icon: "number",
+                    label: "Sample Size",
+                    value: "\(snapshot.resolvedCount)",
                     color: .blue
                 )
 
                 StatCard(
-                    title: "Active",
-                    value: "\(snapshot.activeCount)",
                     icon: "clock",
+                    label: "Active",
+                    value: "\(snapshot.activeCount)",
                     color: .purple
                 )
 
                 StatCard(
-                    title: "Avg Hold Time",
-                    value: String(format: "%.1f min", snapshot.averageHoldMinutes),
                     icon: "timer",
+                    label: "Avg Hold Time",
+                    value: String(format: "%.1f min", snapshot.averageHoldMinutes),
                     color: .teal
                 )
 
                 StatCard(
-                    title: "Streak",
-                    value: streakText(snapshot.recentStreak),
                     icon: snapshot.recentStreak >= 0 ? "flame" : "snowflake",
+                    label: "Streak",
+                    value: streakText(snapshot.recentStreak),
                     color: snapshot.recentStreak >= 0 ? .orange : .blue
                 )
             }

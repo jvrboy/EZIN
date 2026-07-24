@@ -629,7 +629,7 @@ enum PatternRecognition {
             let lastPrice = closes.last ?? 0
             let priceRising = (lastPrice - firstPrice) / max(firstPrice, 0.000001) > 0
 
-            if volTrend < -firstAvg * 0.2 && abs(priceRising) > 0 {
+            if volTrend < -firstAvg * 0.2 && priceRising {
                 // Bearish divergence: price up, volume down
                 if priceRising {
                     patterns.append(VolumePattern(

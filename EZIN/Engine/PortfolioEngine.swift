@@ -147,8 +147,7 @@ enum PortfolioEngine {
             }
         }
 
-        guard !bestWeights.isEmpty else { return nil }
-        let allocations = zip(assets, bestWeights).map { Allocation(symbol: $0.0.symbol, weight: $1.0) }
+        guard !bestWeights.isEmpty else { return nil }            let allocations = zip(assets, bestWeights).map { Allocation(symbol: $0.0.symbol, weight: $0.1) }
         let metrics = computeMetrics(weights: bestWeights, assets: assets, mu: mu, cov: cov)
         return (allocations, metrics)
     }
@@ -193,7 +192,7 @@ enum PortfolioEngine {
             w = w.map { $0 / sum }
         }
 
-        return zip(assets, w).map { Allocation(symbol: $0.0.symbol, weight: $1.0) }
+        return zip(assets, w).map { Allocation(symbol: $0.0.symbol, weight: $0.1) }
     }
 
     /// Kelly-optimal multi-asset allocation using historical wins/losses per symbol

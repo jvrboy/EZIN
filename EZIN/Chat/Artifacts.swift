@@ -68,7 +68,8 @@ struct ArtifactChip: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.12), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheetView(activityItems: [url]) }
+        #if canImport(UIKit)
+        .sheet(isPresented: $showShare) { ShareSheetView(activityItems: [url]) }
 #endif
     }
 
@@ -142,7 +143,8 @@ struct AudioArtifactPlayer: View {
             player.load(data: data, name: name)
             if player.duration <= 0 { loadFailed = true }
         }
-        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheetView(activityItems: [url]) }
+        #if canImport(UIKit)
+        .sheet(isPresented: $showShare) { ShareSheetView(activityItems: [url]) }
 #endif
     }
 

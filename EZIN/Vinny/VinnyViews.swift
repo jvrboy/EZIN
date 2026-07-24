@@ -144,7 +144,7 @@ final class VinnySession: ObservableObject {
         let phrase = demoNotes()
         Task.detached(priority: .userInitiated) {
             let duration = 60.0 / p.bpm * 3.2
-            var wav = VinnyRenderer.renderWAV(patch: p, notes: phrase, durationSec: duration)
+            let wav = VinnyRenderer.renderWAV(patch: p, notes: phrase, durationSec: duration)
             // Sound Weather: evolving ambient bed underneath.
             if await self.weatherEnabled, let pcm = VinnyDSP.readWAV(wav) {
                 let cfg = VinnyDSP.GranularConfig(grainSizeMs: 160, density: 14, pitchRandom: 0.05, positionRandom: 0.8, durationSec: duration, seed: UInt64(p.name.hashValue & 0x7fffffff))

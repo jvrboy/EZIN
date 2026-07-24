@@ -414,7 +414,7 @@ struct BotStrategyLibrary {
     }
     
     static func strategies(riskLevel botRiskLevel: BotRiskLevel) -> [any BotStrategy] {
-        allStrategies.filter { $0.botRiskLevel == riskLevel }
+        allStrategies.filter { $0.botRiskLevel == botRiskLevel }
     }
     
     static func catalog() -> String {

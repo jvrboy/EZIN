@@ -417,22 +417,22 @@ struct TradingDashboardView: View {
         }
     }
 
-    private func pnlText(entry: TradeJournalEntry, exit: Double) -> String {
+    private func pnlText(entryPrice: Double, direction: String, quantity: Double, exit: Double) -> String {
         let pnl: Double
-        if entry.direction == "buy" {
-            pnl = (exit - entry.entryPrice) * entry.quantity
+        if direction == "buy" {
+            pnl = (exit - entryPrice) * quantity
         } else {
-            pnl = (entry.entryPrice - exit) * entry.quantity
+            pnl = (entryPrice - exit) * quantity
         }
         return (pnl >= 0 ? "+" : "") + String(format: "%.2f", pnl)
     }
 
-    private func pnlColor(entry: TradeJournalEntry, exit: Double) -> Color {
+    private func pnlColor(entryPrice: Double, direction: String, exit: Double) -> Color {
         let pnl: Double
-        if entry.direction == "buy" {
-            pnl = (exit - entry.entryPrice) * entry.quantity
+        if direction == "buy" {
+            pnl = (exit - entryPrice) * entryPrice
         } else {
-            pnl = (entry.entryPrice - exit) * entry.quantity
+            pnl = (entryPrice - exit) * entryPrice
         }
         return pnl >= 0 ? Glass.buy : Glass.sell
     }
