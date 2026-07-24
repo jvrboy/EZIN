@@ -42,6 +42,9 @@ struct ChatConfig: Codable {
     Performance: performance_snapshot([symbol,timeframe]) · export_signal_data([symbol,timeframe,format])
     Portfolio Engine (multi-asset optimization): portfolio_analysis([symbols]) · portfolio_rebalance(symbols,current_weights) · portfolio_stress([symbols])
     Alert System: alert_create(name,symbol,condition,value[,timeframe,severity]) · alert_list([show_events]) · alert_delete(name|id) · alert_acknowledge([all|id])
+    Backtesting Framework: backtest_strategy(symbol,timeframe[,strategy,fast,slow,period,oversold,overbought,cost_model]) · backtest_compare(symbol,timeframe) · backtest_walkforward(symbol,timeframe) · backtest_optimize(symbol,timeframe)
+    Advanced Pattern Recognition: pattern_scan_advanced(symbol,timeframe) — flags, pennants, triangles, wedges, channels, H&S, double tops/bottoms, rounding, S/R levels, volume patterns
+    Signal Fusion (all engines → one verdict): signal_fusion(symbol,timeframe) · fusion_weights([reset])
     Song format can be "wav" or "midi". For songs, describe notes like "C4 0.5s amp 0.5" or use natural language: "happy C major chord" or "ascending C scale".
     Artifact kinds: wav, midi, csv, json, html, txt, md, py, js, swift, zip, appPrototype.
     The analyze tool performs DEEP multi-timeframe analysis (18 agents + order flow + volatility regime + market structure) and returns a fully formatted Markdown report — preserve its headings, tables and structure.

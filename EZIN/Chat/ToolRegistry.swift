@@ -109,6 +109,19 @@ struct ToolRegistry {
         case "alert_list":           return alertList(args: args)
         case "alert_delete":         return alertDelete(args: args)
         case "alert_acknowledge":    return alertAcknowledge(args: args)
+
+        // Backtesting Framework — full strategy backtesting, comparison, walk-forward, and optimization.
+        case "backtest_strategy":    return backtestStrategy(args)
+        case "backtest_compare":     return backtestCompare(args)
+        case "backtest_walkforward": return backtestWalkforward(args)
+        case "backtest_optimize":    return backtestOptimize(args)
+
+        // Pattern Recognition — advanced chart patterns, support/resistance, volume patterns.
+        case "pattern_scan_advanced": return patternScanAdvanced(args)
+
+        // Signal Fusion — unified engine that merges ALL analysis engines into one verdict.
+        case "signal_fusion":        return signalFusion(args)
+        case "fusion_weights":       return fusionWeights(args)
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -938,6 +951,192 @@ struct ToolRegistry {
         for asset in assets {
             report += "- \(DerivSymbols.display(asset.symbol))\n"
         }
+
+        return report
+    }
+
+    // MARK: - Backtesting Framework Tools
+
+    /// Run a full backtest with configurable strategy, parameters, and cost model.
+    private func backtestStrategy(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+        let strategyName = str(args, "strategy").isEmpty ? "sma" : str(args, "strategy")
+        let costModelName = str(args, "cost_model").lowercased()
+
+        guard !symbol.isEmpty else { return "Missing 'symbol' parameter." }
+        guard let md = marketData(for: symbol, timeframe: timeframe) else {
+            return "Insufficient cached candles for \(DerivSymbols.display(symbol)). Open the Chart tab first to cache data."
+        }
+
+        var params: [String: Double] = [:]
+        if let fast = (args["fast"] as? Double) ?? Double(str(args, "fast")) { params["fast"] = fast }
+        if let slow = (args["slow"] as? Double) ?? Double(str(args, "slow")) { params["slow"] = slow }
+        if let period = (args["period"] as? Double) ?? Double(str(args, "period")) { params["period"] = period }
+        if let signal = (args["signal"] as? Double) ?? Double(str(args, "signal")) { params["signal"] = signal }
+        if let oversold = (args["oversold"] as? Double) ?? Double(str(args, "oversold")) { params["oversold"] = oversold }
+        if let overbought = (args["overbought"] as? Double) ?? Double(str(args, "overbought")) { params["overbought"] = overbought }
+
+        let costModel: BacktestingFramework.CostModel
+        switch costModelName {
+        case "zero": costModel = .zero
+        case "forex", "fx": costModel = .forex
+        default: costModel = .default
+        }
+
+        return BacktestingFramework.backtestReport(
+            strategyName: strategyName,
+            symbol: symbol,
+            candles: md.candles,
+            parameters: params,
+            costModel: costModel
+        )
+    }
+
+    /// Compare multiple strategies on the same instrument.
+    private func backtestCompare(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+
+        guard !symbol.isEmpty, let md = marketData(for: symbol, timeframe: timeframe) else {
+            return "Need cached candles for \(DerivSymbols.display(symbol))."
+        }
+
+        // Run comparison with built-in strategies
+        var sma: BacktestingFramework.SMACrossoverStrategy = .init()
+        var rsi: BacktestingFramework.RSIMeanReversionStrategy = .init()
+        var macd: BacktestingFramework.MACDStrategy = .init()
+
+        let strategies: [any BacktestingFramework.TradableStrategy] = [sma, rsi, macd]
+
+        return BacktestingFramework.compareStrategies(
+            strategies: strategies,
+            symbol: symbol,
+            candles: md.candles
+        )
+    }
+
+    /// Walk-forward analysis on a strategy.
+    private func backtestWalkforward(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+
+        guard !symbol.isEmpty, let md = marketData(for: symbol, timeframe: timeframe) else {
+            return "Need cached candles for \(DerivSymbols.display(symbol))."
+        }
+
+        let result = BacktestingFramework.walkForward(
+            strategyType: { params in
+                BacktestingFramework.SMACrossoverStrategy(
+                    fast: Int(params["fast"] != 0 ? params["fast"] : 10),
+                    slow: Int(params["slow"] != 0 ? params["slow"] : 30)
+                )
+            },
+            symbol: symbol,
+            candles: md.candles,
+            windows: 3
+        )
+
+        var report = "## Walk-Forward Analysis — \(DerivSymbols.display(symbol))\n\n"
+        report += "\(result.summary)\n\n"
+        report += "| Window | Trades | Return | Max DD | Sharpe |\n|---|---|---|---|---|\n"
+        for (i, w) in result.windows.enumerated() {
+            report += "| Window \(i + 1) | \(w.totalTrades) | \(fmt(w.totalReturnPct))% | \(fmt(w.maxDrawdownPct))% | \(fmt(w.sharpeRatio)) |\n"
+        }
+        report += "\n**Averages:** Return \(fmt(result.averageReturnPct))% · Max DD \(fmt(result.averageMaxDD))% · Sharpe \(fmt(result.averageSharpe))\n"
+        report += "**Consistency:** \(fmt(result.consistencyScore * 100))% · Parameter Stability: \(fmt(result.parameterStability * 100))%\n"
+
+        return report
+    }
+
+    /// Genetic parameter optimization.
+    private func backtestOptimize(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+
+        guard !symbol.isEmpty, let md = marketData(for: symbol, timeframe: timeframe), md.candles.count > 60 else {
+            return "Need at least 60 cached candles for \(DerivSymbols.display(symbol))."
+        }
+
+        let result = BacktestingFramework.optimizeGenetic(
+            strategyType: { params in
+                BacktestingFramework.SMACrossoverStrategy(
+                    fast: Int(params["fast"] != 0 ? params["fast"] : 10),
+                    slow: Int(params["slow"] != 0 ? params["slow"] : 30)
+                )
+            },
+            candles: md.candles,
+            generations: 20,
+            population: 25
+        )
+
+        var report = "## Parameter Optimization — \(DerivSymbols.display(symbol))\n\n"
+        report += "**Best Score:** \(fmt(result.bestScore))\n\n"
+        report += "**Best Parameters:**\n"
+        for (key, value) in result.bestParameters.values.sorted(by: { $0.key < $1.key }) {
+            report += "- \(key): \(Int(value))\n"
+        }
+        report += "\n**Top Candidates:**\n"
+        for (i, r) in result.topResults.prefix(3).enumerated() {
+            report += "\(i + 1). Score \(fmt(r.score)) — "
+            report += r.parameters.values.sorted(by: { $0.key < $1.key }).map { "\($0.key)=\(Int($0.value))" }.joined(separator: ", ")
+            report += "\n"
+        }
+
+        return report
+    }
+
+    // MARK: - Pattern Recognition Tools
+
+    /// Advanced pattern scan — detects chart patterns, support/resistance, and volume patterns.
+    private func patternScanAdvanced(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+
+        guard !symbol.isEmpty else { return "Missing 'symbol' parameter." }
+        guard let md = marketData(for: symbol, timeframe: timeframe) else {
+            return "Insufficient cached candles for \(DerivSymbols.display(symbol)). Open the Chart tab first."
+        }
+
+        return PatternRecognition.patternReport(candles: md.candles, symbol: symbol)
+    }
+
+    // MARK: - Signal Fusion Tools
+
+    /// Signal fusion — merges ALL analysis engines into one unified verdict.
+    private func signalFusion(_ args: [String: Any]) -> String {
+        let symbol = resolveSymbol(str(args, "symbol"))
+        let timeframe = resolveTF(str(args, "timeframe"))
+
+        guard !symbol.isEmpty else { return "Missing 'symbol' parameter." }
+        app.deriv.subscribeTicks(symbol)
+
+        let inputs = SignalFusionEngine.buildInputs(symbol: symbol, timeframe: timeframe, app: app)
+        guard !inputs.isEmpty else {
+            return "No engine inputs available for \(DerivSymbols.display(symbol)). Open the Chart tab first or try a different symbol."
+        }
+
+        return SignalFusionEngine.fusionReport(symbol: symbol, inputs: inputs)
+    }
+
+    /// View and optionally reset dynamic fusion weights.
+    private func fusionWeights(_ args: [String: Any]) -> String {
+        let reset = str(args, "reset").lowercased() == "true"
+        let tracker = SignalFusionEngine.WeightTracker.shared
+
+        if reset {
+            tracker.resetAll()
+            return "All fusion engine weights have been reset to 1.0."
+        }
+
+        var report = "## Fusion Engine Weights\n\n"
+        report += "| Engine | Weight | Accuracy Proxy |\n|---|---|---|\n"
+        for (name, weight) in tracker.weights.sorted(by: { $0.value > $1.value }) {
+            let bar = String(repeating: "█", count: Int(weight * 10))
+            let accuracyHint = weight > 1.2 ? "strong" : weight > 0.8 ? "neutral" : "weak"
+            report += "| \(name) | \(bar) \(fmt(weight)) | \(accuracyHint) |\n"
+        }
+        report += "\nUse `fusion_weights(reset: true)` to reset all weights."
 
         return report
     }
