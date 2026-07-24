@@ -150,6 +150,36 @@ struct ToolRegistry {
         case "news_add":               return newsAdd(args: args)
         case "news_latest":            return newsLatest(args: args)
         case "dashboard_summary":      return dashboardSummary()
+
+        // AI Chat Pipeline — structured reasoning, thinking, and processing.
+        case "run_pipeline":              return await runPipeline(args: args)
+        case "pipeline_status":           return pipelineStatus()
+        case "pipeline_summary":          return pipelineSummary()
+
+        // Chat Tool Expansion — calculator, stats, regression, education, utilities.
+        case "calculate":                 return calculateTool(args: args)
+        case "validate_json":             return validateJSONTool(args: args)
+        case "convert_base":              return convertBaseTool(args: args)
+        case "random_numbers":            return randomNumbersTool(args: args)
+        case "statistics":                return statisticsTool(args: args)
+        case "linear_regression":         return linearRegressionTool(args: args)
+        case "correlation":               return correlationTool(args: args)
+        case "explain":                   return explainConceptTool(args: args)
+        case "trading_plan":              return tradingPlanTool(args: args)
+        case "currency_convert":          return currencyConvertTool(args: args)
+        case "countdown":                 return countdownTool(args: args)
+        case "checklist":                 return checklistTool(args: args)
+        case "market_health":             return marketHealthTool()
+
+        // Bot Strategy Library — explore and configure strategies.
+        case "bot_strategies":            return botStrategiesTool(args: args)
+        case "strategy_detail":           return strategyDetailTool(args: args)
+
+        // Skills Extension — enhanced skills management.
+        case "skills_catalog":            return skillsCatalogTool()
+        case "skill_export":              return skillExportTool(args: args)
+        case "skill_import":              return skillImportTool(args: args)
+        case "skill_create_custom":       return skillCreateCustomTool(args: args)
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -1270,6 +1300,207 @@ private func dashboardSummary() -> String {
     """
 }
 
+    // MARK: - AI Pipeline Tools
+
+    private func runPipeline(args: [String: Any]) async -> String {
+        let query = str(args, "query")
+        guard !query.isEmpty else { return "Please provide a query to process." }
+        let pipeline = AIPipelineService.shared
+        let result = await pipeline.execute(query: query, availableTools: ["analyze", "signals", "price", "news_list", "backtest", "risk_plan"])
+        var output = "## Pipeline Execution\n\n"
+        for stage in result.stages {
+            let check = stage.duration < 1.0 ? "✅" : "⏳"
+            output += "\(check) \(stage.stage.rawValue) — \(String(format: "%.1f", stage.duration))s\n"
+        }
+        output += "\n**Total:** \(String(format: "%.1f", result.totalDuration))s · \(result.totalTokens) tokens\n"
+        output += "\n**Reasoning Trace:**\n\(result.reasoningTrace.prefix(500))"
+        return output
+    }
+
+    private func pipelineStatus() -> String {
+        let pipeline = AIPipelineService.shared
+        guard pipeline.isProcessing else { return "No pipeline currently running." }
+        return "Pipeline processing: \(pipeline.currentStage) (\(String(format: "%.0f", pipeline.stageProgress * 100))%)"
+    }
+
+    private func pipelineSummary() -> String {
+        return AIPipelineService.shared.pipelineSummary()
+    }
+
+    // MARK: - Chat Expansion Tools
+
+    private func calculateTool(args: [String: Any]) -> String {
+        let expression = str(args, "expression")
+        guard !expression.isEmpty else { return "Provide an expression (e.g., expression='2 + 2')." }
+        return ChatToolExpansion.calculate(expression: expression)
+    }
+
+    private func validateJSONTool(args: [String: Any]) -> String {
+        let json = str(args, "json").isEmpty ? str(args, "text") : str(args, "json")
+        guard !json.isEmpty else { return "Provide JSON to validate." }
+        return ChatToolExpansion.validateJSON(json)
+    }
+
+    private func convertBaseTool(args: [String: Any]) -> String {
+        let value = str(args, "value")
+        let from = Int(str(args, "from")) ?? 10
+        let to = Int(str(args, "to")) ?? 2
+        guard !value.isEmpty else { return "Provide a value and bases (e.g., value='FF', from=16, to=10)." }
+        return ChatToolExpansion.convertBase(value: value, fromBase: from, toBase: to)
+    }
+
+    private func randomNumbersTool(args: [String: Any]) -> String {
+        let min = (args["min"] as? Double) ?? 0
+        let max = (args["max"] as? Double) ?? 100
+        let count = (args["count"] as? Int) ?? 5
+        return ChatToolExpansion.randomNumber(min: min, max: max, count: count)
+    }
+
+    private func statisticsTool(args: [String: Any]) -> String {
+        let raw = str(args, "numbers")
+        guard !raw.isEmpty else { return "Provide comma-separated numbers (e.g., numbers='1,2,3,4,5')." }
+        let numbers = raw.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard !numbers.isEmpty else { return "No valid numbers found." }
+        return ChatToolExpansion.statistics(numbers: numbers)
+    }
+
+    private func linearRegressionTool(args: [String: Any]) -> String {
+        guard let pointsData = args["points"] as? [[String: Double]] else {
+            return "Provide points array (e.g., points=[{x:1,y:2},{x:2,y:3}])."
+        }
+        let points = pointsData.map { (x: $0["x"] ?? 0, y: $0["y"] ?? 0) }
+        guard !points.isEmpty else { return "No valid points provided." }
+        return ChatToolExpansion.linearRegression(points: points)
+    }
+
+    private func correlationTool(args: [String: Any]) -> String {
+        let xRaw = str(args, "x")
+        let yRaw = str(args, "y")
+        let x = xRaw.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        let y = yRaw.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard x.count == y.count, x.count >= 3 else { return "Need matching x,y datasets with 3+ points." }
+        return ChatToolExpansion.correlation(x: x, y: y)
+    }
+
+    private func explainConceptTool(args: [String: Any]) -> String {
+        let topic = str(args, "topic").isEmpty ? str(args, "concept") : str(args, "topic")
+        guard !topic.isEmpty else { return "Provide a topic to explain (e.g., topic='RSI')." }
+        return ChatToolExpansion.explainConcept(topic)
+    }
+
+    private func tradingPlanTool(args: [String: Any]) -> String {
+        let style = str(args, "style").isEmpty ? "swing" : str(args, "style")
+        return ChatToolExpansion.tradingPlanTemplate(style: style)
+    }
+
+    private func currencyConvertTool(args: [String: Any]) -> String {
+        let amount = (args["amount"] as? Double) ?? 1.0
+        let from = str(args, "from").isEmpty ? "USD" : str(args, "from")
+        let to = str(args, "to").isEmpty ? "EUR" : str(args, "to")
+        return ChatToolExpansion.currencyConvert(amount: amount, from: from, to: to, rates: CurrencyRates.builtIn)
+    }
+
+    private func countdownTool(args: [String: Any]) -> String {
+        let event = str(args, "event").isEmpty ? "Event" : str(args, "event")
+        let dateStr = str(args, "date")
+        let dateFormatter = ISO8601DateFormatter()
+        guard let date = dateFormatter.date(from: dateStr) else {
+            return "Please provide an ISO 8601 date (e.g., date='2024-12-25T00:00:00Z')."
+        }
+        return ChatToolExpansion.countdown(to: date, eventName: event)
+    }
+
+    private func checklistTool(args: [String: Any]) -> String {
+        let items = str(args, "items")
+        guard !items.isEmpty else { return "Provide items separated by newlines." }
+        return ChatToolExpansion.generateChecklist(from: items)
+    }
+
+    private func marketHealthTool() -> String {
+        return ChatToolExpansion.marketHealthReport(app: app)
+    }
+
+    // MARK: - Bot Strategy Tools
+
+    private func botStrategiesTool(args: [String: Any]) -> String {
+        let filter = str(args, "filter")
+        if !filter.isEmpty {
+            let filtered = BotStrategyLibrary.allStrategies.filter {
+                $0.name.lowercased().contains(filter.lowercased()) ||
+                $0.riskLevel.rawValue.lowercased().contains(filter.lowercased())
+            }
+            guard !filtered.isEmpty else { return "No strategies matching '\(filter)'." }
+            var result = "## Strategies matching '\(filter)'\n\n"
+            for s in filtered {
+                result += "### \(s.name)\n\(s.description)\nRisk: \(s.riskLevel.rawValue)\nTimeframes: \(s.timeframes.map { $0.rawValue }.joined(separator: ", "))\n\n"
+            }
+            return result
+        }
+        return BotStrategyLibrary.catalog()
+    }
+
+    private func strategyDetailTool(args: [String: Any]) -> String {
+        let name = str(args, "name")
+        guard !name.isEmpty, let strategy = BotStrategyLibrary.strategy(named: name) else {
+            return "Strategy '\(name)' not found. Use bot_strategies to list available strategies."
+        }
+        var detail = "## \(strategy.name)\n\n"
+        detail += "**Description:** \(strategy.description)\n"
+        detail += "**Risk Level:** \(strategy.riskLevel.rawValue)\n"
+        detail += "**Timeframes:** \(strategy.timeframes.map { $0.rawValue }.joined(separator: ", "))\n"
+        detail += "**Default Parameters:**\n"
+        for (key, value) in strategy.defaultParameters {
+            detail += "- \(key): \(value)\n"
+        }
+        detail += "\n**Max Risk/Trade:** \(strategy.riskLevel.maxRiskPerTrade * 100)%"
+        return detail
+    }
+
+    // MARK: - Enhanced Skills Tools
+
+    private func skillsCatalogTool() -> String {
+        return SkillsExtensionService.shared.catalog()
+    }
+
+    private func skillExportTool(args: [String: Any]) -> String {
+        let name = str(args, "name")
+        guard !name.isEmpty else { return "Provide skill name to export." }
+        guard let skill = SkillsExtensionService.shared.userSkills.first(where: { $0.name.lowercased() == name.lowercased() }),
+              let json = SkillsExtensionService.shared.exportSkill(skill.id) else {
+            return "Skill '\(name)' not found."
+        }
+        return "## Exported Skill: \(skill.name)\n```json\n\(json.prefix(2000))\n```"
+    }
+
+    private func skillImportTool(args: [String: Any]) -> String {
+        let json = str(args, "json").isEmpty ? str(args, "content") : str(args, "json")
+        guard !json.isEmpty else { return "Provide the skill JSON to import." }
+        return SkillsExtensionService.shared.importSkill(from: json)
+    }
+
+    private func skillCreateCustomTool(args: [String: Any]) -> String {
+        let name = str(args, "name")
+        let description = str(args, "description").isEmpty ? "Custom skill" : str(args, "description")
+        let prompt = str(args, "prompt").isEmpty ? str(args, "template") : str(args, "prompt")
+        guard !name.isEmpty, !prompt.isEmpty else { return "Provide name and prompt for the skill." }
+        let toolsRaw = str(args, "tools")
+        let tools = toolsRaw.isEmpty ? ["analyze"] : toolsRaw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let categoryName = str(args, "category").isEmpty ? "custom" : str(args, "category")
+        let category = SkillsExtensionService.SkillCategory.allCases.first { $0.rawValue.lowercased() == categoryName.lowercased() } ?? .custom
+        let skill = SkillsExtensionService.shared.createSkill(name: name, category: category, description: description, promptTemplate: prompt, tools: tools)
+        return "Created skill '\(skill.name)' [\(skill.category.rawValue)] with tools: \(tools.joined(separator: ", ")). Use 'skills_list' to see all skills."
+    }
+
+// MARK: - Currency Rates Helper
+
+struct CurrencyRates {
+    static let builtIn: [String: Double] = [
+        "USD": 1.0, "EUR": 0.92, "GBP": 0.79, "JPY": 149.50, "CHF": 0.88,
+        "CAD": 1.36, "AUD": 1.53, "NZD": 1.63, "CNY": 7.24, "INR": 83.10,
+        "BRL": 4.97, "MXN": 17.15, "SGD": 1.34, "HKD": 7.82, "SEK": 10.45,
+        "NOK": 10.60, "DKK": 6.88, "PLN": 4.03, "TRY": 30.20, "ZAR": 18.65
+    ]
+}
     // MARK: - Song Helpers
 
     private func chordPattern(root: String, minor: Bool) -> String {
