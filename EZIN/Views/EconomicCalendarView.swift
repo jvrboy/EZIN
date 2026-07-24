@@ -40,7 +40,7 @@ struct EconomicCalendarView: View {
             if let c = cur { events = events.filter { $0.currency == c } }
         }
         switch filterImpact {
-        case "high": events = events.filter { $0.impact == .high || $0.impact == .nonFarm }
+        case "high": events = events.filter { $0.impact == EventImpact.high || $0.impact == EventImpact.nonFarm }
         case "medium": events = events.filter { $0.impact == .medium }
         case "low": events = events.filter { $0.impact == .low }
         default: break
@@ -139,7 +139,7 @@ struct EventCard: View {
             VStack(spacing: 4) {
                 Text(timeUntilString)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(event.impact == .nonFarm ? .red : .white.opacity(0.6))
+                    .foregroundStyle(event.impact == EventImpact.nonFarm ? .red : .white.opacity(0.6))
                 Text(formattedTime)
                     .font(.system(size: 10))
                     .foregroundStyle(.white.opacity(0.4))
@@ -244,7 +244,7 @@ struct EventDetailView: View {
                         .foregroundStyle(.white.opacity(0.5))
                     Text(timeUntilString)
                         .font(.system(size: 36, weight: .bold, design: .monospaced))
-                        .foregroundStyle(event.impact == .nonFarm ? .red : Glass.accent2)
+                        .foregroundStyle(event.impact == EventImpact.nonFarm ? .red : Glass.accent2)
                 }
                 .padding()
                 .glassCard()
@@ -280,7 +280,7 @@ struct EventDetailView: View {
                 .glassCard()
 
                 // Trading tips
-                if event.impact == .high || event.impact == .nonFarm {
+                if event.impact == EventImpact.high || event.impact == EventImpact.nonFarm {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("⚡ TRADING TIPS")
                             .font(.caption.weight(.semibold))

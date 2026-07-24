@@ -244,7 +244,7 @@ struct ChatToolExpansion {
         let signalCount = app.signals.count
         let watchlistCount = app.settings.watchlist.count
         let pricesCached = app.deriv.prices.count
-        let signalsTracked = app.signalPerformance.totalSignals
+        let signalsTracked = app.signalPerformance.trackedSignals.count
         
         return """
         📊 **Market Health Report**

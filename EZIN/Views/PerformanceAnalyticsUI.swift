@@ -423,7 +423,7 @@ struct ExportView: View {
                 }
             }
             .sheet(isPresented: $showingShareSheet) {
-                ShareSheet(items: [csv])
+                ShareSheet(activityItems: [csv])
             }
         }
     }

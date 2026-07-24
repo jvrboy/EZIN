@@ -15,7 +15,7 @@ struct NewsItem: Codable, Identifiable, Hashable {
     let url: String
 
     enum NewsCategory: String, Codable, CaseIterable {
-        case宏观经济 = "Macro"
+        case macroeconomy = "Macro"
         case earnings = "Earnings"
         case centralBank = "Central Bank"
         case geopolitics = "Geopolitics"

@@ -136,7 +136,7 @@ struct EconomicEvent: Codable, Identifiable, Hashable {
 /// Provides economic calendar data — upcoming events that could affect market volatility.
 /// Events are generated from a built-in database of recurring high-impact events plus
 /// dynamically calculated dates for common releases.
-final class EconomicCalendarService {
+final class EconomicCalendarService: ObservableObject {
     static let shared = EconomicCalendarService()
 
     private init() {}

@@ -5,14 +5,14 @@ struct BotStrategyLibrary {
     
     // MARK: - Strategy Protocol
     
-    protocol TradableStrategy {
+    protocol StrategyProtocol {
         var name: String { get }
         var description: String { get }
         var riskLevel: RiskLevel { get }
         var timeframes: [Timeframe] { get }
         var defaultParameters: [String: Double] { get }
-        func shouldEnter(data: StrategyInput) -> (shouldEnter: Bool, confidence: Double, reason: String)
-        func shouldExit(data: StrategyInput) -> (shouldExit: Bool, reason: String)
+        func shouldEnter(data: StrategyInput) -> (Bool, Double, String)
+        func shouldExit(data: StrategyInput) -> (Bool, String)
     }
     
     enum RiskLevel: String, Codable, CaseIterable {
@@ -62,7 +62,7 @@ struct BotStrategyLibrary {
     // MARK: - Strategy Implementations
     
     /// 1. Mean Reversion on RSI extremes
-    struct RSIMeanReversion: TradableStrategy {
+    struct RSIMeanReversion: StrategyProtocol {
         let name = "RSI Mean Reversion"
         let description = "Buys when RSI < 30 (oversold), sells when RSI > 70 (overbought)"
         let riskLevel: RiskLevel = .medium
@@ -101,7 +101,7 @@ struct BotStrategyLibrary {
     }
     
     /// 2. MACD Crossover Momentum
-    struct MACDMomentum: TradableStrategy {
+    struct MACDMomentum: StrategyProtocol {
         let name = "MACD Momentum"
         let description = "Follows MACD line/signal crossovers for trend momentum"
         let riskLevel: RiskLevel = .medium
@@ -148,7 +148,7 @@ struct BotStrategyLibrary {
     }
     
     /// 3. Bollinger Band Squeeze Breakout
-    struct BollingerSqueeze: TradableStrategy {
+    struct BollingerSqueeze: StrategyProtocol {
         let name = "Bollinger Squeeze"
         let description = "Trades breakouts from low-volatility Bollinger Band squeezes"
         let riskLevel: RiskLevel = .high
@@ -190,7 +190,7 @@ struct BotStrategyLibrary {
     }
     
     /// 4. Trend Following with 2 Moving Averages
-    struct TrendFollower: TradableStrategy {
+    struct TrendFollower: StrategyProtocol {
         let name = "Trend Follower"
         let description = "Follows trend using SMA fast/slow crossover on higher timeframes"
         let riskLevel: RiskLevel = .medium
@@ -228,7 +228,7 @@ struct BotStrategyLibrary {
     }
     
     /// 5. Volume Spike Breakout
-    struct VolumeSpike: TradableStrategy {
+    struct VolumeSpike: StrategyProtocol {
         let name = "Volume Spike"
         let description = "Detects abnormal volume spikes as breakout confirmation"
         let riskLevel: RiskLevel = .high
@@ -261,7 +261,7 @@ struct BotStrategyLibrary {
     }
     
     /// 6. ATR Breakout / Volatility Expansion
-    struct ATRBreakout: TradableStrategy {
+    struct ATRBreakout: StrategyProtocol {
         let name = "ATR Breakout"
         let description = "Trades breakouts beyond ATR-based volatility envelopes"
         let riskLevel: RiskLevel = .veryHigh
@@ -298,7 +298,7 @@ struct BotStrategyLibrary {
     }
     
     /// 7. Support/Resistance Bounce
-    struct SRBounce: TradableStrategy {
+    struct SRBounce: StrategyProtocol {
         let name = "S/R Bounce"
         let description = "Buys at support levels, sells at resistance with confirmation"
         let riskLevel: RiskLevel = .medium
@@ -352,7 +352,7 @@ struct BotStrategyLibrary {
     }
     
     /// 8. Multi-Timeframe Confluence
-    struct MTFConfluence: TradableStrategy {
+    struct MTFConfluence: StrategyProtocol {
         let name = "MTF Confluence"
         let description = "Requires confluence across 3 timeframes before entering"
         let riskLevel: RiskLevel = .veryLow
@@ -393,7 +393,7 @@ struct BotStrategyLibrary {
     
     // MARK: - Strategy Registry
     
-    static let allStrategies: [any TradableStrategy] = [
+    static let allStrategies: [any StrategyProtocol] = [
         RSIMeanReversion(),
         MACDMomentum(),
         BollingerSqueeze(),
@@ -404,15 +404,15 @@ struct BotStrategyLibrary {
         MTFConfluence()
     ]
     
-    static func strategy(named name: String) -> (any TradableStrategy)? {
+    static func strategy(named name: String) -> (any StrategyProtocol)? {
         allStrategies.first { $0.name.lowercased() == name.lowercased() }
     }
     
-    static func strategies(for timeframe: Timeframe) -> [any TradableStrategy] {
+    static func strategies(for timeframe: Timeframe) -> [any StrategyProtocol] {
         allStrategies.filter { $0.timeframes.contains(timeframe) }
     }
     
-    static func strategies(riskLevel: RiskLevel) -> [any TradableStrategy] {
+    static func strategies(riskLevel: RiskLevel) -> [any StrategyProtocol] {
         allStrategies.filter { $0.riskLevel == riskLevel }
     }
     

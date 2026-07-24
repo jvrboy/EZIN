@@ -68,9 +68,8 @@ struct ArtifactChip: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.12), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        #if canImport(UIKit)
-        .sheet(isPresented: $showShare) { ShareSheet(items: [url]) }
-        #endif
+        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheet(activityItems: [url]) }
+#endif
     }
 
     private var icon: String {
@@ -143,9 +142,8 @@ struct AudioArtifactPlayer: View {
             player.load(data: data, name: name)
             if player.duration <= 0 { loadFailed = true }
         }
-        #if canImport(UIKit)
-        .sheet(isPresented: $showShare) { ShareSheet(items: [url]) }
-        #endif
+        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheet(activityItems: [url]) }
+#endif
     }
 
     private func fmt(_ t: Double) -> String { String(format: "%d:%02d", Int(t) / 60, Int(t) % 60) }

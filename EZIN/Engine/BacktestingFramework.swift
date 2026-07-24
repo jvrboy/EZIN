@@ -107,7 +107,17 @@ enum BacktestingFramework {
     struct OptimizationResult: Codable {
         let bestParameters: StrategyParameters
         let bestScore: Double
-        let topResults: [(parameters: StrategyParameters, score: Double)]
+        struct ParamScore: Codable {
+            let parameters: StrategyParameters
+            let score: Double
+        }
+        let topResults: [ParamScore]
+        
+        init(bestParameters: StrategyParameters, bestScore: Double, topResults: [(parameters: StrategyParameters, score: Double)]) {
+            self.bestParameters = bestParameters
+            self.bestScore = bestScore
+            self.topResults = topResults.map { ParamScore(parameters: $0.parameters, score: $0.score) }
+        }
     }
 
     // MARK: - Commission & Slippage Models

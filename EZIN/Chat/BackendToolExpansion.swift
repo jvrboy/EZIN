@@ -4,6 +4,7 @@ import Foundation
 /// hundreds of hand-written switch cases. Each `backend_tool_###` maps to a concrete
 /// analytics, risk, market-structure, execution-readiness, portfolio, data-quality, or
 /// agentic-pipeline capability descriptor that the assistant can invoke consistently.
+@MainActor
 enum BackendToolExpansion {
     struct VirtualTool {
         let id: Int

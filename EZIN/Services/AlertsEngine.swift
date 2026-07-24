@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 import Combine
 
 // MARK: - Alert Types & Data Models
@@ -444,6 +445,7 @@ final class AlertEvaluator: ObservableObject {
 
 // MARK: - Push Notification Support for Alerts
 
+@MainActor
 extension PushNotificationManager {
     func notifyAlertTriggered(_ event: AlertEvent) {
         let body: String
@@ -465,7 +467,7 @@ extension PushNotificationManager {
         scheduleLocalNotification(title: "EZIN Alert: \(event.severity.rawValue)", body: body)
     }
 
-    private func scheduleLocalNotification(title: String, body: String) {
+    func scheduleLocalNotification(title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
