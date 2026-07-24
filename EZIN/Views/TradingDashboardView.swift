@@ -212,8 +212,8 @@ struct TradingDashboardView: View {
     // MARK: - Recent Trades
 
     private var recentTradesSection: some View {
-        GlassSection(title: "Recent Journal Entries") {
-            let recent = journal.entries.sorted(by: { $0.entryDate > $1.entryDate }).prefix(5)
+        let recent: [JournalEntry] = Array(journal.entries.sorted(by: { $0.entryDate > $1.entryDate }).prefix(5))
+        return GlassSection(title: "Recent Journal Entries") {
             if recent.isEmpty {
                 VStack(spacing: 8) {
                     Text("No journal entries yet")
@@ -225,7 +225,7 @@ struct TradingDashboardView: View {
                 .padding(.vertical, 16)
                 .frame(maxWidth: .infinity)
             } else {
-                ForEach(Array(recent), id: \.id) { entry in
+                ForEach(recent, id: \.id) { (entry: JournalEntry) in
                     HStack(spacing: 12) {
                         // Direction badge
                         VStack(spacing: 2) {
