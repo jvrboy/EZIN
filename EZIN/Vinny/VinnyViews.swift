@@ -143,8 +143,7 @@ final class VinnySession: ObservableObject {
         let p = patch
         let phrase = demoNotes()
         Task.detached(priority: .userInitiated) {
-            let duration = 60.0 / p.bpm * 3.2
-            let wav = VinnyRenderer.renderWAV(patch: p, notes: phrase, durationSec: duration)
+            let duration = 60.0 / p.bpm * 3.2                    var wav = VinnyRenderer.renderWAV(patch: p, notes: phrase, durationSec: duration)
             // Sound Weather: evolving ambient bed underneath.
             if await self.weatherEnabled, let pcm = VinnyDSP.readWAV(wav) {
                 let cfg = VinnyDSP.GranularConfig(grainSizeMs: 160, density: 14, pitchRandom: 0.05, positionRandom: 0.8, durationSec: duration, seed: UInt64(p.name.hashValue & 0x7fffffff))
@@ -786,7 +785,7 @@ struct VinnyOrganicaView: View {
         session.busy = true
         Task.detached(priority: .userInitiated) {
             let pad = VinnyDSP.freezePad(pcm.mono, at: Double(session.player.currentTime) / max(session.player.duration, 0.1), durationSec: 6, sampleRate: pcm.sampleRate)
-            let out = VinnyDSP.writeWAV(pad, sampleRate: pcm.sampleRate)
+            let out = await VinnyDSP.writeWAV(pad, sampleRate: pcm.sampleRate)
             await MainActor.run {
                 session.renderedWAV = out
                 session.player.load(data: out, name: "Frozen pad")

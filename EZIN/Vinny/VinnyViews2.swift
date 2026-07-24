@@ -59,7 +59,7 @@ struct VinnyTempoShiftView: View {
                 session.busy = true
                 let p = session.patch
                 Task.detached(priority: .userInitiated) {
-                    let regrooved = LoopFactory.regroove(loop, swing: swing, patch: p)
+                    let regrooved = await LoopFactory.regroove(loop, swing: swing, patch: p)
                     await MainActor.run {
                         session.lastLoop = regrooved
                         session.renderedWAV = regrooved.wav
@@ -415,8 +415,7 @@ struct VinnyFlowStateView: View {
         }
     }
 
-    private func previewCustomCurve() {
-        var p = session.patch
+    private func previewCustomCurve() {                let p = session.patch
         session.busy = true
         let curve = drawn.map { Double($0) }
         Task.detached(priority: .userInitiated) {
@@ -444,8 +443,7 @@ struct VinnyFlowStateView: View {
     }
 
     private func dice(engine: Bool) {
-        var rng = SeededRNG(UInt64(Date().timeIntervalSince1970))
-        var p = session.patch
+        var rng = SeededRNG(UInt64(Date().timeIntervalSince1970))                let p = session.patch
         if engine {
             p.filterCutoff = 300 + rng.next01() * 9000
             p.fmAmount = rng.next01() * 0.7

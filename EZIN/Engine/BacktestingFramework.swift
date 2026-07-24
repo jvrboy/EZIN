@@ -322,7 +322,7 @@ enum BacktestingFramework {
 
             // Close position if signal changed
             if position != 0 && signal != position {
-                let grossReturn = position * (candle.close - entryPrice) / max(entryPrice, 0.000001)
+                let grossReturn = Double(position) * (candle.close - entryPrice) / max(entryPrice, 0.000001)
                 let costs = costModel.totalRoundTrip
                 let netReturn = grossReturn - costs
                 let trade = Trade(
@@ -342,7 +342,7 @@ enum BacktestingFramework {
             // Enter new position
             if position == 0 && signal != 0 {
                 position = signal
-                entryPrice = candle.close * (1 + (signal > 0 ? 1 : -1) * costModel.slippagePct)
+                entryPrice = candle.close * (1 + (signal > 0 ? 1.0 : -1.0) * costModel.slippagePct)
                 entryIndex = i
             }
 
@@ -360,7 +360,7 @@ enum BacktestingFramework {
             } else {
                 equityCurve.append(equity)
                 peak = max(peak, equity)
-                if equity >= peak * Double(0.9)9 { ddStartBar = i }
+                if equity >= peak * 0.9 { ddStartBar = i }
             }
         }
 
@@ -605,7 +605,7 @@ enum BacktestingFramework {
         let topResults = pop.prefix(5).map { $0 }
 
         return OptimizationResult(
-            bestParameters: best.params,
+            bestParameters: best.parameters,
             bestScore: best.score,
             topResults: topResults
         )

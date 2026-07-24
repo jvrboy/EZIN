@@ -232,33 +232,33 @@ struct BotStrategyLibrary {
     struct VolumeSpike: BotStrategy {
         let name = "Volume Spike"
         let description = "Detects abnormal volume spikes as breakout confirmation"
-        let riskLevel: BotRiskLevel = .high
-        let timeframes: [Timeframe] = [.m5, .m15]
-        let defaultParameters: [String: Double] = ["volumeMultiplier": 2.0, "lookback": 20]
+    let botRiskLevel: BotRiskLevel = .high
+    let timeframes: [Timeframe] = [.m5, .m15]
+    let defaultParameters: [String: Double] = ["volumeMultiplier": 2.0, "lookback": 20]
+    
+    func shouldEnter(data: StrategyInput) -> (Bool, Double, String) {
+        guard data.indicators.volume.count >= 3 else { return (false, 0, "Insufficient volume data") }
         
-        func shouldEnter(data: StrategyInput) -> (Bool, Double, String) {
-            guard data.indicators.volume.count >= 3 else { return (false, 0, "Insufficient volume data") }
-            
-            let vol = data.indicators.volume
-            let lookback = min(Int(defaultParameters["lookback"] ?? 20), vol.count - 1)
-            let multiplier = defaultParameters["volumeMultiplier"] ?? 2.0
-            
-            let avgVol = vol.suffix(lookback).dropLast().reduce(0, +) / Double(lookback)
-            let currentVol = vol.last!
-            
-            guard currentVol > avgVol * multiplier else { return (false, 0, "No volume spike") }
-            
-            let direction = data.currentPrice > (data.indicators.smaFast.last ?? data.currentPrice) ? "bullish" : "bearish"
-            let ratio = currentVol / avgVol
-            return (true, min(0.75, ratio * 0.15), "Volume spike: \(String(format: "%.1f", ratio))x average (\(direction))")
-        }
+        let vol = data.indicators.volume
+        let lookback = min(Int(defaultParameters["lookback"] ?? 20), vol.count - 1)
+        let multiplier = defaultParameters["volumeMultiplier"] ?? 2.0
         
-        func shouldExit(data: StrategyInput) -> (Bool, String) {
-            let vol = data.indicators.volume.last ?? 0
-            let avg = data.indicators.volume.suffix(10).dropLast().reduce(0, +) / 9
-            if vol < avg * 0.5 { return (true, "Volume drying up") }
-            return (false, "Volume sustained")
-        }
+        let avgVol = vol.suffix(lookback).dropLast().reduce(0, +) / Double(lookback)
+        let currentVol = vol.last!
+        
+        guard currentVol > avgVol * multiplier else { return (false, 0, "No volume spike") }
+        
+        let direction = data.currentPrice > (data.indicators.smaFast.last ?? data.currentPrice) ? "bullish" : "bearish"
+        let ratio = currentVol / avgVol
+        return (true, min(0.75, ratio * 0.15), "Volume spike: \(String(format: "%.1f", ratio))x average (\(direction))")
+    }
+    
+    func shouldExit(data: StrategyInput) -> (Bool, String) {
+        let vol = data.indicators.volume.last ?? 0
+        let avg = data.indicators.volume.suffix(10).dropLast().reduce(0, +) / 9
+        if vol < avg * 0.5 { return (true, "Volume drying up") }
+        return (false, "Volume sustained")
+    }
     }
     
     /// 6. ATR Breakout / Volatility Expansion

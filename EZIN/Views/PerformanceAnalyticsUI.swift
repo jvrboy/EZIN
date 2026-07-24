@@ -89,7 +89,8 @@ struct PerformanceAnalyticsView: View {
                     icon: "chart.pie",
                     label: "Win Rate",
                     value: String(format: "%.1f%%", snapshot.winRate * 100),
-                    color: snapshot.winRate >= 0.55 ? .green : (snapshot.winRate >= 0.45 ? .orange : .red)
+                    color: snapshot.winRate >= 0.55 ? .green : (snapshot.winRate >= 0.45 ? .orange : .red),
+                    trend: .neutral
                 )
 
                 StatCard(

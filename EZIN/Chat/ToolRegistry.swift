@@ -1065,7 +1065,7 @@ struct ToolRegistry {
         var rsi: BacktestingFramework.RSIMeanReversionStrategy = .init()
         var macd: BacktestingFramework.MACDStrategy = .init()
 
-        let strategies: [any BacktestingFramework.BacktestStrategy] = [sma, rsi, macd]
+        let strategies: [any BacktestStrategy] = [sma, rsi, macd]
 
         return BacktestingFramework.compareStrategies(
             strategies: strategies,
@@ -1099,10 +1099,10 @@ struct ToolRegistry {
         report += "\(result.summary)\n\n"
         report += "| Window | Trades | Return | Max DD | Sharpe |\n|---|---|---|---|---|\n"
         for (i, w) in result.windows.enumerated() {
-            report += "| Window \(i + 1) | \(w.totalTrades) | \(fmt(w.totalReturnPct))% | \(fmt(w.maxDrawdownPct))% | \(fmt(w.sharpeRatio)) |\n"
+            report += "| Window \(i + 1) | \(w.totalTrades) | \(BacktestingFramework.fmt(w.totalReturnPct))% | \(BacktestingFramework.fmt(w.maxDrawdownPct))% | \(BacktestingFramework.fmt(w.sharpeRatio)) |\n"
         }
-        report += "\n**Averages:** Return \(fmt(result.averageReturnPct))% · Max DD \(fmt(result.averageMaxDD))% · Sharpe \(fmt(result.averageSharpe))\n"
-        report += "**Consistency:** \(fmt(result.consistencyScore * 100))% · Parameter Stability: \(fmt(result.parameterStability * 100))%\n"
+        report += "\n**Averages:** Return \(BacktestingFramework.fmt(result.averageReturnPct))% · Max DD \(BacktestingFramework.fmt(result.averageMaxDD))% · Sharpe \(BacktestingFramework.fmt(result.averageSharpe))\n"
+        report += "**Consistency:** \(BacktestingFramework.fmt(result.consistencyScore * 100))% · Parameter Stability: \(BacktestingFramework.fmt(result.parameterStability * 100))%\n"
 
         return report
     }
@@ -1129,14 +1129,14 @@ struct ToolRegistry {
         )
 
         var report = "## Parameter Optimization — \(DerivSymbols.display(symbol))\n\n"
-        report += "**Best Score:** \(fmt(result.bestScore))\n\n"
+        report += "**Best Score:** \(BacktestingFramework.fmt(result.bestScore))\n\n"
         report += "**Best Parameters:**\n"
         for (key, value) in result.bestParameters.values.sorted(by: { $0.key < $1.key }) {
             report += "- \(key): \(Int(value))\n"
         }
         report += "\n**Top Candidates:**\n"
         for (i, r) in result.topResults.prefix(3).enumerated() {
-            report += "\(i + 1). Score \(fmt(r.score)) — "
+            report += "\(i + 1). Score \(BacktestingFramework.fmt(r.score)) — "
             report += r.parameters.values.sorted(by: { $0.key < $1.key }).map { "\($0.key)=\(Int($0.value))" }.joined(separator: ", ")
             report += "\n"
         }
@@ -1192,7 +1192,7 @@ struct ToolRegistry {
         for (name, weight) in tracker.weights.sorted(by: { $0.value > $1.value }) {
             let bar = String(repeating: "█", count: Int(weight * 10))
             let accuracyHint = weight > 1.2 ? "strong" : weight > 0.8 ? "neutral" : "weak"
-            report += "| \(name) | \(bar) \(fmt(weight)) | \(accuracyHint) |\n"
+            report += "| \(name) | \(bar) \(BacktestingFramework.fmt(weight)) | \(accuracyHint) |\n"
         }
         report += "\nUse `fusion_weights(reset: true)` to reset all weights."
 

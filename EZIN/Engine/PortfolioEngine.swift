@@ -147,7 +147,8 @@ enum PortfolioEngine {
             }
         }
 
-        guard !bestWeights.isEmpty else { return nil }            let allocations = zip(assets, bestWeights).map { Allocation(symbol: $0.0.symbol, weight: $0.1) }
+        guard !bestWeights.isEmpty else { return nil }
+        let allocations = zip(assets, bestWeights).map { Allocation(symbol: $0.0.symbol, weight: $0.1) }
         let metrics = computeMetrics(weights: bestWeights, assets: assets, mu: mu, cov: cov)
         return (allocations, metrics)
     }
@@ -494,7 +495,7 @@ enum PortfolioEngine {
     }
 
     private static func computePoint(weights: [Double], assets: [AssetInput], mu: [Double], cov: [[Double]]) -> FrontierPoint {
-        let allocations = zip(assets, weights).map { Allocation(symbol: $0.0.symbol, weight: $1.0) }
+        let allocations = zip(assets, weights).map { Allocation(symbol: $0.0.symbol, weight: $0.1) }
         let metrics = computeMetrics(weights: weights, assets: assets, mu: mu, cov: cov)
         return FrontierPoint(
             volatility: metrics.volatility,
