@@ -97,35 +97,40 @@ struct PerformanceAnalyticsView: View {
                     icon: "plusminus",
                     label: "Expectancy",
                     value: String(format: "%.4f", snapshot.expectancy),
-                    color: snapshot.expectancy >= 0 ? .green : .red
+                    color: snapshot.expectancy >= 0 ? .green : .red,
+                    trend: .neutral
                 )
 
                 StatCard(
                     icon: "number",
                     label: "Sample Size",
                     value: "\(snapshot.resolvedCount)",
-                    color: .blue
+                    color: .blue,
+                    trend: .neutral
                 )
 
                 StatCard(
                     icon: "clock",
                     label: "Active",
                     value: "\(snapshot.activeCount)",
-                    color: .purple
+                    color: .purple,
+                    trend: .neutral
                 )
 
                 StatCard(
                     icon: "timer",
                     label: "Avg Hold Time",
                     value: String(format: "%.1f min", snapshot.averageHoldMinutes),
-                    color: .teal
+                    color: .teal,
+                    trend: .neutral
                 )
 
                 StatCard(
                     icon: snapshot.recentStreak >= 0 ? "flame" : "snowflake",
                     label: "Streak",
                     value: streakText(snapshot.recentStreak),
-                    color: snapshot.recentStreak >= 0 ? .orange : .blue
+                    color: snapshot.recentStreak >= 0 ? .orange : .blue,
+                    trend: snapshot.recentStreak > 0 ? .up : (snapshot.recentStreak < 0 ? .down : .neutral)
                 )
             }
 
