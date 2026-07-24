@@ -1,71 +1,72 @@
 import Foundation
 
 /// Expanded bot strategy library with 8 new trading strategies
+
+// MARK: - Bot Strategy Protocol (file-scope for Swift 5 compat)
+
+protocol BotStrategy {
+    var name: String { get }
+    var description: String { get }
+    var botRiskLevel: BotRiskLevel { get }
+    var timeframes: [Timeframe] { get }
+    var defaultParameters: [String: Double] { get }
+    func shouldEnter(data: StrategyInput) -> (Bool, Double, String)
+    func shouldExit(data: StrategyInput) -> (Bool, String)
+}
+
+enum BotRiskLevel: String, Codable, CaseIterable {
+    case veryLow = "Very Low"
+    case low = "Low"
+    case medium = "Medium"
+    case high = "High"
+    case veryHigh = "Very High"
+
+    var maxRiskPerTrade: Double {
+        switch self {
+        case .veryLow: return 0.002
+        case .low: return 0.005
+        case .medium: return 0.01
+        case .high: return 0.02
+        case .veryHigh: return 0.05
+        }
+    }
+}
+
+struct StrategyInput {
+    let symbol: String
+    let timeframe: Timeframe
+    let candles: [Candle]
+    let currentPrice: Double
+    let indicators: IndicatorValues
+    let regime: String?
+}
+
+struct IndicatorValues {
+    let rsi: [Double]
+    let macdLine: [Double]
+    let macdSignal: [Double]
+    let macdHistogram: [Double]
+    let bbUpper: [Double]
+    let bbLower: [Double]
+    let bbMiddle: [Double]
+    let atr: [Double]
+    let smaFast: [Double]
+    let smaSlow: [Double]
+    let volume: [Double]
+
+    var latestRSI: Double { rsi.last ?? 50 }
+    var latestATR: Double { atr.last ?? 0 }
+}
+
 struct BotStrategyLibrary {
-    
-    // MARK: - Strategy Protocol
-    
-    protocol StrategyProtocol {
-        var name: String { get }
-        var description: String { get }
-        var riskLevel: RiskLevel { get }
-        var timeframes: [Timeframe] { get }
-        var defaultParameters: [String: Double] { get }
-        func shouldEnter(data: StrategyInput) -> (Bool, Double, String)
-        func shouldExit(data: StrategyInput) -> (Bool, String)
-    }
-    
-    enum RiskLevel: String, Codable, CaseIterable {
-        case veryLow = "Very Low"
-        case low = "Low"
-        case medium = "Medium"
-        case high = "High"
-        case veryHigh = "Very High"
-        
-        var maxRiskPerTrade: Double {
-            switch self {
-            case .veryLow: return 0.002
-            case .low: return 0.005
-            case .medium: return 0.01
-            case .high: return 0.02
-            case .veryHigh: return 0.05
-            }
-        }
-    }
-    
-    struct StrategyInput {
-        let symbol: String
-        let timeframe: Timeframe
-        let candles: [Candle]
-        let currentPrice: Double
-        let indicators: IndicatorValues
-        let regime: String?
-        
-        struct IndicatorValues {
-            let rsi: [Double]
-            let macdLine: [Double]
-            let macdSignal: [Double]
-            let macdHistogram: [Double]
-            let bbUpper: [Double]
-            let bbLower: [Double]
-            let bbMiddle: [Double]
-            let atr: [Double]
-            let smaFast: [Double]
-            let smaSlow: [Double]
-            let volume: [Double]
-            
-            var latestRSI: Double { rsi.last ?? 50 }
-            var latestATR: Double { atr.last ?? 0 }
-        }
-    }
     
     // MARK: - Strategy Implementations
     
     /// 1. Mean Reversion on RSI extremes
-    struct RSIMeanReversion: StrategyProtocol {
+    struct RSIMeanReversion: BotStrategy {
         let name = "RSI Mean Reversion"
         let description = "Buys when RSI < 30 (oversold), sells when RSI > 70 (overbought)"
-        let riskLevel: RiskLevel = .medium
+        let botRiskLevel: BotRiskLevel = .medium
         let timeframes: [Timeframe] = [.m5, .m15, .m30, .h1]
         let defaultParameters: [String: Double] = ["rsiPeriod": 14, "oversold": 30, "overbought": 70, "lookback": 3]
         
@@ -101,10 +102,10 @@ struct BotStrategyLibrary {
     }
     
     /// 2. MACD Crossover Momentum
-    struct MACDMomentum: StrategyProtocol {
+    struct MACDMomentum: BotStrategy {
         let name = "MACD Momentum"
         let description = "Follows MACD line/signal crossovers for trend momentum"
-        let riskLevel: RiskLevel = .medium
+        let botRiskLevel: BotRiskLevel = .medium
         let timeframes: [Timeframe] = [.m15, .m30, .h1, .h4]
         let defaultParameters: [String: Double] = ["fast": 12, "slow": 26, "signal": 9]
         
@@ -148,10 +149,10 @@ struct BotStrategyLibrary {
     }
     
     /// 3. Bollinger Band Squeeze Breakout
-    struct BollingerSqueeze: StrategyProtocol {
+    struct BollingerSqueeze: BotStrategy {
         let name = "Bollinger Squeeze"
         let description = "Trades breakouts from low-volatility Bollinger Band squeezes"
-        let riskLevel: RiskLevel = .high
+        let botRiskLevel: BotRiskLevel = .high
         let timeframes: [Timeframe] = [.m5, .m15, .h1]
         let defaultParameters: [String: Double] = ["bbPeriod": 20, "bbStdDev": 2.0, "squeezeThreshold": 0.1]
         
@@ -190,10 +191,10 @@ struct BotStrategyLibrary {
     }
     
     /// 4. Trend Following with 2 Moving Averages
-    struct TrendFollower: StrategyProtocol {
+    struct TrendFollower: BotStrategy {
         let name = "Trend Follower"
         let description = "Follows trend using SMA fast/slow crossover on higher timeframes"
-        let riskLevel: RiskLevel = .medium
+        let botRiskLevel: BotRiskLevel = .medium
         let timeframes: [Timeframe] = [.h1, .h4, .d1]
         let defaultParameters: [String: Double] = ["fastMA": 20, "slowMA": 50, "trendStrength": 0.6]
         
@@ -228,7 +229,7 @@ struct BotStrategyLibrary {
     }
     
     /// 5. Volume Spike Breakout
-    struct VolumeSpike: StrategyProtocol {
+    struct VolumeSpike: BotStrategy {
         let name = "Volume Spike"
         let description = "Detects abnormal volume spikes as breakout confirmation"
         let riskLevel: RiskLevel = .high
@@ -261,10 +262,10 @@ struct BotStrategyLibrary {
     }
     
     /// 6. ATR Breakout / Volatility Expansion
-    struct ATRBreakout: StrategyProtocol {
+    struct ATRBreakout: BotStrategy {
         let name = "ATR Breakout"
         let description = "Trades breakouts beyond ATR-based volatility envelopes"
-        let riskLevel: RiskLevel = .veryHigh
+        let botRiskLevel: BotRiskLevel = .veryHigh
         let timeframes: [Timeframe] = [.m5, .m15, .h1]
         let defaultParameters: [String: Double] = ["atrPeriod": 14, "atrMultiplier": 1.5, "lookback": 10]
         
@@ -298,10 +299,10 @@ struct BotStrategyLibrary {
     }
     
     /// 7. Support/Resistance Bounce
-    struct SRBounce: StrategyProtocol {
+    struct SRBounce: BotStrategy {
         let name = "S/R Bounce"
         let description = "Buys at support levels, sells at resistance with confirmation"
-        let riskLevel: RiskLevel = .medium
+        let botRiskLevel: BotRiskLevel = .medium
         let timeframes: [Timeframe] = [.m15, .m30, .h1, .h4]
         let defaultParameters: [String: Double] = ["bounceThreshold": 0.005, "confirmationBars": 2]
         
@@ -352,10 +353,10 @@ struct BotStrategyLibrary {
     }
     
     /// 8. Multi-Timeframe Confluence
-    struct MTFConfluence: StrategyProtocol {
+    struct MTFConfluence: BotStrategy {
         let name = "MTF Confluence"
         let description = "Requires confluence across 3 timeframes before entering"
-        let riskLevel: RiskLevel = .veryLow
+        let botRiskLevel: BotRiskLevel = .veryLow
         let timeframes: [Timeframe] = [.m15, .h1, .h4, .d1]
         let defaultParameters: [String: Double] = ["minTimeframes": 3, "minConfidence": 0.6]
         
@@ -393,7 +394,7 @@ struct BotStrategyLibrary {
     
     // MARK: - Strategy Registry
     
-    static let allStrategies: [any StrategyProtocol] = [
+    static let allStrategies: [any BotStrategy] = [
         RSIMeanReversion(),
         MACDMomentum(),
         BollingerSqueeze(),
@@ -404,15 +405,15 @@ struct BotStrategyLibrary {
         MTFConfluence()
     ]
     
-    static func strategy(named name: String) -> (any StrategyProtocol)? {
+    static func strategy(named name: String) -> (any BotStrategy)? {
         allStrategies.first { $0.name.lowercased() == name.lowercased() }
     }
     
-    static func strategies(for timeframe: Timeframe) -> [any StrategyProtocol] {
+    static func strategies(for timeframe: Timeframe) -> [any BotStrategy] {
         allStrategies.filter { $0.timeframes.contains(timeframe) }
     }
     
-    static func strategies(riskLevel: RiskLevel) -> [any StrategyProtocol] {
+    static func strategies(riskLevel botRiskLevel: BotRiskLevel) -> [any BotStrategy] {
         allStrategies.filter { $0.riskLevel == riskLevel }
     }
     

@@ -12,39 +12,40 @@ import Foundation
 ///   - Genetic parameter optimization
 ///
 /// All outputs are advisory and auditable — no order routing.
+
+// MARK: - Strategy Protocol (file-scope for Swift 5 compat)
+
+/// A trading strategy defines entry/exit rules over a dataset.
+protocol BacktestStrategy {
+    var name: String { get }
+    var parameters: BacktestingStrategyParameters { get set }
+
+    /// Called for each bar. Return a trade signal (+1 long, 0 flat, -1 short).
+    func evaluate(candles: [Candle], index: Int, position: Int) -> Int
+
+    /// Return parameter bounds for optimization.
+    static func parameterSpace() -> BacktestingParameterSpace
+}
+
+struct BacktestingStrategyParameters: Codable, Equatable {
+    var values: [String: Double] = [:]
+    subscript(_ key: String) -> Double {
+        get { values[key] ?? 0 }
+        set { values[key] = newValue }
+    }
+}
+
+struct BacktestingParameterSpace {
+    struct ParamRange {
+        let key: String
+        let min: Double
+        let max: Double
+        let step: Double
+    }
+    var ranges: [ParamRange]
+}
+
 enum BacktestingFramework {
-
-    // MARK: - Strategy Protocol
-
-    /// A trading strategy defines entry/exit rules over a dataset.
-    protocol TradableStrategy {
-        var name: String { get }
-        var parameters: StrategyParameters { get set }
-
-        /// Called for each bar. Return a trade signal (+1 long, 0 flat, -1 short).
-        func evaluate(candles: [Candle], index: Int, position: Int) -> Int
-
-        /// Return parameter bounds for optimization.
-        static func parameterSpace() -> StrategyParameterSpace
-    }
-
-    struct StrategyParameters: Codable, Equatable {
-        var values: [String: Double] = [:]
-        subscript(_ key: String) -> Double {
-            get { values[key] ?? 0 }
-            set { values[key] = newValue }
-        }
-    }
-
-    struct StrategyParameterSpace {
-        struct Range {
-            let key: String
-            let min: Double
-            let max: Double
-            let step: Double
-        }
-        var ranges: [Range]
-    }
 
     // MARK: - Trade Representation
 
@@ -91,7 +92,7 @@ enum BacktestingFramework {
         let standardDeviation: Double
         let trades: [Trade]
         let equityCurve: [Double]
-        let parameters: StrategyParameters
+        let parameters: BacktestingStrategyParameters
     }
 
     struct WalkForwardResult: Codable {
@@ -105,15 +106,15 @@ enum BacktestingFramework {
     }
 
     struct OptimizationResult: Codable {
-        let bestParameters: StrategyParameters
+        let bestParameters: BacktestingStrategyParameters
         let bestScore: Double
         struct ParamScore: Codable {
-            let parameters: StrategyParameters
+            let parameters: BacktestingStrategyParameters
             let score: Double
         }
         let topResults: [ParamScore]
         
-        init(bestParameters: StrategyParameters, bestScore: Double, topResults: [(parameters: StrategyParameters, score: Double)]) {
+        init(bestParameters: BacktestingStrategyParameters, bestScore: Double, topResults: [(parameters: BacktestingStrategyParameters, score: Double)]) {
             self.bestParameters = bestParameters
             self.bestScore = bestScore
             self.topResults = topResults.map { ParamScore(parameters: $0.parameters, score: $0.score) }
@@ -137,13 +138,13 @@ enum BacktestingFramework {
 
     // MARK: - SMA Crossover Strategy (built-in)
 
-    struct SMACrossoverStrategy: TradableStrategy {
+    struct SMACrossoverStrategy: BacktestStrategy {
         var name: String
-        var parameters: StrategyParameters
+        var parameters: BacktestingStrategyParameters
 
         init(name: String = "SMA Crossover", fast: Int = 10, slow: Int = 30) {
             self.name = name
-            self.parameters = StrategyParameters(values: [
+            self.parameters = BacktestingStrategyParameters(values: [
                 "fast": Double(fast),
                 "slow": Double(slow)
             ])
@@ -163,23 +164,23 @@ enum BacktestingFramework {
             return position
         }
 
-        static func parameterSpace() -> StrategyParameterSpace {
-            StrategyParameterSpace(ranges: [
-                .init(key: "fast", min: 2, max: 30, step: 1),
-                .init(key: "slow", min: 10, max: 100, step: 2)
+        static func parameterSpace() -> BacktestingParameterSpace {
+            BacktestingParameterSpace(ranges: [
+                ParamRange(key: "fast", min: 2, max: 30, step: 1),
+                ParamRange(key: "slow", min: 10, max: 100, step: 2)
             ])
         }
     }
 
     // MARK: - RSI Mean Reversion Strategy (built-in)
 
-    struct RSIMeanReversionStrategy: TradableStrategy {
+    struct RSIMeanReversionStrategy: BacktestStrategy {
         var name: String
-        var parameters: StrategyParameters
+        var parameters: BacktestingStrategyParameters
 
         init(name: String = "RSI Reversion", period: Int = 14, oversold: Int = 30, overbought: Int = 70) {
             self.name = name
-            self.parameters = StrategyParameters(values: [
+            self.parameters = BacktestingStrategyParameters(values: [
                 "period": Double(period),
                 "oversold": Double(oversold),
                 "overbought": Double(overbought)
@@ -210,24 +211,24 @@ enum BacktestingFramework {
             return position
         }
 
-        static func parameterSpace() -> StrategyParameterSpace {
-            StrategyParameterSpace(ranges: [
-                .init(key: "period", min: 5, max: 30, step: 1),
-                .init(key: "oversold", min: 15, max: 45, step: 5),
-                .init(key: "overbought", min: 55, max: 85, step: 5)
+        static func parameterSpace() -> BacktestingParameterSpace {
+            BacktestingParameterSpace(ranges: [
+                ParamRange(key: "period", min: 5, max: 30, step: 1),
+                ParamRange(key: "oversold", min: 15, max: 45, step: 5),
+                ParamRange(key: "overbought", min: 55, max: 85, step: 5)
             ])
         }
     }
 
     // MARK: - MACD Trend Strategy (built-in)
 
-    struct MACDStrategy: TradableStrategy {
+    struct MACDStrategy: BacktestStrategy {
         var name: String
-        var parameters: StrategyParameters
+        var parameters: BacktestingStrategyParameters
 
         init(name: String = "MACD", fast: Int = 12, slow: Int = 26, signal: Int = 9) {
             self.name = name
-            self.parameters = StrategyParameters(values: [
+            self.parameters = BacktestingStrategyParameters(values: [
                 "fast": Double(fast),
                 "slow": Double(slow),
                 "signal": Double(signal)
@@ -260,11 +261,11 @@ enum BacktestingFramework {
             return position
         }
 
-        static func parameterSpace() -> StrategyParameterSpace {
-            StrategyParameterSpace(ranges: [
-                .init(key: "fast", min: 5, max: 20, step: 1),
-                .init(key: "slow", min: 15, max: 50, step: 2),
-                .init(key: "signal", min: 5, max: 20, step: 1)
+        static func parameterSpace() -> BacktestingParameterSpace {
+            BacktestingParameterSpace(ranges: [
+                ParamRange(key: "fast", min: 5, max: 20, step: 1),
+                ParamRange(key: "slow", min: 15, max: 50, step: 2),
+                ParamRange(key: "signal", min: 5, max: 20, step: 1)
             ])
         }
     }
@@ -280,7 +281,7 @@ enum BacktestingFramework {
     ///   - initialCapital: Starting capital (for equity curve)
     /// - Returns: Detailed backtest results
     static func backtest(
-        strategy: inout some TradableStrategy,
+        strategy: inout some BacktestStrategy,
         symbol: String,
         candles: [Candle],
         costModel: CostModel = .default,
@@ -445,7 +446,7 @@ enum BacktestingFramework {
 
     /// Run a walk-forward analysis across multiple windows.
     static func walkForward(
-        strategyType: (StrategyParameters) -> some TradableStrategy,
+        strategyType: (BacktestingStrategyParameters) -> some BacktestStrategy,
         symbol: String,
         candles: [Candle],
         windows: Int = 3,
@@ -540,7 +541,7 @@ enum BacktestingFramework {
 
     /// Optimize strategy parameters using a simple genetic algorithm.
     static func optimizeGenetic(
-        strategyType: (StrategyParameters) -> some TradableStrategy,
+        strategyType: (BacktestingStrategyParameters) -> some BacktestStrategy,
         candles: [Candle],
         generations: Int = 20,
         population: Int = 30,
@@ -550,13 +551,13 @@ enum BacktestingFramework {
         // Get parameter space from the strategy type
         let space = SMACrossoverStrategy.parameterSpace() // fallback
         guard !space.ranges.isEmpty else {
-            return OptimizationResult(bestParameters: StrategyParameters(), bestScore: 0, topResults: [])
+            return OptimizationResult(bestParameters: BacktestingStrategyParameters(), bestScore: 0, topResults: [])
         }
 
         // Generate initial population
-        var pop: [(params: StrategyParameters, score: Double)] = []
+        var pop: [(params: BacktestingStrategyParameters, score: Double)] = []
         for _ in 0..<population {
-            var params = StrategyParameters()
+            var params = BacktestingStrategyParameters()
             for range in space.ranges {
                 let steps = Int((range.max - range.min) / range.step) + 1
                 let stepIdx = Int.random(in: 0..<steps)
@@ -574,10 +575,10 @@ enum BacktestingFramework {
             let parents = Array(pop.prefix(topSelection))
 
             // Crossover
-            var children: [(StrategyParameters, Double)] = []
+            var children: [(BacktestingStrategyParameters, Double)] = []
             while children.count < population - topSelection {
                 guard let p1 = parents.randomElement(), let p2 = parents.randomElement() else { break }
-                var child = StrategyParameters()
+                var child = BacktestingStrategyParameters()
                 for range in space.ranges {
                     child[range.key] = Bool.random() ? p1.params[range.key] : p2.params[range.key]
                 }
@@ -614,7 +615,7 @@ enum BacktestingFramework {
 
     /// Run the same backtest across multiple strategies and compare results.
     static func compareStrategies(
-        strategies: [some TradableStrategy],
+        strategies: [some BacktestStrategy],
         symbol: String,
         candles: [Candle],
         costModel: CostModel = .default
@@ -733,8 +734,8 @@ enum BacktestingFramework {
     // MARK: - Private Helpers
 
     private static func fitness(
-        params: StrategyParameters,
-        strategyType: (StrategyParameters) -> some TradableStrategy,
+        params: BacktestingStrategyParameters,
+        strategyType: (BacktestingStrategyParameters) -> some BacktestStrategy,
         candles: [Candle],
         costModel: CostModel
     ) -> Double {
