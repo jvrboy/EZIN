@@ -55,6 +55,13 @@ enum AgentRegistry {
         .init(name: "DocumentIntelligenceAgent", role: "PDF/text extraction and on-device summarization"),
         .init(name: "FileToolRunner", role: "creates, reads, renames, deletes and recovers files without MCP"),
         .init(name: "MemoryKeeper", role: "global/project/conversation memory and recall"),
+        .init(name: "ProductionSRE", role: "startup health checks, crash triage, recovery plans and safe fallbacks"),
+        .init(name: "ConnectorOps", role: "MCP connector inventory, endpoint readiness, auth hints and tool discovery"),
+        .init(name: "SwarmCoordinator", role: "spawns focused specialist swarms and merges consensus outputs"),
+        .init(name: "ComplianceGuard", role: "blocks unsafe automation, requires manual trade approval and explains risk"),
+        .init(name: "DataQualitySentinel", role: "stale feed detection, cache health, subscription repair and outlier flags"),
+        .init(name: "LatencyProfiler", role: "tracks slow paths, retry backoff and realtime loop pressure"),
+        .init(name: "BrokerRouter", role: "routes broker/data requests across Deriv, MT5, OANDA, IBKR, Alpaca and Binance MCP connectors"),
         .init(name: "ArcadeHost", role: "runs the built-in educational games"),
         .init(name: "GeneralAssistant", role: "handles anything outside trading")
     ]
@@ -123,6 +130,10 @@ enum AgentRegistry {
         .init(name: "Memory Recall", steps: ["query", "search_memory", "ground_answer"]),
         .init(name: "Web Grounding", steps: ["scrape", "clean", "summarize", "sentiment"]),
         .init(name: "Recovery Bin", steps: ["delete_to_bin", "restore", "permanent_delete"]),
+        .init(name: "Production Readiness Audit", steps: ["state", "connectors", "feeds", "agents", "guardrails", "report"]),
+        .init(name: "Connector Failover", steps: ["inventory", "test_enabled", "fallback_map", "manual_fix"]),
+        .init(name: "Swarm Consensus", steps: ["intent", "specialists", "parallel_votes", "risk_gate", "final_answer"]),
+        .init(name: "Startup Crash Triage", steps: ["boot_state", "background_tasks", "credentials", "socket", "safe_recover"]),
         .init(name: "General QA", steps: ["understand", "answer"])
     ]
 
