@@ -166,8 +166,8 @@ enum BacktestingFramework {
 
         static func parameterSpace() -> BacktestingParameterSpace {
             BacktestingParameterSpace(ranges: [
-                ParamRange(key: "fast", min: 2, max: 30, step: 1),
-                ParamRange(key: "slow", min: 10, max: 100, step: 2)
+                BacktestingParameterSpace.ParamRange(key: "fast", min: 2, max: 30, step: 1),
+                BacktestingParameterSpace.ParamRange(key: "slow", min: 10, max: 100, step: 2)
             ])
         }
     }
@@ -213,9 +213,9 @@ enum BacktestingFramework {
 
         static func parameterSpace() -> BacktestingParameterSpace {
             BacktestingParameterSpace(ranges: [
-                ParamRange(key: "period", min: 5, max: 30, step: 1),
-                ParamRange(key: "oversold", min: 15, max: 45, step: 5),
-                ParamRange(key: "overbought", min: 55, max: 85, step: 5)
+                BacktestingParameterSpace.ParamRange(key: "period", min: 5, max: 30, step: 1),
+                BacktestingParameterSpace.ParamRange(key: "oversold", min: 15, max: 45, step: 5),
+                BacktestingParameterSpace.ParamRange(key: "overbought", min: 55, max: 85, step: 5)
             ])
         }
     }
@@ -263,9 +263,9 @@ enum BacktestingFramework {
 
         static func parameterSpace() -> BacktestingParameterSpace {
             BacktestingParameterSpace(ranges: [
-                ParamRange(key: "fast", min: 5, max: 20, step: 1),
-                ParamRange(key: "slow", min: 15, max: 50, step: 2),
-                ParamRange(key: "signal", min: 5, max: 20, step: 1)
+                BacktestingParameterSpace.ParamRange(key: "fast", min: 5, max: 20, step: 1),
+                BacktestingParameterSpace.ParamRange(key: "slow", min: 15, max: 50, step: 2),
+                BacktestingParameterSpace.ParamRange(key: "signal", min: 5, max: 20, step: 1)
             ])
         }
     }

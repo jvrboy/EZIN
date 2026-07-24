@@ -299,7 +299,7 @@ enum SignalFusionEngine {
     ) -> [EngineInput] {
         var inputs: [EngineInput] = []
 
-        guard let md = app.deriv.priceCache[symbol]?.toMarketData(symbol: symbol, timeframe: timeframe),
+        guard let cache = app.deriv.priceCache[symbol], let md = Optional(MarketData(symbol: symbol, assetClass: DerivSymbols.assetClass(symbol), timeframe: timeframe, candles: cache.candles, currentPrice: cache.prices.last ?? 0)),
               md.closes.count >= 30 else {
             return inputs
         }

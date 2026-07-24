@@ -512,7 +512,7 @@ final class EconomicCalendarService: ObservableObject {
             let comp = DateComponents(year: calendar.component(.year, from: now), month: month)
             if let ecbDate = calendar.nextDate(
                 after: calendar.date(from: comp) ?? now,
-                matching: DateComponents(weekday: 5, weekdayOrdinal: 2, hour: 12, minute: 15),
+                matching: DateComponents(hour: 12, minute: 15, weekday: 5, weekdayOrdinal: 2),
                 matchingPolicy: .nextTime
             ), ecbDate > now {
                 events.append(EconomicEvent(
@@ -531,7 +531,7 @@ final class EconomicCalendarService: ObservableObject {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let boeDate = calendar.nextDate(
                 after: comp,
-                matching: DateComponents(weekday: 5, weekdayOrdinal: 2, hour: 12, minute: 0),
+                matching: DateComponents(hour: 12, minute: 0, weekday: 5, weekdayOrdinal: 2),
                 matchingPolicy: .nextTime
             ), boeDate > now, !events.contains(where: { $0.date == boeDate && $0.currency == .gbp }) {
                 events.append(EconomicEvent(
@@ -546,7 +546,7 @@ final class EconomicCalendarService: ObservableObject {
         }
 
         // BOJ Interest Rate Decision
-        let bojComp = DateComponents(weekday: 6, weekdayOrdinal: 3, hour: 3, minute: 0)
+        let bojComp = DateComponents(hour: 3, minute: 0, weekday: 6, weekdayOrdinal: 3)
         for monthOffset in 0..<6 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let bojDate = calendar.nextDate(
@@ -567,7 +567,7 @@ final class EconomicCalendarService: ObservableObject {
         for monthOffset in 1...3 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let ukGdpDate = calendar.nextDate(
-                after: comp, matching: DateComponents(weekday: 3, weekdayOrdinal: 2, hour: 7, minute: 0),
+                after: comp, matching: DateComponents(hour: 7, minute: 0, weekday: 3, weekdayOrdinal: 2),
                 matchingPolicy: .nextTime
             ), ukGdpDate > now {
                 events.append(EconomicEvent(

@@ -68,7 +68,7 @@ struct ArtifactChip: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.12), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheet(activityItems: [url]) }
+        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheetView(activityItems: [url]) }
 #endif
     }
 
@@ -142,7 +142,7 @@ struct AudioArtifactPlayer: View {
             player.load(data: data, name: name)
             if player.duration <= 0 { loadFailed = true }
         }
-        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheet(activityItems: [url]) }
+        #if canImport(UIKit).sheet(isPresented: $showShare) { ShareSheetView(activityItems: [url]) }
 #endif
     }
 
@@ -151,10 +151,10 @@ struct AudioArtifactPlayer: View {
 
 #if canImport(UIKit)
 /// UIActivityViewController wrapper (share / save-to-Files) — works on iOS 15+.
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
+struct ShareSheetView: UIViewControllerRepresentable {
+    let activityItems: [Any]
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }

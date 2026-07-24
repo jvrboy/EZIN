@@ -232,7 +232,7 @@ struct BotStrategyLibrary {
     struct VolumeSpike: BotStrategy {
         let name = "Volume Spike"
         let description = "Detects abnormal volume spikes as breakout confirmation"
-        let riskLevel: RiskLevel = .high
+        let riskLevel: BotRiskLevel = .high
         let timeframes: [Timeframe] = [.m5, .m15]
         let defaultParameters: [String: Double] = ["volumeMultiplier": 2.0, "lookback": 20]
         
@@ -414,7 +414,7 @@ struct BotStrategyLibrary {
     }
     
     static func strategies(riskLevel botRiskLevel: BotRiskLevel) -> [any BotStrategy] {
-        allStrategies.filter { $0.riskLevel == riskLevel }
+        allStrategies.filter { $0.botRiskLevel == riskLevel }
     }
     
     static func catalog() -> String {
@@ -422,7 +422,7 @@ struct BotStrategyLibrary {
         for strategy in allStrategies {
             result += "### \(strategy.name)\n"
             result += "\(strategy.description)\n"
-            result += "Risk: \(strategy.riskLevel.rawValue) · Timeframes: \(strategy.timeframes.map { $0.rawValue }.joined(separator: ", "))\n\n"
+            result += "Risk: \(strategy.botRiskLevel.rawValue) · Timeframes: \(strategy.timeframes.map { $0.rawValue }.joined(separator: ", "))\n\n"
         }
         return result
     }
