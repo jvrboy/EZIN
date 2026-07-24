@@ -166,9 +166,11 @@ struct BotStrategyLibrary {
             
             // Calculate band width over recent periods
             let currentWidth = (upper[lastIdx] - lower[lastIdx]) / data.currentPrice
-            let avgWidth = (0..<recent).map { i in
+            let widths: [Double] = (0..<recent).map { i in
                 (upper[lastIdx - i] - lower[lastIdx - i]) / data.currentPrice
-            }.reduce(0, +) / Double(recent)
+            }
+            let sumWidths: Double = widths.reduce(0.0, +)
+            let avgWidth: Double = sumWidths / Double(recent)
             
             guard currentWidth < avgWidth * 1.1 else { return (false, 0, "No squeeze detected") }
             

@@ -555,7 +555,7 @@ enum BacktestingFramework {
         }
 
         // Generate initial population
-        var pop: [(params: BacktestingStrategyParameters, score: Double)] = []
+        var pop: [(parameters: BacktestingStrategyParameters, score: Double)] = []
         for _ in 0..<population {
             var params = BacktestingStrategyParameters()
             for range in space.ranges {
@@ -564,7 +564,7 @@ enum BacktestingFramework {
                 params[range.key] = range.min + Double(stepIdx) * range.step
             }
             let score = fitness(params: params, strategyType: strategyType, candles: candles, costModel: costModel)
-            pop.append((params, score))
+            pop.append((parameters: params, score: score))
         }
 
         pop.sort { $0.score > $1.score }
@@ -575,12 +575,12 @@ enum BacktestingFramework {
             let parents = Array(pop.prefix(topSelection))
 
             // Crossover
-            var children: [(BacktestingStrategyParameters, Double)] = []
+            var children: [(parameters: BacktestingStrategyParameters, score: Double)] = []
             while children.count < population - topSelection {
                 guard let p1 = parents.randomElement(), let p2 = parents.randomElement() else { break }
                 var child = BacktestingStrategyParameters()
                 for range in space.ranges {
-                    child[range.key] = Bool.random() ? p1.params[range.key] : p2.params[range.key]
+                    child[range.key] = Bool.random() ? p1.parameters[range.key] : p2.parameters[range.key]
                 }
                 // Mutation
                 for range in space.ranges {
@@ -591,7 +591,7 @@ enum BacktestingFramework {
                     }
                 }
                 let score = fitness(params: child, strategyType: strategyType, candles: candles, costModel: costModel)
-                children.append((child, score))
+                children.append((parameters: child, score: score))
             }
 
             pop = Array(pop.prefix(topSelection)) + children
@@ -602,7 +602,7 @@ enum BacktestingFramework {
             }
         }
 
-        let topResults = pop.prefix(5).map { $0 }
+        let topResults = Array(pop.prefix(5))
 
         return OptimizationResult(
             bestParameters: best.parameters,

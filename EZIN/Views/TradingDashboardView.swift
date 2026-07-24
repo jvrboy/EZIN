@@ -229,14 +229,14 @@ struct TradingDashboardView: View {
                     HStack(spacing: 12) {
                         // Direction badge
                         VStack(spacing: 2) {
-                            Image(systemName: entry.direction == "buy" ? "arrow.up" : "arrow.down")
+                            Image(systemName: entry.direction.isBullish ? "arrow.up" : "arrow.down")
                                 .font(.system(size: 12, weight: .bold))
-                            Text(entry.direction.uppercased())
+                            Text(entry.direction.isBullish ? "BUY" : "SELL")
                                 .font(.system(size: 8, weight: .bold))
                         }
-                        .foregroundStyle(entry.direction == "buy" ? Glass.buy : Glass.sell)
+                        .foregroundStyle(entry.direction.isBullish ? Glass.buy : Glass.sell)
                         .frame(width: 28, height: 28)
-                        .background((entry.direction == "buy" ? Glass.buy : Glass.sell).opacity(0.12))
+                        .background((entry.direction.isBullish ? Glass.buy : Glass.sell).opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
 
                         VStack(alignment: .leading, spacing: 1) {
@@ -379,7 +379,7 @@ struct TradingDashboardView: View {
         guard !resolved.isEmpty else { return "—" }
         let wins = resolved.filter { entry in
             guard let exit = entry.exitPrice else { return false }
-            return entry.direction == "buy" ? exit > entry.entryPrice : exit < entry.entryPrice
+            return entry.direction.isBullish ? exit > entry.entryPrice : exit < entry.entryPrice
         }
         return "\(Int(Double(wins.count) / Double(resolved.count) * 100))%"
     }

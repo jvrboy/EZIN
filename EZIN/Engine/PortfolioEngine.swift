@@ -506,7 +506,7 @@ enum PortfolioEngine {
     }
 
     private static func frontierPoint(from point: (weights: [Double], expectedReturn: Double, variance: Double), assets: [AssetInput], mu: [Double], cov: [[Double]]) -> [FrontierPoint] {
-        let allocations = zip(assets, point.weights).map { Allocation(symbol: $0.0.symbol, weight: $1.0) }
+        let allocations = zip(assets, point.weights).map { Allocation(symbol: $0.0.symbol, weight: $0.1) }
         let vol = sqrt(max(point.variance, 0.000001))
         let sharpe = point.expectedReturn / vol
         return [FrontierPoint(volatility: vol, expectedReturn: point.expectedReturn, sharpeRatio: sharpe, allocations: allocations)]

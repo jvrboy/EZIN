@@ -487,7 +487,7 @@ extension PushNotificationManager {
 
 extension ToolRegistry {
     /// Create a new alert configuration from the chat.
-    mutating func alertCreate(args: [String: Any]) -> String {
+    func alertCreate(args: [String: Any]) -> String {
         let name = str(args, "name")
         let rawSymbol = str(args, "symbol")
         let symbol = resolveSymbol(rawSymbol)

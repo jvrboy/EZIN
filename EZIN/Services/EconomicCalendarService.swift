@@ -311,13 +311,7 @@ final class EconomicCalendarService: ObservableObject {
                     if calendar.component(.weekday, from: date) == weekday {
                         count += 1
                         if count == ordinal {
-                            let components = DateComponents(
-                                year: calendar.component(.year, from: date),
-                                month: calendar.component(.month, from: date),
-                                day: day,
-                                hour: hour,
-                                minute: minute
-                            )
+                            let components = DateComponents(year: calendar.component(.year, from: date), month: calendar.component(.month, from: date), day: day, hour: hour, minute: minute)
                             if let d = calendar.date(from: components), d > now {
                                 candidates.append(d)
                             }
@@ -383,7 +377,7 @@ final class EconomicCalendarService: ObservableObject {
             let comp = DateComponents(year: calendar.component(.year, from: now), month: month)
             if let thirdWed = calendar.nextDate(
                 after: calendar.date(from: comp) ?? now,
-                matching: DateComponents(hour: 19, weekday: 4, weekdayOrdinal: 3, minute: 0),
+                matching: DateComponents(hour: 19, minute: 0, weekday: 4, weekdayOrdinal: 3),
                 matchingPolicy: .nextTime
             ), thirdWed > now {
                 let rate = Double.random(in: 4.0...6.0)
@@ -401,7 +395,7 @@ final class EconomicCalendarService: ObservableObject {
         // FOMC Minutes — 3 weeks after each decision
         for month in fomcMonths {
             let comp = DateComponents(year: calendar.component(.year, from: now), month: month)
-            if let thirdWed = calendar.date(from: DateComponents(year: calendar.component(.year, from: now), month: month, weekday: 4, weekdayOrdinal: 3, hour: 19, minute: 0)),
+            if let thirdWed = calendar.date(from: DateComponents(year: calendar.component(.year, from: now), month: month, hour: 19, minute: 0, weekday: 4, weekdayOrdinal: 3)),
                let minutesDate = calendar.date(byAdding: .day, value: 21, to: thirdWed),
                minutesDate > now {
                 events.append(EconomicEvent(
@@ -417,7 +411,7 @@ final class EconomicCalendarService: ObservableObject {
         // US GDP — quarterly, third week of Jan/Apr/Jul/Oct
         let gdpMonths = [1, 4, 7, 10]
         for month in gdpMonths {
-            if let gdpDate = calendar.date(from: DateComponents(year: calendar.component(.year, from: now), month: month, weekday: 5, weekdayOrdinal: 3, hour: 13, minute: 30)),
+            if let gdpDate = calendar.date(from: DateComponents(year: calendar.component(.year, from: now), month: month, hour: 13, minute: 30, weekday: 5, weekdayOrdinal: 3)),
                gdpDate > now {
                 events.append(EconomicEvent(
                     date: gdpDate, title: "GDP (QoQ, Annualized)",
@@ -512,7 +506,7 @@ final class EconomicCalendarService: ObservableObject {
             let comp = DateComponents(year: calendar.component(.year, from: now), month: month)
             if let ecbDate = calendar.nextDate(
                 after: calendar.date(from: comp) ?? now,
-                matching: DateComponents(hour: 12, weekday: 5, weekdayOrdinal: 2, minute: 15),
+                matching: DateComponents(hour: 12, minute: 15, weekday: 5, weekdayOrdinal: 2),
                 matchingPolicy: .nextTime
             ), ecbDate > now {
                 events.append(EconomicEvent(
@@ -531,7 +525,7 @@ final class EconomicCalendarService: ObservableObject {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let boeDate = calendar.nextDate(
                 after: comp,
-                matching: DateComponents(hour: 12, weekday: 5, weekdayOrdinal: 2, minute: 0),
+                matching: DateComponents(hour: 12, minute: 0, weekday: 5, weekdayOrdinal: 2),
                 matchingPolicy: .nextTime
             ), boeDate > now, !events.contains(where: { $0.date == boeDate && $0.currency == .gbp }) {
                 events.append(EconomicEvent(
@@ -546,7 +540,7 @@ final class EconomicCalendarService: ObservableObject {
         }
 
         // BOJ Interest Rate Decision
-        let bojComp = DateComponents(hour: 3, weekday: 6, weekdayOrdinal: 3, minute: 0)
+        let bojComp = DateComponents(hour: 3, minute: 0, weekday: 6, weekdayOrdinal: 3)
         for monthOffset in 0..<6 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let bojDate = calendar.nextDate(
@@ -567,7 +561,7 @@ final class EconomicCalendarService: ObservableObject {
         for monthOffset in 1...3 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let ukGdpDate = calendar.nextDate(
-                after: comp, matching: DateComponents(hour: 7, weekday: 3, weekdayOrdinal: 2, minute: 0),
+                after: comp, matching: DateComponents(hour: 7, minute: 0, weekday: 3, weekdayOrdinal: 2),
                 matchingPolicy: .nextTime
             ), ukGdpDate > now {
                 events.append(EconomicEvent(
@@ -585,7 +579,7 @@ final class EconomicCalendarService: ObservableObject {
         for monthOffset in 1...3 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let ukCpiDate = calendar.nextDate(
-                after: comp, matching: DateComponents(hour: 7, weekday: 4, weekdayOrdinal: 3, minute: 0),
+                after: comp, matching: DateComponents(hour: 7, minute: 0, weekday: 4, weekdayOrdinal: 3),
                 matchingPolicy: .nextTime
             ), ukCpiDate > now {
                 events.append(EconomicEvent(
@@ -603,7 +597,7 @@ final class EconomicCalendarService: ObservableObject {
         for monthOffset in 1...3 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let ezCpiDate = calendar.nextDate(
-                after: comp, matching: DateComponents(hour: 10, weekday: 6, weekdayOrdinal: 4, minute: 0),
+                after: comp, matching: DateComponents(hour: 10, minute: 0, weekday: 6, weekdayOrdinal: 4),
                 matchingPolicy: .nextTime
             ), ezCpiDate > now {
                 events.append(EconomicEvent(
@@ -621,7 +615,7 @@ final class EconomicCalendarService: ObservableObject {
         for monthOffset in 1...3 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let caCpiDate = calendar.nextDate(
-                after: comp, matching: DateComponents(hour: 13, weekday: 3, weekdayOrdinal: 3, minute: 30),
+                after: comp, matching: DateComponents(hour: 13, minute: 30, weekday: 3, weekdayOrdinal: 3),
                 matchingPolicy: .nextTime
             ), caCpiDate > now {
                 events.append(EconomicEvent(
@@ -639,7 +633,7 @@ final class EconomicCalendarService: ObservableObject {
         for monthOffset in 1...6 {
             let comp = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
             if let rbaDate = calendar.nextDate(
-                after: comp, matching: DateComponents(hour: 4, weekday: 3, weekdayOrdinal: 1, minute: 30),
+                after: comp, matching: DateComponents(hour: 4, minute: 30, weekday: 3, weekdayOrdinal: 1),
                 matchingPolicy: .nextTime
             ), rbaDate > now {
                 events.append(EconomicEvent(
@@ -657,7 +651,7 @@ final class EconomicCalendarService: ObservableObject {
         for monthOffset in 0..<6 {
             if let rbnzDate = calendar.nextDate(
                 after: calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now,
-                matching: DateComponents(hour: 21, weekday: 4, weekdayOrdinal: 2, minute: 0),
+                matching: DateComponents(hour: 21, minute: 0, weekday: 4, weekdayOrdinal: 2),
                 matchingPolicy: .nextTime
             ), rbnzDate > now {
                 events.append(EconomicEvent(

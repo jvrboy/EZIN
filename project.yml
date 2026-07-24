@@ -2,7 +2,7 @@ name: EZIN
 options:
   bundleIdPrefix: com.ezin
   deploymentTarget:
-    iOS: "15.0"
+    iOS: "16.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -17,7 +17,7 @@ targets:
   EZIN:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "16.0"
     sources:
       - path: EZIN
     info:
@@ -71,7 +71,7 @@ targets:
   EZINTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "16.0"
     sources:
       - path: EZINTests
     dependencies:

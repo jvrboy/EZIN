@@ -1060,18 +1060,32 @@ struct ToolRegistry {
             return "Need cached candles for \(DerivSymbols.display(symbol))."
         }
 
-        // Run comparison with built-in strategies
-        var sma: BacktestingFramework.SMACrossoverStrategy = .init()
-        var rsi: BacktestingFramework.RSIMeanReversionStrategy = .init()
-        var macd: BacktestingFramework.MACDStrategy = .init()
+        // Run each built-in strategy through the generic compareStrategies
+        // by passing a homogeneous inout call sequence. compareStrategies expects
+        // `[some BacktestStrategy]`, so we build the report locally to avoid the
+        // heterogeneous existential array (SMA/RSI/MACD are all different types).
+        var sma = BacktestingFramework.SMACrossoverStrategy()
+        var rsi = BacktestingFramework.RSIMeanReversionStrategy()
+        var macd = BacktestingFramework.MACDStrategy()
 
-        let strategies: [any BacktestStrategy] = [sma, rsi, macd]
+        let smaResult = BacktestingFramework.backtest(strategy: &sma, symbol: symbol, candles: md.candles)
+        let rsiResult = BacktestingFramework.backtest(strategy: &rsi, symbol: symbol, candles: md.candles)
+        let macdResult = BacktestingFramework.backtest(strategy: &macd, symbol: symbol, candles: md.candles)
 
-        return BacktestingFramework.compareStrategies(
-            strategies: strategies,
-            symbol: symbol,
-            candles: md.candles
-        )
+        let results: [(name: String, metrics: BacktestingFramework.BacktestResult)] = [
+            (sma.name, smaResult),
+            (rsi.name, rsiResult),
+            (macd.name, macdResult),
+        ].sorted { $0.metrics.sharpeRatio > $1.metrics.sharpeRatio }
+
+        var report = "## Strategy Comparison — \(DerivSymbols.display(symbol))\n\n"
+        report += "| Strategy | Trades | Win Rate | Return | Sharpe | Max DD | PF |\n|---|---|---|---|---|---|---|\n"
+        for row in results {
+            let r = row.metrics
+            let pf = r.profitFactor.isFinite ? String(format: "%.2f", r.profitFactor) : "∞"
+            report += "| \(row.name) | \(r.totalTrades) | \(String(format: "%.1f", r.winRate))% | \(String(format: "%.2f", r.totalReturnPct))% | \(String(format: "%.2f", r.sharpeRatio)) | \(String(format: "%.2f", r.maxDrawdownPct))% | \(pf) |\n"
+        }
+        return report
     }
 
     /// Walk-forward analysis on a strategy.
@@ -1287,7 +1301,7 @@ private func dashboardSummary() -> String {
     let closed = entries.filter { $0.exitPrice != nil }
     let wins = closed.filter { entry in
         guard let exit = entry.exitPrice else { return false }
-        return entry.direction == "buy" ? exit > entry.entryPrice : exit < entry.entryPrice
+        return entry.direction.isBullish ? exit > entry.entryPrice : exit < entry.entryPrice
     }
     let wr = closed.isEmpty ? 0 : Double(wins.count) / Double(closed.count) * 100
     return """
