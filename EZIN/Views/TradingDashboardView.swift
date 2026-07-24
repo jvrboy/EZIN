@@ -436,6 +436,22 @@ struct TradingDashboardView: View {
         }
         return pnl >= 0 ? Glass.buy : Glass.sell
     }
+
+    // Convenience overloads that read the direction/quantity/entryPrice from a JournalEntry
+    // (JournalEntry.direction is a Direction enum, not a String).
+    private func pnlText(entry: JournalEntry, exit: Double) -> String {
+        let pnl: Double = entry.direction.isBullish
+            ? (exit - entry.entryPrice) * entry.quantity
+            : (entry.entryPrice - exit) * entry.quantity
+        return (pnl >= 0 ? "+" : "") + String(format: "%.2f", pnl)
+    }
+
+    private func pnlColor(entry: JournalEntry, exit: Double) -> Color {
+        let pnl: Double = entry.direction.isBullish
+            ? (exit - entry.entryPrice)
+            : (entry.entryPrice - exit)
+        return pnl >= 0 ? Glass.buy : Glass.sell
+    }
 }
 
 // MARK: - Stat Card
