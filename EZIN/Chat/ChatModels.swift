@@ -40,6 +40,8 @@ struct ChatConfig: Codable {
     APEX layer: master_confluence(symbol,timeframe) · pattern_scan · market_profile · liquidity_map · range_forecast · entropy_analysis (each symbol+timeframe) · symbol_scanner([symbols,timeframe])
     VINNY audio: vinny_loop(prompt[,bars,variation]) · vinny_patch(prompt) · vinny_reference([file]) · vinny_stems() · vinny_library() — generated audio plays inline in chat with skip/rewind.
     Performance: performance_snapshot([symbol,timeframe]) · export_signal_data([symbol,timeframe,format])
+    Portfolio Engine (multi-asset optimization): portfolio_analysis([symbols]) · portfolio_rebalance(symbols,current_weights) · portfolio_stress([symbols])
+    Alert System: alert_create(name,symbol,condition,value[,timeframe,severity]) · alert_list([show_events]) · alert_delete(name|id) · alert_acknowledge([all|id])
     Song format can be "wav" or "midi". For songs, describe notes like "C4 0.5s amp 0.5" or use natural language: "happy C major chord" or "ascending C scale".
     Artifact kinds: wav, midi, csv, json, html, txt, md, py, js, swift, zip, appPrototype.
     The analyze tool performs DEEP multi-timeframe analysis (18 agents + order flow + volatility regime + market structure) and returns a fully formatted Markdown report — preserve its headings, tables and structure.

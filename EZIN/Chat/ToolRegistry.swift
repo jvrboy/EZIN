@@ -98,6 +98,17 @@ struct ToolRegistry {
         case "vinny_reference":     return await vinnyReferenceTool(args)
         case "vinny_stems":         return await vinnyStemsTool(args)
         case "vinny_library":       return vinnyLibraryTool(args)
+
+        // Portfolio Engine — multi-asset optimization, risk parity, efficient frontier, Kelly allocation.
+        case "portfolio_analysis":   return portfolioAnalysis(args)
+        case "portfolio_rebalance":  return portfolioRebalance(args)
+        case "portfolio_stress":     return portfolioStress(args)
+
+        // Alert System — price, indicator, and volatility alerts.
+        case "alert_create":         return alertCreate(args: args)
+        case "alert_list":           return alertList(args: args)
+        case "alert_delete":         return alertDelete(args: args)
+        case "alert_acknowledge":    return alertAcknowledge(args: args)
         default:               return "Unknown tool: \(name)"
         }
     }
@@ -806,6 +817,129 @@ struct ToolRegistry {
         }
         guard series.count >= 2 else { return "Need cached candles for at least two watchlist symbols. Run analyze on two instruments or open charts first." }
         return AdvancedBackend.correlationMatrix(series: series)
+    }
+
+    // MARK: - Portfolio Engine Tools
+
+    /// Portfolio analysis — multi-asset optimization, risk parity, efficient frontier.
+    private func portfolioAnalysis(_ args: [String: Any]) -> String {
+        let symbolsRaw = str(args, "symbols")
+        let symbols: [String]
+        if symbolsRaw.isEmpty {
+            symbols = Array(app.settings.watchlist.prefix(6))
+        } else {
+            symbols = symbolsRaw.split(separator: ",").map {
+                resolveSymbol(String($0).trimmingCharacters(in: .whitespaces))
+            }
+        }
+
+        guard !symbols.isEmpty else { return "No symbols specified and watchlist is empty. Use symbols='R_100,1HZ10V,...' or add to watchlist." }
+
+        var assets: [PortfolioEngine.AssetInput] = []
+        for symbol in symbols {
+            if let prices = app.deriv.priceCache[symbol]?.prices, prices.count >= 30 {
+                assets.append(PortfolioEngine.AssetInput(symbol: symbol, prices: prices))
+            }
+        }
+
+        guard assets.count >= 2 else {
+            if assets.count == 1 {
+                return PortfolioEngine.portfolioReport(assets: assets)
+            }
+            return "Need cached price data for at least 2 symbols. Open charts for your watchlist symbols or use analyze() to subscribe."
+        }
+
+        return PortfolioEngine.portfolioReport(assets: assets)
+    }
+
+    /// Portfolio rebalancing suggestions based on current vs optimal allocation.
+    private func portfolioRebalance(_ args: [String: Any]) -> String {
+        let symbolsRaw = str(args, "symbols")
+        let currentRaw = str(args, "current_weights")
+        let symbols = symbolsRaw.split(separator: ",").map { resolveSymbol(String($0).trimmingCharacters(in: .whitespaces)) }
+        let currentStrs = currentRaw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+
+        guard symbols.count == currentStrs.count, symbols.count >= 2 else {
+            return "Provide matching 'symbols' and 'current_weights' as comma-separated lists. Example: symbols='R_100,1HZ10V' current_weights='0.6,0.4'"
+        }
+
+        let currentWeights = currentStrs.compactMap { Double($0) }
+        guard currentWeights.count == symbols.count else { return "Could not parse all weights as numbers." }
+        let weightSum = currentWeights.reduce(0, +)
+        guard abs(weightSum - 1.0) < 0.01 else { return "Weights must sum to approximately 1.0 (currently \(String(format: "%.2f", weightSum)))." }
+
+        // Get cached prices for optimization
+        var assets: [PortfolioEngine.AssetInput] = []
+        for symbol in symbols {
+            if let prices = app.deriv.priceCache[symbol]?.prices, prices.count >= 30 {
+                assets.append(PortfolioEngine.AssetInput(symbol: symbol, prices: prices))
+            }
+        }
+
+        guard assets.count >= 2 else { return "Need cached prices for at least 2 symbols. Open charts first." }
+
+        // Get target allocation from max Sharpe portfolio
+        guard let (targetAlloc, metrics) = PortfolioEngine.maxSharpePortfolio(assets: assets) else {
+            return "Could not compute optimal portfolio from available data."
+        }
+
+        let currentAlloc = zip(symbols, currentWeights).map {
+            PortfolioEngine.Allocation(symbol: $0, weight: $1)
+        }
+
+        let suggestions = PortfolioEngine.rebalanceSuggestions(
+            currentAllocations: currentAlloc,
+            targetAllocations: targetAlloc
+        )
+
+        var report = "## Portfolio Rebalancing\n\n"
+        report += "**Optimal Portfolio** (Sharpe \(String(format: "%.2f", metrics.sharpeRatio)))\n\n"
+        report += "| Symbol | Current | Target | Drift | Action | Urgency |\n|---|---|---|---|---|---|\n"
+        for s in suggestions {
+            report += "| \(DerivSymbols.display(s.symbol)) | \(String(format: "%.1f", s.currentWeight * 100))% | \(String(format: "%.1f", s.targetWeight * 100))% | \(String(format: "%.1f", s.drift * 100))% | \(s.action.uppercased()) | \(s.urgency) |\n"
+        }
+
+        report += "\n**Current portfolio metrics:**\n"
+        report += "- Expected return: \(String(format: "%.2f", metrics.expectedReturn * 100))%\n"
+        report += "- Volatility: \(String(format: "%.2f", metrics.volatility * 100))%\n"
+        report += "- Sharpe: \(String(format: "%.2f", metrics.sharpeRatio))\n"
+        report += "- Max drawdown: \(String(format: "%.1f", metrics.maxDrawdown * 100))%\n"
+
+        return report
+    }
+
+    /// Portfolio stress tests.
+    private func portfolioStress(_ args: [String: Any]) -> String {
+        let symbolsRaw = str(args, "symbols")
+        let symbols = symbolsRaw.isEmpty ? Array(app.settings.watchlist.prefix(6)) : symbolsRaw.split(separator: ",").map { resolveSymbol(String($0).trimmingCharacters(in: .whitespaces)) }
+
+        var assets: [PortfolioEngine.AssetInput] = []
+        for symbol in symbols {
+            if let prices = app.deriv.priceCache[symbol]?.prices, prices.count >= 30 {
+                assets.append(PortfolioEngine.AssetInput(symbol: symbol, prices: prices))
+            }
+        }
+
+        guard assets.count >= 2 else { return "Need cached prices for at least 2 symbols." }
+
+        let equalWeight = 1.0 / Double(assets.count)
+        let allocations = assets.map { PortfolioEngine.Allocation(symbol: $0.symbol, weight: equalWeight) }
+        let stressResults = PortfolioEngine.stressTest(allocations: allocations, assets: assets)
+
+        var report = "## Portfolio Stress Tests\n\n"
+        report += "**Equal-weight portfolio across \(assets.count) instruments**\n\n"
+        report += "| Scenario | Impact | Max DD | Est. Recovery |\n|---|---|---|---|\n"
+        for test in stressResults {
+            report += "| \(test.scenario) | \(String(format: "%.1f", test.impact * 100))% | \(String(format: "%.1f", test.maxDrawdown * 100))% | ~\(test.recoveryBars) bars |\n"
+        }
+
+        // Add symbols
+        report += "\n**Symbols tested:**\n"
+        for asset in assets {
+            report += "- \(DerivSymbols.display(asset.symbol))\n"
+        }
+
+        return report
     }
 
     private func gamesList() -> String {
