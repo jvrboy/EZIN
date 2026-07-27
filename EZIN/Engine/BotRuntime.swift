@@ -258,6 +258,9 @@ final class BotRuntime: ObservableObject {
             }
             paperPositions[i] = position
         }
+        if paperPositions.count > 500 {
+            paperPositions = paperPositions.filter(\.isOpen) + Array(paperPositions.filter { !$0.isOpen }.suffix(500))
+        }
     }
 
     /// Convert the configured stop mode into Deriv Multiplier limit_order amounts (account currency).
