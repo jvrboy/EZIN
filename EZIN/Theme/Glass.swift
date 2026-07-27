@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Glassmorphism design system — iOS 15+ compatible (uses .ultraThinMaterial + custom overlays).
+/// Glassmorphism design system for the iOS 16 deployment target.
 enum Glass {
     static let corner: CGFloat = 20
     static let cornerSmall: CGFloat = 14

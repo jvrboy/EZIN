@@ -154,7 +154,7 @@ struct AudioArtifactPlayer: View {
 }
 
 #if canImport(UIKit)
-/// UIActivityViewController wrapper (share / save-to-Files) — works on iOS 15+.
+/// UIActivityViewController wrapper (share / save-to-Files) — works on the iOS 16 deployment target.
 struct ShareSheetView: UIViewControllerRepresentable {
     let activityItems: [Any]
     func makeUIViewController(context: Context) -> UIActivityViewController {

@@ -123,7 +123,7 @@ Settings → Chat → MCP Connectors. Point EZIN at your own MCP servers:
 - **MetaTrader 5** — e.g. `vincentwongso/mt5-trading-mcp` or `amirkhonov/metatrader5-mcp` (Windows/Docker).
 - **TradingView** — e.g. `atilaahmettaner/tradingview-mcp`.
 - **Binance, OANDA, Interactive Brokers, Alpaca, Polygon.io** — pre-seeded connector slots for crypto, FX/CFD, equities/options, paper trading, and market-data MCP servers.
-- **Custom** — any HTTP MCP server.
+- **Custom** — HTTPS MCP servers, plus localhost development servers.
 
 The app is the MCP **client**; heavy tools (code/script execution, web scraping/automation) run on the
 MCP servers you connect — the correct architecture for a sandboxed iOS app. Connector authorization headers
