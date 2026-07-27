@@ -17,6 +17,7 @@ enum DerivConnectionState: Equatable {
 struct DerivCandleCache {
     var candles: [Candle]
     var prices: [Double]
+    var timeframe: Timeframe = .m1
 }
 
 struct DerivPosition: Identifiable, Equatable {
@@ -71,6 +72,8 @@ final class DerivClient: NSObject, ObservableObject {
     @Published var balance: Double = 0
     @Published var currency: String = "USD"
     @Published var prices: [String: Double] = [:]           // live tick prices
+    @Published var lastPriceUpdateAt: [String: Date] = [:]
+    @Published var availableSymbols: [String] = DerivSymbols.all
     @Published var priceCache: [String: DerivCandleCache] = [:] // latest requested candle series
     @Published var positions: [Int: DerivPosition] = [:]    // live open contracts
     @Published var lastError: String?
@@ -123,7 +126,9 @@ final class DerivClient: NSObject, ObservableObject {
         receiveLoop()
         startHeartbeat()
 
-        await MainActor.run { self.connectionState = .connected; self.reconnectAttempts = 0 }
+        // URLSessionWebSocketTask.resume() does not mean the handshake has
+        // completed. Stay in `.connecting` until the first valid frame arrives.
+        await MainActor.run { self.reconnectAttempts = 0 }
         lock.lock(); isConnecting = false; lock.unlock()
 
         // Re-subscribe any symbols that were active before a reconnect.
@@ -197,6 +202,20 @@ final class DerivClient: NSObject, ObservableObject {
 
     // MARK: - Market data
 
+    /// Refresh the broker's active symbol catalog instead of relying only on a
+    /// hardcoded picker. Unknown symbols remain usable by their raw Deriv code.
+    @discardableResult
+    func refreshActiveSymbols() async throws -> [String] {
+        let resp = try await request(["active_symbols": "brief", "product_type": "basic"])
+        guard let rows = resp["active_symbols"] as? [[String: Any]] else { return availableSymbols }
+        let symbols = rows.compactMap { $0["symbol"] as? String }.filter { !$0.isEmpty }
+        let combined = symbols.isEmpty ? DerivSymbols.all : Array(Set(DerivSymbols.all + symbols)).sorted()
+        if !symbols.isEmpty {
+            await MainActor.run { self.availableSymbols = combined }
+        }
+        return combined
+    }
+
     /// Fetch candles. Pass endEpoch to page backwards through history (unlimited backfill).
     func candles(symbol: String, timeframe: Timeframe, count: Int = 200, endEpoch: Int? = nil) async throws -> [Candle] {
         let resp = try await request([
@@ -210,7 +229,9 @@ final class DerivClient: NSObject, ObservableObject {
         }
         let parsed = arr.compactMap(Self.parseCandle)
         let closes = parsed.map(\.close)
-        await MainActor.run { self.priceCache[symbol] = DerivCandleCache(candles: parsed, prices: closes) }
+        await MainActor.run {
+            self.priceCache[symbol] = DerivCandleCache(candles: parsed, prices: closes, timeframe: timeframe)
+        }
         return parsed
     }
 
@@ -357,6 +378,9 @@ final class DerivClient: NSObject, ObservableObject {
     }
 
     private func route(_ text: String) {
+        DispatchQueue.main.async {
+            if case .connecting = self.connectionState { self.connectionState = .connected }
+        }
         guard let data = text.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
@@ -372,7 +396,10 @@ final class DerivClient: NSObject, ObservableObject {
         case "tick":
             if let t = json["tick"] as? [String: Any], let sym = t["symbol"] as? String {
                 let q = (t["quote"] as? Double) ?? Double((t["quote"] as? Int) ?? 0)
-                DispatchQueue.main.async { self.prices[sym] = q }
+                DispatchQueue.main.async {
+                    self.prices[sym] = q
+                    self.lastPriceUpdateAt[sym] = Date()
+                }
             }
         case "balance":
             if let b = json["balance"] as? [String: Any] {

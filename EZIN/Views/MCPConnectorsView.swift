@@ -13,10 +13,13 @@ struct MCPConnectorsView: View {
                     GlassToggle(label: "Enabled", isOn: $c.enabled)
                     Divider().overlay(Color.white.opacity(0.08))
                     GlassField(placeholder: "Server URL (https://…/mcp)", text: $c.url)
-                    GlassField(placeholder: "Authorization header (optional)", text: $c.authHeader, secure: true)
+                    GlassField(placeholder: "Authorization header (stored in Keychain)", text: $c.authHeader, secure: true)
                     HStack {
                         Button { test(c) } label: {
                             Text("Test connection").font(.system(size: 13, weight: .medium)).foregroundStyle(Glass.accent2)
+                        }.buttonStyle(.plain)
+                        Button { store.clearSecret(for: c) } label: {
+                            Text("Clear auth").font(.system(size: 12)).foregroundStyle(.white.opacity(0.55))
                         }.buttonStyle(.plain)
                         Spacer()
                         if c.kind == .custom {
@@ -41,7 +44,7 @@ struct MCPConnectorsView: View {
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading).glassCard(corner: 12)
             }
 
-            Text("Run an MCP server and point the URL here. MT5: e.g. vincentwongso/mt5-trading-mcp or amirkhonov/metatrader5-mcp (Windows/Docker). TradingView: e.g. atilaahmettaner/tradingview-mcp. Then the Chat assistant can call their tools via mcp(server, tool, args).")
+            Text("Run an MCP server and point the URL here. HTTPS is required except localhost development servers. Authorization headers are stored in the device Keychain and are never written to the Files-visible connector JSON. Then Chat can call tools via mcp(server, tool, args).")
                 .font(.caption2).foregroundStyle(.white.opacity(0.4))
         }
     }

@@ -210,7 +210,15 @@ enum AIRouter {
     // MARK: - Transport
 
     private static func postJSON(_ urlStr: String, headers: [String: String], body: [String: Any]) async throws -> [String: Any] {
-        guard let url = URL(string: urlStr) else { throw AIProviderError.http("bad url") }
+        guard let url = URL(string: urlStr),
+              let scheme = url.scheme?.lowercased(),
+              let host = url.host?.lowercased(),
+              ["http", "https"].contains(scheme) else {
+            throw AIProviderError.http("bad url")
+        }
+        if scheme == "http" && host != "localhost" && host != "127.0.0.1" && host != "::1" {
+            throw AIProviderError.http("HTTP endpoints are only allowed for localhost")
+        }
         var req = URLRequest(url: url); req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }

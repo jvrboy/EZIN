@@ -36,11 +36,18 @@ struct MCPConnector: Codable, Identifiable, Equatable {
     var name: String
     var kind: MCPKind
     var url: String
-    var authHeader: String = ""        // optional "Authorization" value, e.g. "Bearer xyz"
+    /// Kept in memory for the editor only. MCPStore persists it in the device-only
+    /// Keychain rather than in the Documents JSON file exposed through Files.
+    var authHeader: String = ""
     var enabled: Bool = true
 
+    var secretAccount: String { "mcp.auth.\(id.uuidString)" }
+
     var headersDict: [String: String] {
-        authHeader.isEmpty ? [:] : ["Authorization": authHeader]
+        let value = authHeader.isEmpty
+            ? CredentialStore.shared.secret(account: secretAccount) ?? ""
+            : authHeader
+        return value.isEmpty ? [:] : ["Authorization": value]
     }
 }
 
@@ -52,12 +59,41 @@ final class MCPStore: ObservableObject {
 
     private init() {
         let saved = FileStore.shared.read([MCPConnector].self, from: file, in: FileStore.shared.dataDir) ?? []
-        connectors = MCPStore.merged(saved: saved)
+        // Migrate legacy plaintext auth headers exactly once.
+        for connector in saved where !connector.authHeader.isEmpty {
+            CredentialStore.shared.setSecret(connector.authHeader, account: connector.secretAccount)
+        }
+        connectors = MCPStore.merged(saved: saved).map { connector in
+            var sanitized = connector
+            sanitized.authHeader = ""
+            return sanitized
+        }
+        save()
     }
 
-    func add(_ c: MCPConnector) { connectors.append(c) }
-    func update(_ c: MCPConnector) { if let i = connectors.firstIndex(where: { $0.id == c.id }) { connectors[i] = c } }
-    func remove(_ c: MCPConnector) { connectors.removeAll { $0.id == c.id } }
+    func add(_ c: MCPConnector) {
+        persistSecret(c)
+        var sanitized = c; sanitized.authHeader = ""
+        connectors.append(sanitized)
+    }
+
+    func update(_ c: MCPConnector) {
+        persistSecret(c)
+        var sanitized = c; sanitized.authHeader = ""
+        if let i = connectors.firstIndex(where: { $0.id == c.id }) { connectors[i] = sanitized }
+    }
+
+    func clearSecret(for c: MCPConnector) {
+        CredentialStore.shared.removeSecret(account: c.secretAccount)
+        if let index = connectors.firstIndex(where: { $0.id == c.id }) {
+            connectors[index].authHeader = ""
+        }
+    }
+
+    func remove(_ c: MCPConnector) {
+        CredentialStore.shared.removeSecret(account: c.secretAccount)
+        connectors.removeAll { $0.id == c.id }
+    }
 
     /// Resolve a connector by user-typed server name or kind.
     func byServerName(_ name: String) -> MCPConnector? {
@@ -65,7 +101,24 @@ final class MCPStore: ObservableObject {
         return connectors.first { $0.enabled && ($0.name.lowercased() == n || $0.kind.rawValue == n || $0.kind.title.lowercased() == n) }
     }
 
-    private func save() { FileStore.shared.write(connectors, to: file, in: FileStore.shared.dataDir) }
+    private func persistSecret(_ connector: MCPConnector) {
+        // An empty editor value means “leave the existing Keychain secret alone”.
+        // The remove action is the only operation that deletes credentials.
+        if !connector.authHeader.isEmpty {
+            CredentialStore.shared.setSecret(connector.authHeader, account: connector.secretAccount)
+        }
+    }
+
+    private func save() {
+        // Never serialize authHeader to the app's user-visible Documents directory.
+        let sanitized = connectors.map { connector -> MCPConnector in
+            persistSecret(connector)
+            var copy = connector
+            copy.authHeader = ""
+            return copy
+        }
+        FileStore.shared.write(sanitized, to: file, in: FileStore.shared.dataDir)
+    }
 
     private static func merged(saved: [MCPConnector]) -> [MCPConnector] {
         var merged = saved.isEmpty ? presets : saved

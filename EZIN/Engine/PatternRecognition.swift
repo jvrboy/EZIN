@@ -766,7 +766,7 @@ enum PatternRecognition {
     }
 
     private static func fmt(_ x: Double, _ places: Int = 4) -> String {
-        String(format: "%%.\(places)f", x)
+        String(format: "%.\(places)f", x)
     }
 
     private static func pct(_ x: Double) -> String {

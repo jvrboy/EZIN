@@ -258,7 +258,8 @@ extension ChartViewModel {
                 low: marketData.lows,
                 close: marketData.closes,
                 volume: marketData.volumes,
-                bins: settings.volumeProfileBins
+                bins: settings.volumeProfileBins,
+                valueArea: settings.volumeProfileVA
             )
 
             // Liquidity Heatmap with custom sensitivity

@@ -8,6 +8,7 @@ import Security
 final class CredentialStore: ObservableObject {
     static let shared = CredentialStore()
     private let service = "com.ezin.credentials"
+    private let secretService = "com.ezin.credentials.secrets"
     @Published private(set) var configured: Set<CredentialKey> = []
 
     private init() { refresh() }
@@ -48,6 +49,45 @@ final class CredentialStore: ObservableObject {
         ]
         SecItemDelete(query as CFDictionary)
         refresh()
+    }
+
+    /// Store a non-provider secret (for example an MCP bearer header) in the
+    /// device-only Keychain. The account name is namespaced by the caller.
+    func setSecret(_ value: String, account: String) {
+        let account = "secret.\(account)"
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: secretService,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
+        guard !value.isEmpty else { return }
+        query[kSecValueData as String] = Data(value.utf8)
+        query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        SecItemAdd(query as CFDictionary, nil)
+    }
+
+    func secret(account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: secretService,
+            kSecAttrAccount as String: "secret.\(account)",
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    func removeSecret(account: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: secretService,
+            kSecAttrAccount as String: "secret.\(account)"
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 
     func has(_ key: CredentialKey) -> Bool { configured.contains(key) }

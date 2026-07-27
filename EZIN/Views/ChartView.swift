@@ -17,6 +17,10 @@ struct ChartView: View {
                 .padding(.bottom, 8)
         }
         .task { await vm.attach(app.deriv) }
+        .onReceive(ChartCustomizationStore.shared.$settings) { _ in
+            vm.applyCustomizationSettings()
+            Task { await vm.reload() }
+        }
         .onDisappear { vm.stop() }
     }
 
@@ -45,7 +49,7 @@ struct ChartView: View {
         // `.equatable()` short-circuits body re-evaluation when the selected symbol is
         // unchanged, so live price ticks re-rendering ChartView no longer rebuild the
         // open menu (which previously reset its scroll position to the top).
-        InstrumentMenu(symbol: vm.symbol, onSelect: { vm.setSymbol($0) })
+        InstrumentMenu(symbol: vm.symbol, availableSymbols: app.availableSymbols, onSelect: { vm.setSymbol($0) })
             .equatable()
     }
 
@@ -132,16 +136,35 @@ struct ChartView: View {
 /// never snaps back to the top when live ticks redraw the chart (the old Menu did).
 private struct InstrumentMenu: View, Equatable {
     let symbol: String
+    let availableSymbols: [String]
     let onSelect: (String) -> Void
     @State private var open = false
     @State private var query = ""
 
     static func == (lhs: InstrumentMenu, rhs: InstrumentMenu) -> Bool {
-        lhs.symbol == rhs.symbol
+        lhs.symbol == rhs.symbol && lhs.availableSymbols == rhs.availableSymbols
     }
 
     private func matches(_ sym: String) -> Bool {
         query.isEmpty || DerivSymbols.display(sym).localizedCaseInsensitiveContains(query) || sym.localizedCaseInsensitiveContains(query)
+    }
+
+    private var dynamicSymbols: [String] {
+        availableSymbols.filter { !DerivSymbols.all.contains($0) && matches($0) }
+    }
+
+    @ViewBuilder
+    private func instrumentRow(_ sym: String) -> some View {
+        Button {
+            onSelect(sym)
+            open = false
+        } label: {
+            HStack {
+                Text(DerivSymbols.display(sym))
+                Spacer()
+                if sym == symbol { Image(systemName: "checkmark").foregroundStyle(Glass.accent) }
+            }
+        }
     }
 
     var body: some View {
@@ -163,17 +186,15 @@ private struct InstrumentMenu: View, Equatable {
                         if !items.isEmpty {
                             Section(group.0) {
                                 ForEach(items, id: \.self) { sym in
-                                    Button {
-                                        onSelect(sym)
-                                        open = false
-                                    } label: {
-                                        HStack {
-                                            Text(DerivSymbols.display(sym))
-                                            Spacer()
-                                            if sym == symbol { Image(systemName: "checkmark").foregroundStyle(Glass.accent) }
-                                        }
-                                    }
+                                    instrumentRow(sym)
                                 }
+                            }
+                        }
+                    }
+                    if !dynamicSymbols.isEmpty {
+                        Section("Broker catalog") {
+                            ForEach(dynamicSymbols, id: \.self) { sym in
+                                instrumentRow(sym)
                             }
                         }
                     }
@@ -225,6 +246,7 @@ final class ChartViewModel: ObservableObject {
 
     func attach(_ deriv: DerivClient) async {
         self.deriv = deriv
+        applyCustomizationSettings()
         deriv.subscribeTicks(symbol)
         await reload()
         startTicker()
@@ -252,18 +274,33 @@ final class ChartViewModel: ObservableObject {
             lastPrice = c.last?.close
             
             // Compute indicators with user customization (safe clamped values).
-            let marketData = MarketData(candles: c)
-            volumeProfileData = Microstructure.volumeProfile(
-                high: marketData.highs, low: marketData.lows, close: marketData.closes,
-                volume: marketData.volumes, bins: settings.volumeProfileBins
-            )
-            let adjustedMaxLevels = max(1, Int(Double(settings.heatmapMaxLevels) * settings.heatmapSensitivity))
-            liquidityLevels = Microstructure.liquidityLevels(
-                high: marketData.highs, low: marketData.lows, close: marketData.closes,
-                lookback: settings.jumpLookback, maxLevels: adjustedMaxLevels
-            )
-            jumpEvents = Microstructure.detectJumps(marketData.closes, mult: settings.jumpSensitivity, lookback: settings.jumpLookback)
+            recomputeIndicators()
+
         }
+    }
+
+    private func recomputeIndicators() {
+        guard !candles.isEmpty else {
+            volumeProfileData = nil
+            liquidityLevels = nil
+            jumpEvents = nil
+            return
+        }
+        let settings = ChartCustomizationStore.shared.settings
+        let marketData = MarketData(candles: candles)
+        volumeProfileData = Microstructure.volumeProfile(
+            high: marketData.highs, low: marketData.lows, close: marketData.closes,
+            volume: marketData.volumes, bins: settings.volumeProfileBins,
+            valueArea: settings.volumeProfileVA
+        )
+        let adjustedMaxLevels = max(1, Int(Double(settings.heatmapMaxLevels) * settings.heatmapSensitivity))
+        liquidityLevels = Microstructure.liquidityLevels(
+            high: marketData.highs, low: marketData.lows, close: marketData.closes,
+            lookback: settings.jumpLookback, maxLevels: adjustedMaxLevels
+        )
+        jumpEvents = Microstructure.detectJumps(
+            marketData.closes, mult: settings.jumpSensitivity, lookback: settings.jumpLookback
+        )
     }
 
     /// Page older candles when the user scrolls to the oldest loaded bar (unlimited history).
@@ -274,6 +311,7 @@ final class ChartViewModel: ObservableObject {
         if let older = try? await deriv.candles(symbol: symbol, timeframe: timeframe, count: 500, endEpoch: end),
            !older.isEmpty {
             candles = older + candles
+            recomputeIndicators()
         }
     }
 

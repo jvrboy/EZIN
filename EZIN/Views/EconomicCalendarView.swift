@@ -19,6 +19,18 @@ struct EconomicCalendarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if service.isGeneratedData {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text("Calendar dates and estimates are generated recurring estimates, not a live economic-data feed.")
+                        .multilineTextAlignment(.leading)
+                }
+                .font(.caption2)
+                .foregroundStyle(.yellow.opacity(0.9))
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+
             // Filter bar
             filterSection
 

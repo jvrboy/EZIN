@@ -1,8 +1,8 @@
 # EZIN
 
-**Deriv signal intelligence — glass edition.** Native SwiftUI iOS app (iOS 15+) porting the
+**Deriv signal intelligence — glass edition.** Native SwiftUI iOS app (iOS 16+) porting the
 `forex-signals` / `forex-jsx` indicator suite and the multi-agent Deriv trading bots, with a
-real-time chart, an AI assistant, and MCP tooling.
+real-time chart, an AI assistant, paper-first trading controls, and MCP tooling.
 
 ## Tabs
 
@@ -11,10 +11,10 @@ real-time chart, an AI assistant, and MCP tooling.
 2. **Signals** — live council signals with **Multi-Timeframe Analysis** and **Real-Time Performance Tracking**.
 3. **Games** — built-in mini-apps, headlined by **VINNY** (see below): a full on-device sound-design
    and loop-building workstation.
-4. **Chat** — a simple chat surface backed by a powerful agent/tool orchestrator with **Local LLM support** and **Nvidia NIM/Cerebras** integration.
+4. **Chat** — a chat surface backed by a typed agent/tool orchestrator with self-hosted endpoint support, optional local-model cataloguing, and **Nvidia NIM/Cerebras** integration.
 5. **History** — *Trades* (real closed trades from your Deriv account) and *Signals* (app-generated
    signals logged on-device in real time, shown even with **no API token**).
-6. **Bot** — start/stop the perpetual scalper.
+6. **Bot** — run a paper-first scanner, review risk controls, and explicitly arm live execution when required.
 7. **Settings** — assistant, bot, appearance, API keys, MCP, Deriv config.
 
 ## Instruments (all Deriv markets)
@@ -69,12 +69,12 @@ Six new council agents (`PatternAgent`, `MarketProfileAgent`, `TrendQualityAgent
 ## AI assistant (Chat tab)
 
 - **Extended Provider Support:** Now includes **Nvidia NIM**, **Cerebras**, and **FreeModel.dev** for high-performance, low-latency inference.
-- **Local LLM Inference:** Import and run your own GGUF or SafeTensors models directly on-device for private, low-latency assistance.
+- **Local LLM catalog:** Import GGUF or SafeTensors models for device-side cataloguing. Real inference currently requires the optional native runtime or a self-hosted OpenAI-compatible endpoint; EZIN never presents a template response as model output.
 - **Auto-routing** across all your providers (OpenAI, Anthropic, OpenRouter, Gemini, Groq, Mistral):
   picks the strongest available model and falls back on failure.
 - **Unlimited API keys per provider** — add as many as you like; EZIN rotates through them (round-robin)
   so a single key's rate limit never blocks you.
-- **58 specialist agents + 68 pipelines** power an orchestration loop, now expanded with production SRE, connector operations, compliance guardrails, swarm consensus, and a deterministic virtual backend layer exposing 1,500 additional analytics/risk/structure/execution/data-quality/agentic tools.
+- **58 specialist agents + 68 pipelines** power an orchestration loop, now expanded with production SRE, connector operations, compliance guardrails, swarm consensus, and a deterministic virtual capability catalog exposing 1,500 analytics/risk/structure/execution/data-quality/agentic descriptors; descriptors do not execute diagnostics until a concrete engine is selected.
 - **In-app tools** the assistant can call: `analyze`, `signals`, `price`, `instruments`, `history`,
   `quant_analysis`, `market_regime`, `backtest`, `risk_plan`, `structure_confluence`, `performance_snapshot`, `export_signal_data`, `place_trade` (guarded), and `mcp`.
 - **APEX tools**: `master_confluence`, `pattern_scan`, `market_profile`, `liquidity_map`,
@@ -126,7 +126,8 @@ Settings → Chat → MCP Connectors. Point EZIN at your own MCP servers:
 - **Custom** — any HTTP MCP server.
 
 The app is the MCP **client**; heavy tools (code/script execution, web scraping/automation) run on the
-MCP servers you connect — the correct architecture for a sandboxed iOS app.
+MCP servers you connect — the correct architecture for a sandboxed iOS app. Connector authorization headers
+are stored in the device-only Keychain, not in the Files-visible connector catalog.
 
 ## Appearance
 
@@ -140,7 +141,7 @@ The on-device quantitative backend exposes repeatable trend, momentum, breakout 
 ## Real-time & production
 
 Live Deriv WebSocket API (`wss://ws.derivws.com`) with **automatic reconnect + backoff + resubscribe**,
-live balance/ticks/candles, proposals, buys, `proposal_open_contract` (live P&L), sells, and `profit_table`.
+live balance/ticks/candles, proposals, buys, `proposal_open_contract` (live P&L), sells, and `profit_table`. iOS background execution is best-effort; the paper-first bot does not claim guaranteed 24/7 live execution while the app is suspended.
 Credentials are stored in the Keychain **device-only** (never synced to iCloud). App Transport Security is
 enforced (no arbitrary loads).
 
@@ -148,8 +149,7 @@ enforced (no arbitrary loads).
 
 ## Build
 
-XcodeGen (`project.yml`). CI builds an unsigned `.ipa` on every push to `main` and publishes it to the
-`build-latest` GitHub Release.
+XcodeGen (`project.yml`). CI runs unit tests and builds an unsigned `.ipa` on every push to `main` and pull request. Only a passing push to `main` (or a manual dispatch) is published to the `build-latest` GitHub Release.
 
 ```bash
 brew install xcodegen

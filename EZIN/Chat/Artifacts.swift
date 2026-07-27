@@ -35,7 +35,9 @@ final class ArtifactStore: ObservableObject {
     }
 
     func remove(_ a: Artifact) {
-        try? FileManager.default.removeItem(at: FileStore.shared.url(forRelative: a.relativePath))
+        if let url = FileStore.shared.validatedURL(forRelative: a.relativePath) {
+            try? FileManager.default.removeItem(at: url)
+        }
         items.removeAll { $0.id == a.id }
         save()
     }
@@ -49,7 +51,7 @@ struct ArtifactChip: View {
     let relativePath: String
     @State private var showShare = false
 
-    private var url: URL { FileStore.shared.url(forRelative: relativePath) }
+    private var url: URL { FileStore.shared.validatedURL(forRelative: relativePath) ?? FileStore.shared.root }
 
     var body: some View {
         Button { showShare = true } label: {
@@ -96,7 +98,7 @@ struct AudioArtifactPlayer: View {
     @State private var showShare = false
     @State private var loadFailed = false
 
-    private var url: URL { FileStore.shared.url(forRelative: relativePath) }
+    private var url: URL { FileStore.shared.validatedURL(forRelative: relativePath) ?? FileStore.shared.root }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

@@ -28,8 +28,8 @@ struct ChatConfig: Codable {
 
     TOOLS — to call one, reply with ONLY a single line and nothing else:
     ACTION: {"tool":"<name>","args":{...}}
-    Trading: analyze(symbol,timeframe) · signals() · price(symbol) · instruments(query) · history() · place_trade(symbol,direction[,stake]) · mcp(server,tool,args)
-    Intelligence: signal_performance([symbol]) · agent_leaderboard() · inject_news(headline,impact,confidence) · sentiment_score(text) · web_scrape(url)
+    Trading: analyze(symbol,timeframe) · signals() · price(symbol) · instruments(query) · history() · place_trade(symbol,direction[,stake,confirm]) — place_trade is preview-only unless confirm=true · mcp(server,tool,args)
+    Intelligence: signal_performance([symbol]) · agent_leaderboard() · inject_news(headline,impact,confidence) · sentiment_score(text) · web_scrape(url) · news_refresh() · news_latest([count])
     Files/Documents: create_file(name,content[,kind,folder]) · create_artifact(kind,name,content) · read_file(name|path[,chars]) · summarize_file(name|path[,sentences]) · list_files([scope]) · rename_file(from,to) · delete_file(name|path)
     Creation: create_song(prompt[,name,format,tempo]) · create_tone(frequency,duration[,volume,name])
     App control: app_state() · set_setting(key,value) · memory_add(text) · memory_search(query) · skills_list() · skill_create(name,content[,format,summary,tools]) · skill_import(text|content[,name]) · market_overview()

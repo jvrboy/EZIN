@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Full bot configuration. The bot is a 24/7 perpetual scalper that uses ALL
-/// strategies and indicators equally — there is no single default strategy.
+/// Full bot configuration. Paper mode is the safe default; live mode requires
+/// explicit arming and respects the configured risk limits.
 struct BotSettingsView: View {
     @EnvironmentObject var app: AppState
     @ObservedObject private var store = BotConfigStore.shared
@@ -14,9 +14,49 @@ struct BotSettingsView: View {
             GlassSection(title: "How it trades") {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "bolt.fill").foregroundStyle(Glass.accent2)
-                    Text("Perpetual scalper. Runs 24/7, evaluates every indicator and strategy on each scan, and only fires high-probability trades. No single strategy is used.")
+                    Text("Paper-first multi-timeframe scanner. It evaluates the council and indicator stack while the app is active. Live orders require explicit arming and are never guaranteed to run while iOS suspends the app.")
                         .font(.caption).foregroundStyle(.white.opacity(0.6))
                 }.padding(.vertical, 6)
+            }
+
+            GlassSection(title: "Execution safety") {
+                Picker("Mode", selection: cfg.executionMode) {
+                    ForEach(TradingExecutionMode.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                Divider().overlay(Color.white.opacity(0.08))
+                Stepper(value: cfg.dailyTradeLimit, in: 0...100) {
+                    Text(store.config.dailyTradeLimit == 0 ? "Daily trade limit: Off" : "Daily trade limit: \(store.config.dailyTradeLimit)")
+                        .font(.system(size: 13)).foregroundStyle(.white.opacity(0.82))
+                }
+                .tint(Glass.accent)
+
+                Divider().overlay(Color.white.opacity(0.08))
+                HStack {
+                    Text("Daily loss limit").font(.system(size: 13)).foregroundStyle(.white.opacity(0.82))
+                    Spacer()
+                    TextField("0 = off", value: cfg.dailyLossLimit, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 90)
+                        .foregroundStyle(.white)
+                }
+
+                GlassToggle(label: "Require live order arming", desc: "Live mode stays blocked until you explicitly arm it", isOn: cfg.requireOrderPreview)
+
+                if store.config.executionMode == .paper {
+                    Text("Paper mode is the default. It creates simulated positions and never sends orders to Deriv.")
+                        .font(.caption2).foregroundStyle(Glass.accent2.opacity(0.9))
+                } else {
+                    Text("Live mode is dangerous. Verify demo credentials, stops, and daily limits before arming.")
+                        .font(.caption2).foregroundStyle(Glass.sell.opacity(0.9))
+                    Button(app.bot.liveTradingArmed ? "Live trading armed" : "Arm live trading") {
+                        if app.bot.liveTradingArmed { app.bot.disarmLiveTrading() } else { app.bot.armLiveTrading() }
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(app.bot.liveTradingArmed ? Glass.sell : Glass.accent)
+                }
             }
 
             GlassSection(title: "Fixed lot size (stake)") {

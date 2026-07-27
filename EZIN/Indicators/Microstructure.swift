@@ -27,9 +27,10 @@ enum Microstructure {
         var valueAreaWidth: Double { valueAreaHigh - valueAreaLow }
     }
 
-    /// Build a volume-at-price histogram and derive POC + 70% value area.
+    /// Build a volume-at-price histogram and derive POC + configurable value area.
     static func volumeProfile(high: [Double], low: [Double], close: [Double],
-                              volume: [Double], bins binCount: Int = 24) -> VolumeProfile? {
+                              volume: [Double], bins binCount: Int = 24,
+                              valueArea: Double = 0.70) -> VolumeProfile? {
         guard close.count > 5, let lo = low.min(), let hi = high.max(), hi > lo else { return nil }
         let step = (hi - lo) / Double(binCount)
         guard step > 0 else { return nil }
@@ -47,14 +48,15 @@ enum Microstructure {
 
         let pocBin = buckets.indices.max(by: { buckets[$0] < buckets[$1] }) ?? 0
         let total = buckets.reduce(0, +)
-        // Expand around the POC until 70% of volume is captured (standard value area).
-        var included = Set([pocBin]); var captured = buckets[pocBin]
+        let targetArea = total * min(max(valueArea, 0.50), 0.95)
+        // Expand around the POC until the configured share of volume is captured.
+        var captured = buckets[pocBin]
         var lo2 = pocBin, hi2 = pocBin
-        while captured < total * 0.7 && (lo2 > 0 || hi2 < binCount - 1) {
+        while captured < targetArea && (lo2 > 0 || hi2 < binCount - 1) {
             let downVol = lo2 > 0 ? buckets[lo2 - 1] : -1
             let upVol   = hi2 < binCount - 1 ? buckets[hi2 + 1] : -1
-            if upVol >= downVol && hi2 < binCount - 1 { hi2 += 1; included.insert(hi2); captured += buckets[hi2] }
-            else if lo2 > 0 { lo2 -= 1; included.insert(lo2); captured += buckets[lo2] }
+            if upVol >= downVol && hi2 < binCount - 1 { hi2 += 1; captured += buckets[hi2] }
+            else if lo2 > 0 { lo2 -= 1; captured += buckets[lo2] }
             else { break }
         }
         return VolumeProfile(

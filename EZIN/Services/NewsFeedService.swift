@@ -14,6 +14,10 @@ struct NewsItem: Codable, Identifiable, Hashable {
     let publishedAt: Date
     let url: String
 
+    /// Empty URLs identify seeded or assistant-generated commentary rather than
+    /// externally verified journalism.
+    var isVerifiedSource: Bool { !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
     enum NewsCategory: String, Codable, CaseIterable {
         case macroeconomy = "Macro"
         case earnings = "Earnings"
@@ -81,8 +85,14 @@ final class NewsFeedService: ObservableObject {
     @Published var selectedCategory: NewsItem.NewsCategory?
     @Published var searchQuery = ""
     @Published var bookmarkedIDs: Set<UUID> = []
+    @Published var isRefreshingLive = false
+    @Published var lastRefreshMessage: String?
 
     private let file = "news_feed.json"
+    private let rssURLs = [
+        "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "https://www.ecb.europa.eu/rss/press.html"
+    ]
     private let bookmarkFile = "news_bookmarks.json"
 
     private init() {
@@ -152,6 +162,85 @@ final class NewsFeedService: ObservableObject {
         save()
     }
 
+    /// Fetch a small, attribution-preserving set of live RSS headlines. Failed
+    /// feeds are reported; existing cached/demo data is never silently replaced.
+    func refreshLive() async {
+        guard !isRefreshingLive else { return }
+        isRefreshingLive = true
+        defer { isRefreshingLive = false }
+
+        var fetched: [NewsItem] = []
+        for rawURL in rssURLs {
+            guard let url = URL(string: rawURL) else { continue }
+            do {
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 15
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { continue }
+                fetched.append(contentsOf: Self.parseRSS(data: data, feedURL: url))
+            } catch {
+                continue
+            }
+        }
+
+        let existingTitles = Set(newsItems.map { $0.title.lowercased() })
+        let fresh = fetched.filter { !existingTitles.contains($0.title.lowercased()) }
+        if !fresh.isEmpty {
+            newsItems.insert(contentsOf: fresh, at: 0)
+            newsItems = Array(newsItems.prefix(300))
+            save()
+            lastRefreshMessage = "Fetched \(fresh.count) verified RSS headline(s)."
+        } else if fetched.isEmpty {
+            lastRefreshMessage = "Live feeds unavailable. Showing cached items; unverified items are labelled."
+        } else {
+            lastRefreshMessage = "Live feeds checked; no new headlines."
+        }
+    }
+
+    private static func parseRSS(data: Data, feedURL: URL) -> [NewsItem] {
+        guard let xml = String(data: data, encoding: .utf8) else { return [] }
+        let itemPattern = "(?is)<item\\b[^>]*>(.*?)</item>"
+        guard let itemRegex = try? NSRegularExpression(pattern: itemPattern) else { return [] }
+        let range = NSRange(xml.startIndex..<xml.endIndex, in: xml)
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        var result: [NewsItem] = []
+
+        for match in itemRegex.matches(in: xml, range: range).prefix(20) {
+            guard let itemRange = Range(match.range(at: 1), in: xml) else { continue }
+            let item = String(xml[itemRange])
+            func field(_ name: String) -> String {
+                let pattern = "(?is)<\(name)(?:\\s[^>]*)?>(.*?)</\(name)>"
+                guard let regex = try? NSRegularExpression(pattern: pattern),
+                      let m = regex.firstMatch(in: item, range: NSRange(item.startIndex..<item.endIndex, in: item)),
+                      let r = Range(m.range(at: 1), in: item) else { return "" }
+                return decodeEntities(String(item[r]).replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines))
+            }
+            let title = field("title")
+            guard !title.isEmpty else { continue }
+            let summary = String(field("description").prefix(500))
+            let link = field("link")
+            let date = dateFormatter.date(from: field("pubDate")) ?? Date()
+            let sentiment = analyzeSentiment(of: title + " " + summary)
+            result.append(NewsItem(
+                title: title, summary: summary.isEmpty ? "RSS headline from \(feedURL.host ?? "feed")" : summary,
+                source: feedURL.host ?? "RSS", category: .marketAnalysis, sentiment: sentiment,
+                impact: sentiment == .veryBullish || sentiment == .veryBearish ? .high : .medium,
+                symbols: [], publishedAt: date, url: link
+            ))
+        }
+        return result
+    }
+
+    private static func decodeEntities(_ text: String) -> String {
+        text.replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+    }
+
     // MARK: - Sentiment Analysis
 
     /// Analyze sentiment of a text using keyword matching (on-device, no API needed)
@@ -180,7 +269,7 @@ final class NewsFeedService: ObservableObject {
 
     // MARK: - Generator
 
-    /// Generate a realistic-looking initial set of market news
+    /// Generate clearly unverified demo content when no live feed has been cached.
     private func generateInitialNews() {
         let now = Date()
         let news: [NewsItem] = [

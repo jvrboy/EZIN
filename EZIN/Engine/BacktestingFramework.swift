@@ -754,6 +754,6 @@ enum BacktestingFramework {
     }
 
     static func fmt(_ x: Double, _ places: Int = 2) -> String {
-        String(format: "%%.\(places)f", x)
+        String(format: "%.\(places)f", x)
     }
 }

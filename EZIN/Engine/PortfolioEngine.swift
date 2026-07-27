@@ -692,7 +692,7 @@ enum PortfolioEngine {
     }
 
     private static func fmt(_ x: Double, _ places: Int = 4) -> String {
-        String(format: "%%.\(places)f", x)
+        String(format: "%.\(places)f", x)
     }
 }
 

@@ -179,55 +179,43 @@ final class AIPipelineService: ObservableObject {
     // MARK: - Stage Execution
     
     private func executeStage(_ stage: PipelineStage, input: String, tools: [String], trace: String) async -> (String, Int) {
-        let tokens = Int.random(in: 50...500)
-        
+        func measured(_ output: String) -> (String, Int) {
+            // Deterministic estimate for UI telemetry; provider usage is tracked by AIRouter.
+            let estimatedTokens = max(1, output.split(whereSeparator: { $0 == " " || $0 == "\n" }).count)
+            return (output, estimatedTokens)
+        }
+
         switch stage {
         case .receive:
-            return ("Query received: \"\(input.prefix(100))\"", tokens)
-            
+            return measured("Query received: \"\(input.prefix(100))\"")
         case .parse:
-            let classification = classifyQuery(input)
-            return ("Classified as: \(classification)", tokens)
-            
+            return measured("Classified as: \(classifyQuery(input))")
         case .contextRetrieve:
-            return ("Retrieved context: market data, user preferences, signal history", tokens)
-            
+            return measured("Context retrieval requested: market data, user preferences and signal history")
         case .reasoning:
-            let reasoning = generateReasoning(input)
-            return (reasoning, tokens)
-            
+            return measured(generateReasoning(input))
         case .thinking:
-            let thought = generateThoughtProcess(input, trace: trace)
-            return (thought, tokens)
-            
+            return measured(generateThoughtProcess(input, trace: trace))
         case .toolSelection:
             let selected = selectTools(input, available: tools)
-            return ("Selected tools: \(selected.joined(separator: ", "))", tokens)
-            
+            return measured("Selected tools: \(selected.joined(separator: ", "))")
         case .toolExecution:
-            return ("Tools executed successfully", tokens)
-            
+            return measured("No external tool was executed by this pipeline stage; invoke the selected tool through ToolRegistry.")
         case .analysis:
-            let analysis = synthesizeAnalysis(input)
-            return (analysis, tokens)
-            
+            return measured(synthesizeAnalysis(input))
         case .verification:
-            return ("Verification passed: logic consistent, data validated", tokens)
-            
+            return measured("Structural verification completed; independent market validation requires the selected analysis tools.")
         case .reflection:
-            return ("Reflection: Analysis is sound, confidence high", tokens)
-            
+            return measured("Reflection recorded; confidence is not inferred without validated market evidence.")
         case .refinement:
-            return ("Output refined for clarity and accuracy", tokens)
-            
+            return measured("Output formatting stage completed; no claim of factual correctness is made here.")
         case .formatting:
-            return (formatResponse(input), tokens)
-            
+            return measured(formatResponse(input))
         case .delivery:
-            return ("Delivery complete", tokens)
+            return measured("Delivery complete")
         }
     }
-    
+
     // MARK: - Intelligence Helpers
     
     private func classifyQuery(_ query: String) -> String {
@@ -243,7 +231,7 @@ final class AIPipelineService: ObservableObject {
     }
     
     private func generateReasoning(_ query: String) -> String {
-        // Structured reasoning simulation
+        // Transparent heuristic trace; this is not a hidden chain-of-thought claim.
         var steps: [String] = []
         steps.append("Step 1: Decomposing query into sub-problems")
         steps.append("Step 2: Identifying relevant market factors")

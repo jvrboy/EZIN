@@ -1,13 +1,15 @@
 import Foundation
 
-/// Service for loading and running inference on local LLM models (.gguf, .safetensors, etc.)
-/// Uses a lightweight in-process approach with token-streaming support.
+/// Service for validating imported model files and bridging chat to a self-hosted
+/// OpenAI-compatible runtime with token-streaming support. Imported files are not
+/// executed unless a native runtime is bundled.
 actor LocalLLMInferenceService {
     
     enum LocalLLMError: Error, LocalizedError {
         case modelNotFound
         case failedToLoadModel(String)
         case inferenceError(String)
+        case runtimeUnavailable
         case invalidInput
         case cancelled
         
@@ -16,6 +18,7 @@ actor LocalLLMInferenceService {
             case .modelNotFound: return "Local model file not found."
             case .failedToLoadModel(let msg): return "Failed to load model: \(msg)"
             case .inferenceError(let msg): return "Inference error: \(msg)"
+            case .runtimeUnavailable: return "No on-device LLM runtime is installed. Configure a self-hosted OpenAI-compatible endpoint or install the optional runtime build."
             case .invalidInput: return "Invalid input provided."
             case .cancelled: return "Inference was cancelled."
             }
@@ -74,7 +77,7 @@ actor LocalLLMInferenceService {
         config: InferenceConfig = InferenceConfig(),
         onToken: ((String) -> Void)? = nil
     ) async throws -> String {
-        guard let modelPath = loadedModelPath else {
+        guard loadedModelPath != nil else {
             throw LocalLLMError.modelNotFound
         }
         
@@ -82,15 +85,15 @@ actor LocalLLMInferenceService {
             throw LocalLLMError.invalidInput
         }
         
-        // Real inference path: if the user configured a self-hosted OpenAI-compatible
-        // endpoint (llama.cpp/Ollama/vLLM), call it. Otherwise run the deterministic
-        // on-device grounded responder, which uses app memory/files rather than canned text.
-        let startTime = Date()
+        // Imported model files are validated and catalogued, but they are not
+        // executable by Foundation alone. Never pretend that a deterministic
+        // template is model inference: use a configured llama.cpp/Ollama/vLLM
+        // endpoint until the optional native runtime is bundled.
         let text: String
         if let endpoint = CredentialStore.shared.value(for: .customEndpoint), !endpoint.isEmpty {
             text = try await generateViaEndpoint(endpoint: endpoint, prompt: prompt, config: config)
         } else {
-            text = generateGroundedResponse(for: prompt, modelPath: modelPath, maxTokens: config.maxTokens)
+            throw LocalLLMError.runtimeUnavailable
         }
 
         var result = ""
@@ -101,7 +104,6 @@ actor LocalLLMInferenceService {
             onToken?(chunk)
         }
         self.lastInferenceTime = Date()
-        _ = startTime
         return result
     }
     
@@ -119,7 +121,15 @@ actor LocalLLMInferenceService {
     
     private func generateViaEndpoint(endpoint: String, prompt: String, config: InferenceConfig) async throws -> String {
         let parts = endpoint.split(separator: "|", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-        guard let url = URL(string: parts[0]) else { throw LocalLLMError.inferenceError("Bad custom endpoint URL") }
+        guard let url = URL(string: parts[0]),
+              let scheme = url.scheme?.lowercased(),
+              let host = url.host?.lowercased(),
+              ["http", "https"].contains(scheme) else {
+            throw LocalLLMError.inferenceError("Bad custom endpoint URL")
+        }
+        if scheme == "http" && host != "localhost" && host != "127.0.0.1" && host != "::1" {
+            throw LocalLLMError.inferenceError("Custom endpoints must use HTTPS except localhost")
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -141,36 +151,6 @@ actor LocalLLMInferenceService {
             throw LocalLLMError.inferenceError("Endpoint returned an unreadable response")
         }
         return content
-    }
-
-    /// Deterministic grounded fallback: retrieves relevant app memory and produces an
-    /// auditable answer. It is not presented as a cloud LLM; it keeps local model mode useful
-    /// until a GGUF runtime/self-hosted endpoint is configured.
-    private func generateGroundedResponse(for prompt: String, modelPath: String, maxTokens: Int) -> String {
-        let lower = prompt.lowercased()
-        var evidence: [String] = []
-        let memoryURL = FileStore.shared.chatDir.appendingPathComponent("memory.jsonl")
-        if let raw = try? String(contentsOf: memoryURL, encoding: .utf8) {
-            let terms = lower.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { $0.count > 3 }
-            for line in raw.split(separator: "\n").map(String.init) {
-                if terms.contains(where: { line.lowercased().contains($0) }) { evidence.append(line) }
-                if evidence.count >= 4 { break }
-            }
-        }
-        let modelName = modelMetadata?.name ?? URL(fileURLWithPath: modelPath).deletingPathExtension().lastPathComponent
-        var answer = "Local model mode (\(modelName)). "
-        if lower.contains("summar") {
-            answer += "Use the summarize_file tool for PDFs/documents; I can extract PDF text with PDFKit and summarize it on-device. "
-        } else if lower.contains("price") || lower.contains("signal") || lower.contains("analy") {
-            answer += "For live trading accuracy, use analyze/ultra_confirm/full_backend_report so the answer is grounded in real candles, agents and risk engines. "
-        } else {
-            answer += "I can help with files, settings, memory, market analysis and app control. "
-        }
-        if !evidence.isEmpty {
-            answer += "Relevant memory: " + evidence.joined(separator: " | ")
-        }
-        let words = answer.split(separator: " ").map(String.init)
-        return words.prefix(maxTokens).joined(separator: " ")
     }
 
     private func chunkTokens(_ text: String) -> [String] {

@@ -148,6 +148,13 @@ final class AlertStore: ObservableObject {
         save()
     }
 
+    func record(_ event: AlertEvent) {
+        events.insert(event, at: 0)
+        // Keep local storage bounded while retaining recent history.
+        if events.count > 500 { events = Array(events.prefix(500)) }
+        save()
+    }
+
     func clearOldEvents(before days: Int = 7) {
         let cutoff = Date().addingTimeInterval(-TimeInterval(days * 86400))
         events.removeAll { $0.timestamp < cutoff }
@@ -191,22 +198,24 @@ final class AlertEvaluator: ObservableObject {
     static let shared = AlertEvaluator()
 
     private let store = AlertStore.shared
-    private let deriv: DerivClient?
+    private var deriv: DerivClient?
 
     private var evaluationTimer: Timer?
-    private var cancellables = Set<AnyCancellable>()
 
     private init(deriv: DerivClient? = nil) {
+        self.deriv = deriv
+    }
+
+    func configure(deriv: DerivClient) {
         self.deriv = deriv
     }
 
     /// Start periodic evaluation (every 30 seconds).
     func start(evaluateEvery seconds: TimeInterval = 30) {
         stop()
+        Task { [weak self] in await self?.evaluateAll() }
         evaluationTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
-            Task { [weak self] in
-                await self?.evaluateAll()
-            }
+            Task { [weak self] in await self?.evaluateAll() }
         }
     }
 
@@ -228,7 +237,9 @@ final class AlertEvaluator: ObservableObject {
                 // Check cooldown
                 if let lastTriggered = alert.lastTriggeredAt {
                     let cooldown = TimeInterval(alert.cooldownMinutes * 60)
-                    if Date().timeIntervalSince(lastTriggered) < cooldown && !alert.repeats {
+                    // `repeats` controls whether an alert may fire again; it does
+                    // not bypass the configured cooldown.
+                    if Date().timeIntervalSince(lastTriggered) < cooldown {
                         continue
                     }
                 }
@@ -245,18 +256,17 @@ final class AlertEvaluator: ObservableObject {
                     severity: alert.severity
                 )
 
-                await MainActor.run {
-                    store.events.insert(event, at: 0)
+                store.record(event)
 
-                    // Update last triggered time
-                    var updated = alert
-                    updated.lastTriggeredAt = Date()
-                    store.update(updated)
+                // Update last triggered time. One-shot alerts are disabled after
+                // their first delivery; repeating alerts observe the cooldown.
+                var updated = alert
+                updated.lastTriggeredAt = Date()
+                if !alert.repeats { updated.enabled = false }
+                store.update(updated)
 
-                    // Push notification for critical alerts
-                    if alert.severity == .critical {
-                        PushNotificationManager.shared.notifyAlertTriggered(event)
-                    }
+                if alert.severity == .critical {
+                    PushNotificationManager.shared.notifyAlertTriggered(event)
                 }
             }
         }
@@ -397,21 +407,27 @@ final class AlertEvaluator: ObservableObject {
     /// Signal a new signal generated (for signal-based alerts).
     func notifySignalGenerated(symbol: String, type: SignalType, confidence: Double) {
         let signalAlerts = store.enabledAlerts.filter {
-            $0.conditionType == .signalGenerated && $0.symbol == symbol
+            $0.conditionType == .signalGenerated && $0.symbol == symbol && confidence >= $0.conditionValue
         }
         for alert in signalAlerts {
+            if let last = alert.lastTriggeredAt,
+               Date().timeIntervalSince(last) < TimeInterval(alert.cooldownMinutes * 60) { continue }
             let event = AlertEvent(
                 configID: alert.id,
                 name: alert.name,
-                symbol: alert.symbol,
+                symbol: symbol,
                 conditionType: .signalGenerated,
                 message: "\(type.rawValue) signal generated for \(DerivSymbols.display(symbol)) at \(Int(confidence))% confidence",
                 value: confidence,
-                threshold: 50,
+                threshold: alert.conditionValue,
                 timestamp: Date(),
                 severity: alert.severity
             )
-            store.events.insert(event, at: 0)
+            store.record(event)
+            var updated = alert
+            updated.lastTriggeredAt = Date()
+            if !alert.repeats { updated.enabled = false }
+            store.update(updated)
             if alert.severity == .critical {
                 PushNotificationManager.shared.notifyAlertTriggered(event)
             }
@@ -426,20 +442,22 @@ final class AlertEvaluator: ObservableObject {
     }
 
     private func fetchMarketData(symbol: String, timeframe: Timeframe) async -> AlertMarketData {
-        let price = await MainActor.run { [weak deriv] in
-            return deriv?.prices[symbol]
+        guard let deriv else { return AlertMarketData(currentPrice: nil, candles: nil) }
+        deriv.subscribeTicks(symbol)
+
+        let price = deriv.prices[symbol]
+        let cached = deriv.priceCache[symbol]
+        var candles = cached?.timeframe == timeframe ? cached?.candles : nil
+        if candles == nil || candles?.count ?? 0 < 40 {
+            candles = try? await deriv.candles(symbol: symbol, timeframe: timeframe, count: 120)
         }
-
-        // Try to get candles from cache or fetch them
-        let candles: [Candle]? = nil  // In production, fetch from DerivClient
-
-        return AlertMarketData(currentPrice: price, candles: candles)
+        return AlertMarketData(currentPrice: price ?? candles?.last?.close, candles: candles)
     }
 
     // MARK: - Helpers
 
     private func fmt(_ x: Double, _ places: Int = 4) -> String {
-        String(format: "%%.\(places)f", x)
+        String(format: "%.\(places)f", x)
     }
 }
 
@@ -629,6 +647,6 @@ extension ToolRegistry {
     }
 
     private func fmt(_ x: Double, _ places: Int = 4) -> String {
-        String(format: "%%.\(places)f", x)
+        String(format: "%.\(places)f", x)
     }
 }

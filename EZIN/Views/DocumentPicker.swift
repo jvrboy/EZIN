@@ -1,17 +1,19 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// SwiftUI wrapper around UIDocumentPickerViewController for importing model files.
-/// Accepts .gguf, .safetensors and any other file (no size limit).
+/// SwiftUI wrapper around UIDocumentPickerViewController for importing supported
+/// model files. Validation is repeated by FileStore before copying.
 struct DocumentPicker: UIViewControllerRepresentable {
     var onPick: ([URL]) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        var types: [UTType] = [.data, .item]
-        if let gguf = UTType(filenameExtension: "gguf") { types.append(gguf) }
-        if let st = UTType(filenameExtension: "safetensors") { types.append(st) }
+        var types: [UTType] = []
+        for ext in ["gguf", "safetensors", "bin"] {
+            if let type = UTType(filenameExtension: ext) { types.append(type) }
+        }
+        if types.isEmpty { types = [.data] }
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
         picker.allowsMultipleSelection = true
         picker.delegate = context.coordinator

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Import & manage local LLM model files (.gguf, .safetensors, any) — no size limit.
-/// Users can select a model to use for local chat inference.
+/// Import & manage local LLM model files. The catalog is ready for the optional
+/// native runtime; without that runtime, chat uses a configured self-hosted endpoint.
 struct LLMModelsView: View {
     @ObservedObject private var store = LLMModelStore.shared
     @ObservedObject private var chatConfig = ChatConfigStore.shared
@@ -19,7 +19,7 @@ struct LLMModelsView: View {
                 .background(RoundedRectangle(cornerRadius: 14).fill(Glass.accent.opacity(0.7)))
             }.buttonStyle(.plain)
 
-            Text("Supports .gguf, .safetensors, .bin and any other format. Files are copied into On My iPhone → EZIN → Models with no size limit.")
+            Text("Catalogs .gguf and .safetensors files. Files are copied into On My iPhone → EZIN → Models. A native runtime or self-hosted endpoint is required for model inference; unsupported files are never executed.")
                 .font(.caption2).foregroundStyle(.white.opacity(0.4))
 
             if let err = importError {

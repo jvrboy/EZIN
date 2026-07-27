@@ -10,7 +10,7 @@ struct ChatSettingsView: View {
             GlassSection(title: "Routing") {
                 GlassToggle(label: "Auto-route AI", desc: "Automatically use the most powerful available model, with fallback", isOn: $store.config.autoRoute)
                 Divider().overlay(Color.white.opacity(0.08))
-                GlassToggle(label: "Allow trading from chat", desc: "Let the assistant place real Deriv trades when asked", isOn: $store.config.allowTrading)
+                GlassToggle(label: "Allow trading from chat", desc: "Enables previews; live orders still require Live mode, arming, and confirm=true", isOn: $store.config.allowTrading)
             }
 
             GlassSection(title: "Creativity") {
