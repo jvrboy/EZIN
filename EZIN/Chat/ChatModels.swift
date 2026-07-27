@@ -32,7 +32,7 @@ struct ChatConfig: Codable {
     Intelligence: signal_performance([symbol]) · agent_leaderboard() · inject_news(headline,impact,confidence) · sentiment_score(text) · web_scrape(url)
     Files/Documents: create_file(name,content[,kind,folder]) · create_artifact(kind,name,content) · read_file(name|path[,chars]) · summarize_file(name|path[,sentences]) · list_files([scope]) · rename_file(from,to) · delete_file(name|path)
     Creation: create_song(prompt[,name,format,tempo]) · create_tone(frequency,duration[,volume,name])
-    App control: app_state() · set_setting(key,value) · memory_add(text) · memory_search(query) · skills_list() · skill_create(name,content[,format,summary,tools]) · skill_import(text|content[,name]) · market_overview()
+    App control: app_state() · set_setting(key,value) · memory_add(text) · memory_search(query) · skills_list() · skill_create(name,content[,format,summary,tools]) · skill_import(text|content[,name]) · skills_catalog() · skill_export(name) · skill_import_json(json) · skill_create_custom(name,prompt[,description,category,tools]) · market_overview()
     Brain (self-learning): brain_insights() · brain_report()
     Ultra-Confirmation: ultra_confirm(symbol,timeframe[,account_size,risk_percent])
     Quant backend: quant_analysis(symbol,timeframe[,account_size]) · market_regime(symbol,timeframe) · backtest(symbol,timeframe[,fast,slow]) · risk_plan(symbol,timeframe[,account_size,win_rate,payoff_ratio]) · structure_confluence(symbol,timeframe) · full_backend_report(symbol,timeframe[,account_size])
@@ -45,6 +45,10 @@ struct ChatConfig: Codable {
     Backtesting Framework: backtest_strategy(symbol,timeframe[,strategy,fast,slow,period,oversold,overbought,cost_model]) · backtest_compare(symbol,timeframe) · backtest_walkforward(symbol,timeframe) · backtest_optimize(symbol,timeframe)
     Advanced Pattern Recognition: pattern_scan_advanced(symbol,timeframe) — flags, pennants, triangles, wedges, channels, H&S, double tops/bottoms, rounding, S/R levels, volume patterns
     Signal Fusion (all engines → one verdict): signal_fusion(symbol,timeframe) · fusion_weights([reset])
+    Market Tool Pack: indicator_values(symbol,timeframe) — snapshot of RSI/MACD/ADX/ATR/Bollinger/Stochastic/CCI/MFI/Supertrend/VWAP/EMAs and more · divergence_scan(symbol,timeframe[,indicator=rsi|macd|obv]) · spike_scan(symbol,timeframe) · fib_levels(symbol,timeframe[,lookback]|high,low[,direction]) · pivot_levels(symbol,timeframe[,method=classic|woodie|camarilla]) · streak_stats(symbol,timeframe) · candle_anatomy(symbol,timeframe[,count]) · volatility_rank([symbols,timeframe]) · session_clock()
+    Risk math: risk_reward(entry,stop,target[,account_size,risk_percent]) · kelly_size(win_rate,payoff[,account_size])
+    Watchlist: watchlist_show() · watchlist_add(symbols) · watchlist_remove(symbols)
+
     Song format can be "wav" or "midi". For songs, describe notes like "C4 0.5s amp 0.5" or use natural language: "happy C major chord" or "ascending C scale".
     Artifact kinds: wav, midi, csv, json, html, txt, md, py, js, swift, zip, appPrototype.
     The analyze tool performs DEEP multi-timeframe analysis (18 agents + order flow + volatility regime + market structure) and returns a fully formatted Markdown report — preserve its headings, tables and structure.

@@ -178,9 +178,27 @@ struct ToolRegistry {
         // Skills Extension — enhanced skills management.
         case "skills_catalog":            return skillsCatalogTool()
         case "skill_export":              return skillExportTool(args: args)
-        case "skill_import":              return skillImportTool(args: args)
+        case "skill_import_json":         return skillImportTool(args: args)   // JSON import (SkillsExtension); "skill_import" (text/MD) is handled above
         case "skill_create_custom":       return skillCreateCustomTool(args: args)
+
+        // Market Tool Pack — indicators, divergences, spikes, levels, streaks, risk math,
+        // session clock, watchlist management, volatility ranking, candle anatomy.
+        case "indicator_values":          return indicatorValues(args)
+        case "divergence_scan":           return divergenceScan(args)
+        case "spike_scan":                return spikeScan(args)
+        case "fib_levels":                return fibLevels(args)
+        case "pivot_levels":              return pivotLevels(args)
+        case "streak_stats":              return streakStats(args)
+        case "risk_reward":               return riskRewardTool(args)
+        case "kelly_size":                return kellySize(args)
+        case "session_clock":             return sessionClock()
+        case "watchlist_show":            return watchlistShow()
+        case "watchlist_add":             return watchlistAdd(args)
+        case "watchlist_remove":          return watchlistRemove(args)
+        case "volatility_rank":           return volatilityRank(args)
+        case "candle_anatomy":            return candleAnatomy(args)
         default:               return "Unknown tool: \(name)"
+
         }
     }
 

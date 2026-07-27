@@ -79,6 +79,15 @@ Six new council agents (`PatternAgent`, `MarketProfileAgent`, `TrendQualityAgent
   `quant_analysis`, `market_regime`, `backtest`, `risk_plan`, `structure_confluence`, `performance_snapshot`, `export_signal_data`, `place_trade` (guarded), and `mcp`.
 - **APEX tools**: `master_confluence`, `pattern_scan`, `market_profile`, `liquidity_map`,
   `range_forecast`, `entropy_analysis`, `symbol_scanner`.
+- **Market tool pack**: `indicator_values` (full indicator snapshot table),
+  `divergence_scan` (RSI/MACD/OBV regular + hidden divergences), `spike_scan` (price &
+  volatility spikes), `fib_levels` (auto swing detection or explicit high/low),
+  `pivot_levels` (classic / Woodie / Camarilla), `streak_stats` (streaks + continuation
+  probabilities), `candle_anatomy` (body/wick breakdown of recent bars),
+  `volatility_rank` (ATR% ranking across the watchlist), `session_clock` (live session
+  policy), `risk_reward` (R:R geometry + sizing), `kelly_size` (Kelly stake sizing),
+  and `watchlist_show` / `watchlist_add` / `watchlist_remove`.
+
 - **Expanded backend tools**: `backend_tool_catalog`, `agentic_pipeline_catalog`, `agentic_power_plan`, `connector_catalog`, `swarm_status`, `production_health`, and `backend_tool_001` through `backend_tool_1500` for deterministic specialist diagnostics.
 - **VINNY tools**: `vinny_loop` (text → finished loop), `vinny_patch` (text → synth patch),
   `vinny_reference` (upload any audio in chat and ask for a loop "like this"), `vinny_stems`

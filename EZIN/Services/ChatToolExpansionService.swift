@@ -13,7 +13,22 @@ struct ChatToolExpansion {
             .replacingOccurrences(of: "×", with: "*")
             .replacingOccurrences(of: "÷", with: "/")
             .replacingOccurrences(of: "π", with: "\(Double.pi)")
-        
+
+        // NSExpression(format:) raises an Objective-C exception (uncatchable from Swift)
+        // on malformed input — whitelist the characters first so a bad expression can
+        // never crash the app.
+        let allowed = CharacterSet(charactersIn: "0123456789.+-*/()eE% ")
+        guard !expr.isEmpty, expr.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
+            return "Could not evaluate expression — only numbers and + - * / ( ) % are supported."
+        }
+        // Reject obviously unbalanced parentheses up front for the same reason.
+        var depth = 0
+        for ch in expr {
+            if ch == "(" { depth += 1 }
+            if ch == ")" { depth -= 1; if depth < 0 { return "Could not evaluate expression — unbalanced parentheses." } }
+        }
+        guard depth == 0 else { return "Could not evaluate expression — unbalanced parentheses." }
+
         // Simple expression evaluator using NSExpression
         let nsExpr = NSExpression(format: expr)
         if let result = nsExpr.expressionValue(with: nil, context: nil) as? Double {
