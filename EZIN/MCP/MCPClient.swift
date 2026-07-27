@@ -44,6 +44,32 @@ struct MCPClient {
         guard result["protocolVersion"] != nil || result["serverInfo"] != nil else {
             throw MCPError.parse
         }
+        try await sendInitializedNotification()
+    }
+
+    private func sendInitializedNotification() async throws {
+        guard let url = URL(string: connector.url),
+              let scheme = url.scheme?.lowercased(),
+              let host = url.host?.lowercased(),
+              ["http", "https"].contains(scheme) else { throw MCPError.badURL }
+        if scheme == "http" && host != "localhost" && host != "127.0.0.1" && host != "::1" {
+            throw MCPError.insecureURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json, text/event-stream", forHTTPHeaderField: "Accept")
+        for (key, value) in connector.headersDict { request.setValue(value, forHTTPHeaderField: key) }
+        request.timeoutInterval = 45
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+            "params": [String: Any]()
+        ])
+        let (_, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            throw MCPError.http(http.statusCode)
+        }
     }
 
     private func rpc(_ method: String, _ params: [String: Any]) async throws -> [String: Any] {
