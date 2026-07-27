@@ -141,6 +141,10 @@ final class EconomicCalendarService: ObservableObject {
 
     private init() {}
 
+    /// This implementation currently uses recurring estimates rather than a live
+    /// provider. Keep the provenance visible until a calendar feed is configured.
+    var isGeneratedData: Bool { true }
+
     /// All known events sorted by date (soonest first).
     var upcomingEvents: [EconomicEvent] {
         generateEvents().filter { $0.isUpcoming }.sorted { $0.date < $1.date }
@@ -199,6 +203,7 @@ final class EconomicCalendarService: ObservableObject {
         }
 
         var report = "## 📅 Economic Calendar\n\n"
+        report += "⚠️ These are generated recurring estimates, not a live provider feed. Verify event times and forecasts before trading.\n\n"
         report += "| Time | Currency | Event | Impact | Previous | Forecast |\n|---|---|---|---|---|---|\n"
 
         for event in display {
@@ -276,6 +281,17 @@ final class EconomicCalendarService: ObservableObject {
         let calendar = Calendar.current
         let now = Date()
         var events: [EconomicEvent] = []
+        var deterministicSeed = 0
+        func stable(_ range: ClosedRange<Double>) -> Double {
+            deterministicSeed += 1
+            let wave = abs(sin(Double(deterministicSeed) * 12.9898))
+            return range.lowerBound + (range.upperBound - range.lowerBound) * wave
+        }
+        func stableInt(_ range: ClosedRange<Int>) -> Int {
+            deterministicSeed += 1
+            let wave = abs(sin(Double(deterministicSeed) * 12.9898))
+            return range.lowerBound + Int(Double(range.upperBound - range.lowerBound + 1) * wave)
+        }
 
         // Helper to find the next occurrence of a weekday at a given time
         func nextWeekday(_ weekday: Int, at hour: Int, minute: Int = 0) -> Date {
@@ -328,8 +344,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: nfp, title: "Non-Farm Payrolls (NFP)",
                 category: .employment, currency: .usd, impact: .nonFarm,
-                previousValue: "\(String(format: "%.0f", Double.random(in: 150...350)))K",
-                forecastValue: "\(String(format: "%.0f", Double.random(in: 150...350)))K",
+                previousValue: "\(String(format: "%.0f", stable(150...350)))K",
+                forecastValue: "\(String(format: "%.0f", stable(150...350)))K",
                 description: "The number of jobs added in the US (excluding farm workers). The most important US economic indicator.",
                 isConfirmed: true, eventSource: "Bureau of Labor Statistics"
             ))
@@ -340,8 +356,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: nfp.addingTimeInterval(300), title: "Unemployment Rate",
                 category: .employment, currency: .usd, impact: .high,
-                previousValue: String(format: "%.1f%%", Double.random(in: 3.0...4.5)),
-                forecastValue: String(format: "%.1f%%", Double.random(in: 3.0...4.5)),
+                previousValue: String(format: "%.1f%%", stable(3.0...4.5)),
+                forecastValue: String(format: "%.1f%%", stable(3.0...4.5)),
                 description: "Percentage of the US labor force that is unemployed and actively seeking work.",
                 isConfirmed: true, eventSource: "Bureau of Labor Statistics"
             ))
@@ -352,8 +368,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: cpiDate, title: "Consumer Price Index (CPI) MoM",
                 category: .inflation, currency: .usd, impact: .high,
-                previousValue: String(format: "%.1f%%", Double.random(in: 0.1...0.6)),
-                forecastValue: String(format: "%.1f%%", Double.random(in: 0.1...0.6)),
+                previousValue: String(format: "%.1f%%", stable(0.1...0.6)),
+                forecastValue: String(format: "%.1f%%", stable(0.1...0.6)),
                 description: "Measures the change in price of a basket of consumer goods. Key inflation indicator.",
                 isConfirmed: true, eventSource: "Bureau of Labor Statistics"
             ))
@@ -364,8 +380,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: cpiDate.addingTimeInterval(180), title: "Core CPI MoM",
                 category: .inflation, currency: .usd, impact: .high,
-                previousValue: String(format: "%.1f%%", Double.random(in: 0.1...0.5)),
-                forecastValue: String(format: "%.1f%%", Double.random(in: 0.1...0.5)),
+                previousValue: String(format: "%.1f%%", stable(0.1...0.5)),
+                forecastValue: String(format: "%.1f%%", stable(0.1...0.5)),
                 description: "CPI excluding food and energy components. The Fed's preferred inflation measure variant.",
                 isConfirmed: true, eventSource: "Bureau of Labor Statistics"
             ))
@@ -380,12 +396,12 @@ final class EconomicCalendarService: ObservableObject {
                 matching: DateComponents(hour: 19, minute: 0, weekday: 4, weekdayOrdinal: 3),
                 matchingPolicy: .nextTime
             ), thirdWed > now {
-                let rate = Double.random(in: 4.0...6.0)
+                let rate = stable(4.0...6.0)
                 events.append(EconomicEvent(
                     date: thirdWed, title: "Fed Interest Rate Decision",
                     category: .centralBank, currency: .usd, impact: .nonFarm,
                     previousValue: String(format: "%.2f%%", rate),
-                    forecastValue: String(format: "%.2f%%", rate + Double.random(in: -0.25...0.25)),
+                    forecastValue: String(format: "%.2f%%", rate + stable(-0.25...0.25)),
                     description: "The Federal Reserve's decision on the federal funds rate. The single most important financial event.",
                     isConfirmed: true, eventSource: "Federal Reserve"
                 ))
@@ -416,8 +432,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: gdpDate, title: "GDP (QoQ, Annualized)",
                     category: .gdp, currency: .usd, impact: .high,
-                    previousValue: String(format: "%.1f%%", Double.random(in: 1.0...4.0)),
-                    forecastValue: String(format: "%.1f%%", Double.random(in: 1.0...4.0)),
+                    previousValue: String(format: "%.1f%%", stable(1.0...4.0)),
+                    forecastValue: String(format: "%.1f%%", stable(1.0...4.0)),
                     description: "Gross Domestic Product — the value of all goods and services produced in the US. Measures economic growth.",
                     isConfirmed: true, eventSource: "Bureau of Economic Analysis"
                 ))
@@ -429,8 +445,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: retailDate.addingTimeInterval(7 * 86400), title: "Retail Sales MoM",
                 category: .retail, currency: .usd, impact: .medium,
-                previousValue: String(format: "%.1f%%", Double.random(in: -0.3...1.0)),
-                forecastValue: String(format: "%.1f%%", Double.random(in: -0.3...1.0)),
+                previousValue: String(format: "%.1f%%", stable(-0.3...1.0)),
+                forecastValue: String(format: "%.1f%%", stable(-0.3...1.0)),
                 description: "Measures monthly changes in total retail sales. Key indicator of consumer spending.",
                 isConfirmed: true, eventSource: "Census Bureau"
             ))
@@ -441,8 +457,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: ismDate, title: "ISM Manufacturing PMI",
                 category: .manufacturing, currency: .usd, impact: .medium,
-                previousValue: String(format: "%.1f", Double.random(in: 45...55)),
-                forecastValue: String(format: "%.1f", Double.random(in: 45...55)),
+                previousValue: String(format: "%.1f", stable(45...55)),
+                forecastValue: String(format: "%.1f", stable(45...55)),
                 description: "National Association of Purchasing Managers index. Above 50 = expansion, below 50 = contraction.",
                 isConfirmed: true, eventSource: "Institute for Supply Management"
             ))
@@ -453,8 +469,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: servicesPmi.addingTimeInterval(2 * 86400), title: "ISM Services PMI",
                 category: .manufacturing, currency: .usd, impact: .medium,
-                previousValue: String(format: "%.1f", Double.random(in: 48...58)),
-                forecastValue: String(format: "%.1f", Double.random(in: 48...58)),
+                previousValue: String(format: "%.1f", stable(48...58)),
+                forecastValue: String(format: "%.1f", stable(48...58)),
                 description: "ISM Non-Manufacturing index. Measures activity in the services sector.",
                 isConfirmed: true, eventSource: "Institute for Supply Management"
             ))
@@ -464,11 +480,11 @@ final class EconomicCalendarService: ObservableObject {
         for weekOffset in 0..<12 {
             let claimsDate = nextWeekday(5, at: 13, minute: 30).addingTimeInterval(TimeInterval(weekOffset * 7 * 86400))
             if claimsDate > now {
-                let claims = Int.random(in: 200_000...350_000)
+                let claims = stableInt(200_000...350_000)
                 events.append(EconomicEvent(
                     date: claimsDate, title: "Initial Jobless Claims",
                     category: .employment, currency: .usd, impact: .medium,
-                    previousValue: "\(Int(Double(claims) * Double.random(in: 0.95...1.05)))K",
+                    previousValue: "\(Int(Double(claims) * stable(0.95...1.05)))K",
                     forecastValue: "\(claims / 1000)K",
                     description: "Weekly number of people filing for unemployment benefits for the first time.",
                     isConfirmed: true, eventSource: "Department of Labor"
@@ -481,8 +497,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: durableDate, title: "Durable Goods Orders MoM",
                 category: .manufacturing, currency: .usd, impact: .medium,
-                previousValue: String(format: "%.1f%%", Double.random(in: -2.0...4.0)),
-                forecastValue: String(format: "%.1f%%", Double.random(in: -2.0...4.0)),
+                previousValue: String(format: "%.1f%%", stable(-2.0...4.0)),
+                forecastValue: String(format: "%.1f%%", stable(-2.0...4.0)),
                 description: "Measures orders of manufactured goods meant to last 3+ years. Indicator of manufacturing health.",
                 isConfirmed: true, eventSource: "Census Bureau"
             ))
@@ -493,8 +509,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: confidenceDate, title: "Consumer Confidence Index",
                 category: .confidence, currency: .usd, impact: .medium,
-                previousValue: String(format: "%.1f", Double.random(in: 95...115)),
-                forecastValue: String(format: "%.1f", Double.random(in: 95...115)),
+                previousValue: String(format: "%.1f", stable(95...115)),
+                forecastValue: String(format: "%.1f", stable(95...115)),
                 description: "Conference Board survey measuring consumer sentiment about the economy.",
                 isConfirmed: true, eventSource: "Conference Board"
             ))
@@ -512,8 +528,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: ecbDate, title: "ECB Interest Rate Decision",
                     category: .centralBank, currency: .eur, impact: .high,
-                    previousValue: String(format: "%.2f%%", Double.random(in: 3.0...5.0)),
-                    forecastValue: String(format: "%.2f%%", Double.random(in: 3.0...5.0)),
+                    previousValue: String(format: "%.2f%%", stable(3.0...5.0)),
+                    forecastValue: String(format: "%.2f%%", stable(3.0...5.0)),
                     description: "European Central Bank's decision on key interest rates for the Eurozone.",
                     isConfirmed: true, eventSource: "European Central Bank"
                 ))
@@ -531,8 +547,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: boeDate, title: "BOE Interest Rate Decision",
                     category: .centralBank, currency: .gbp, impact: .high,
-                    previousValue: String(format: "%.2f%%", Double.random(in: 4.0...6.0)),
-                    forecastValue: String(format: "%.2f%%", Double.random(in: 4.0...6.0)),
+                    previousValue: String(format: "%.2f%%", stable(4.0...6.0)),
+                    forecastValue: String(format: "%.2f%%", stable(4.0...6.0)),
                     description: "Bank of England's decision on the Bank Rate. Affects GBP significantly.",
                     isConfirmed: true, eventSource: "Bank of England"
                 ))
@@ -549,8 +565,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: bojDate, title: "BOJ Interest Rate Decision",
                     category: .centralBank, currency: .jpy, impact: .high,
-                    previousValue: String(format: "%.2f%%", Double.random(in: -0.1...0.5)),
-                    forecastValue: String(format: "%.2f%%", Double.random(in: -0.1...0.5)),
+                    previousValue: String(format: "%.2f%%", stable(-0.1...0.5)),
+                    forecastValue: String(format: "%.2f%%", stable(-0.1...0.5)),
                     description: "Bank of Japan's monetary policy decision. Affects JPY and Nikkei.",
                     isConfirmed: true, eventSource: "Bank of Japan"
                 ))
@@ -567,8 +583,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: ukGdpDate, title: "UK GDP MoM",
                     category: .gdp, currency: .gbp, impact: .high,
-                    previousValue: String(format: "%.1f%%", Double.random(in: -0.2...0.8)),
-                    forecastValue: String(format: "%.1f%%", Double.random(in: -0.2...0.8)),
+                    previousValue: String(format: "%.1f%%", stable(-0.2...0.8)),
+                    forecastValue: String(format: "%.1f%%", stable(-0.2...0.8)),
                     description: "UK Gross Domestic Product monthly estimate. Measures economic growth.",
                     isConfirmed: true, eventSource: "Office for National Statistics"
                 ))
@@ -585,8 +601,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: ukCpiDate, title: "UK CPI YoY",
                     category: .inflation, currency: .gbp, impact: .high,
-                    previousValue: String(format: "%.1f%%", Double.random(in: 2.0...5.0)),
-                    forecastValue: String(format: "%.1f%%", Double.random(in: 2.0...5.0)),
+                    previousValue: String(format: "%.1f%%", stable(2.0...5.0)),
+                    forecastValue: String(format: "%.1f%%", stable(2.0...5.0)),
                     description: "UK Consumer Price Index year-over-year change. Key inflation indicator.",
                     isConfirmed: true, eventSource: "Office for National Statistics"
                 ))
@@ -603,8 +619,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: ezCpiDate, title: "Eurozone CPI YoY",
                     category: .inflation, currency: .eur, impact: .high,
-                    previousValue: String(format: "%.1f%%", Double.random(in: 2.0...4.0)),
-                    forecastValue: String(format: "%.1f%%", Double.random(in: 2.0...4.0)),
+                    previousValue: String(format: "%.1f%%", stable(2.0...4.0)),
+                    forecastValue: String(format: "%.1f%%", stable(2.0...4.0)),
                     description: "Eurozone Consumer Price Index year-over-year. ECB's primary inflation gauge.",
                     isConfirmed: true, eventSource: "Eurostat"
                 ))
@@ -621,8 +637,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: caCpiDate, title: "Canada CPI MoM",
                     category: .inflation, currency: .cad, impact: .high,
-                    previousValue: String(format: "%.1f%%", Double.random(in: 0.1...0.7)),
-                    forecastValue: String(format: "%.1f%%", Double.random(in: 0.1...0.7)),
+                    previousValue: String(format: "%.1f%%", stable(0.1...0.7)),
+                    forecastValue: String(format: "%.1f%%", stable(0.1...0.7)),
                     description: "Canadian Consumer Price Index monthly change.",
                     isConfirmed: true, eventSource: "Statistics Canada"
                 ))
@@ -639,8 +655,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: rbaDate, title: "RBA Interest Rate Decision",
                     category: .centralBank, currency: .aud, impact: .high,
-                    previousValue: String(format: "%.2f%%", Double.random(in: 3.0...5.0)),
-                    forecastValue: String(format: "%.2f%%", Double.random(in: 3.0...5.0)),
+                    previousValue: String(format: "%.2f%%", stable(3.0...5.0)),
+                    forecastValue: String(format: "%.2f%%", stable(3.0...5.0)),
                     description: "Reserve Bank of Australia's cash rate decision.",
                     isConfirmed: true, eventSource: "Reserve Bank of Australia"
                 ))
@@ -657,8 +673,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: rbnzDate, title: "RBNZ Interest Rate Decision",
                     category: .centralBank, currency: .nzd, impact: .high,
-                    previousValue: String(format: "%.2f%%", Double.random(in: 3.0...6.0)),
-                    forecastValue: String(format: "%.2f%%", Double.random(in: 3.0...6.0)),
+                    previousValue: String(format: "%.2f%%", stable(3.0...6.0)),
+                    forecastValue: String(format: "%.2f%%", stable(3.0...6.0)),
                     description: "Reserve Bank of New Zealand's Official Cash Rate decision.",
                     isConfirmed: true, eventSource: "Reserve Bank of New Zealand"
                 ))
@@ -670,8 +686,8 @@ final class EconomicCalendarService: ObservableObject {
             events.append(EconomicEvent(
                 date: cnGdp, title: "China GDP QoQ",
                 category: .gdp, currency: .cny, impact: .high,
-                previousValue: String(format: "%.1f%%", Double.random(in: 4.0...6.0)),
-                forecastValue: String(format: "%.1f%%", Double.random(in: 4.0...6.0)),
+                previousValue: String(format: "%.1f%%", stable(4.0...6.0)),
+                forecastValue: String(format: "%.1f%%", stable(4.0...6.0)),
                 description: "China's quarterly GDP growth. Major impact on global risk sentiment.",
                 isConfirmed: true, eventSource: "National Bureau of Statistics of China"
             ))
@@ -684,8 +700,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: oilDate, title: "EIA Crude Oil Inventories",
                     category: .energy, currency: .usd, impact: .medium,
-                    previousValue: "\(Int.random(in: -5_000_000...2_000_000)) barrels",
-                    forecastValue: "\(Int.random(in: -3_000_000...3_000_000)) barrels",
+                    previousValue: "\(stableInt(-5_000_000...2_000_000)) barrels",
+                    forecastValue: "\(stableInt(-3_000_000...3_000_000)) barrels",
                     description: "Weekly change in US commercial crude oil inventories. Affects oil prices and energy sector.",
                     isConfirmed: true, eventSource: "Energy Information Administration"
                 ))
@@ -699,8 +715,8 @@ final class EconomicCalendarService: ObservableObject {
                 events.append(EconomicEvent(
                     date: auctionDate, title: "US 10-Year Treasury Note Auction",
                     category: .auction, currency: .usd, impact: .medium,
-                    previousValue: "\(String(format: "%.2f", Double.random(in: 3.5...5.5)))%", 
-                    forecastValue: "\(String(format: "%.2f", Double.random(in: 3.5...5.5)))%",
+                    previousValue: "\(String(format: "%.2f", stable(3.5...5.5)))%",
+                    forecastValue: "\(String(format: "%.2f", stable(3.5...5.5)))%",
                     description: "US Treasury auction of 10-year notes. Results affect bond yields and USD.",
                     isConfirmed: true, eventSource: "US Treasury"
                 ))
@@ -709,7 +725,7 @@ final class EconomicCalendarService: ObservableObject {
 
         // SNAP earnings (example for volatility indices)
         for _ in 0..<3 {
-            let randomDay = Int.random(in: 5...25)
+            let randomDay = stableInt(5...25)
             if let earningsDate = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now),
                let adjusted = calendar.date(byAdding: .day, value: randomDay, to: earningsDate),
                adjusted > now {

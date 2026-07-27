@@ -5,6 +5,7 @@ DerivedData/
 !project.yml
 *.xcworkspace
 *.ipa
+*.log
 Payload/
 .DS_Store
 xcuserdata/

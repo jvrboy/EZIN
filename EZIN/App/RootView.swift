@@ -3,6 +3,7 @@ import SwiftUI
 /// Root shell — glass tab bar: Chart · Signals · Games · Chat · History · Bot · Tools · Settings.
 struct RootView: View {
     @EnvironmentObject var app: AppState
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab: AppTab = .chart
     @ObservedObject private var theme = ThemeStore.shared
 
@@ -20,7 +21,7 @@ struct RootView: View {
                     case .games:    GamesView()
                     case .chat:     ChatView()
                     case .history:  HistoryView()
-                    case .bot:      BotView()
+                    case .bot:      BotView(bot: app.bot)
                     case .tools:    ToolsHubView()
                     case .settings: SettingsView()
                     }
@@ -32,6 +33,18 @@ struct RootView: View {
             }
         }
         .font(theme.fontStyle.font)
+        .onChange(of: scenePhase) { phase in
+            switch phase {
+            case .active:
+                if app.settings.signalScanningEnabled { app.bot.startScanning() }
+            case .background, .inactive:
+                // iOS may suspend the process; do not burn battery pretending a
+                // foreground task is a guaranteed 24/7 worker.
+                app.bot.stopScanning()
+            @unknown default:
+                app.bot.stopScanning()
+            }
+        }
     }
 
     private var header: some View {
@@ -140,6 +153,13 @@ struct ToolsHubView: View {
                         NavigationLink(destination: NewsFeedView()) {
                             GlassNavRow(icon: "newspaper.fill", title: "Market News Feed",
                                         value: "\(NewsFeedService.shared.newsItems.count) articles")
+                        }.buttonStyle(.plain)
+                    }
+
+                    GlassSection(title: "Alerts") {
+                        NavigationLink(destination: AlertCenterView()) {
+                            GlassNavRow(icon: "bell.badge.fill", title: "Alert Center",
+                                        value: "\(AlertStore.shared.configurations.count) configured")
                         }.buttonStyle(.plain)
                     }
 

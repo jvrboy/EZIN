@@ -10,8 +10,8 @@ enum DocumentIntelligence {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let fm = FileStore.shared.fm
-        let direct = FileStore.shared.url(forRelative: trimmed)
-        if fm.fileExists(atPath: direct.path) { return direct }
+        if let direct = FileStore.shared.validatedURL(forRelative: trimmed),
+           fm.fileExists(atPath: direct.path) { return direct }
 
         let roots = [FileStore.shared.artifactsDir, FileStore.shared.projectsDir, FileStore.shared.chatDir, FileStore.shared.dataDir]
         let lower = trimmed.lowercased()

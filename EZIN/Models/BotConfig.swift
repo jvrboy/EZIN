@@ -10,8 +10,15 @@ enum StopMode: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-/// User-configurable settings for the perpetual scalper bot.
-/// The bot uses ALL strategies/indicators equally (no single default strategy).
+/// Execution mode is deliberately paper-first. Live trading must be explicitly armed
+/// in the Bot screen after the user has reviewed the risk settings.
+enum TradingExecutionMode: String, Codable, CaseIterable, Identifiable {
+    case paper = "Paper Trading"
+    case live = "Live Deriv"
+    var id: String { rawValue }
+}
+
+/// User-configurable settings for the paper-first signal bot.
 struct BotConfig: Codable {
     /// Fixed stake per trade (Deriv Multipliers "lot size").
     var fixedLotSize: Double = 1.0
@@ -31,7 +38,41 @@ struct BotConfig: Codable {
     /// Account currency.
     var currency: String = "USD"
 
-    static let storageKey = "botConfig.v1"
+    // Safety controls.
+    var executionMode: TradingExecutionMode = .paper
+    var dailyTradeLimit: Int = 10
+    var dailyLossLimit: Double = 0
+    var stalePriceSeconds: Double = 20
+    var requireOrderPreview: Bool = true
+
+    static let storageKey = "botConfig.v2"
+
+    private enum CodingKeys: String, CodingKey {
+        case fixedLotSize, multiplier, instruments, maxOpenPositions, stopMode,
+             stopLossValue, takeProfitValue, minConfidence, currency,
+             executionMode, dailyTradeLimit, dailyLossLimit, stalePriceSeconds,
+             requireOrderPreview
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        fixedLotSize = try c.decodeIfPresent(Double.self, forKey: .fixedLotSize) ?? 1.0
+        multiplier = try c.decodeIfPresent(Int.self, forKey: .multiplier) ?? 100
+        instruments = try c.decodeIfPresent([String].self, forKey: .instruments) ?? Array(DerivSymbols.volatility.prefix(3))
+        maxOpenPositions = try c.decodeIfPresent(Int.self, forKey: .maxOpenPositions) ?? 3
+        stopMode = try c.decodeIfPresent(StopMode.self, forKey: .stopMode) ?? .botChoice
+        stopLossValue = try c.decodeIfPresent(Double.self, forKey: .stopLossValue) ?? 50
+        takeProfitValue = try c.decodeIfPresent(Double.self, forKey: .takeProfitValue) ?? 100
+        minConfidence = try c.decodeIfPresent(Double.self, forKey: .minConfidence) ?? 0.7
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "USD"
+        executionMode = try c.decodeIfPresent(TradingExecutionMode.self, forKey: .executionMode) ?? .paper
+        dailyTradeLimit = try c.decodeIfPresent(Int.self, forKey: .dailyTradeLimit) ?? 10
+        dailyLossLimit = try c.decodeIfPresent(Double.self, forKey: .dailyLossLimit) ?? 0
+        stalePriceSeconds = try c.decodeIfPresent(Double.self, forKey: .stalePriceSeconds) ?? 20
+        requireOrderPreview = try c.decodeIfPresent(Bool.self, forKey: .requireOrderPreview) ?? true
+    }
 }
 
 /// Persisted bot configuration store.
@@ -43,6 +84,9 @@ final class BotConfigStore: ObservableObject {
     private init() {
         if let data = d.data(forKey: BotConfig.storageKey),
            let cfg = try? JSONDecoder().decode(BotConfig.self, from: data) {
+            config = cfg
+        } else if let legacy = d.data(forKey: "botConfig.v1"),
+                  let cfg = try? JSONDecoder().decode(BotConfig.self, from: legacy) {
             config = cfg
         } else {
             config = BotConfig()

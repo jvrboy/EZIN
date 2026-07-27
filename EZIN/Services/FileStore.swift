@@ -3,6 +3,20 @@ import Foundation
 /// Manages the app's own on-device directory tree. Because UIFileSharingEnabled and
 /// LSSupportsOpeningDocumentsInPlace are set, this directory is visible under
 /// "On My iPhone → EZIN" in the Files app. All app data is persisted here automatically.
+enum FileStoreError: Error, LocalizedError {
+    case unsupportedModelFormat
+    case modelTooLarge
+    case invalidRelativePath
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedModelFormat: return "Unsupported model format. Import GGUF, SafeTensors, or BIN."
+        case .modelTooLarge: return "The model exceeds the 16 GB import limit."
+        case .invalidRelativePath: return "The requested file path is outside the EZIN container."
+        }
+    }
+}
+
 final class FileStore {
     static let shared = FileStore()
     private init() {}
@@ -34,9 +48,17 @@ final class FileStore {
         }
     }
 
-    func write<T: Encodable>(_ value: T, to name: String, in dir: URL) {
+    @discardableResult
+    func write<T: Encodable>(_ value: T, to name: String, in dir: URL) -> Bool {
         let url = dir.appendingPathComponent(name)
-        if let data = try? JSONEncoder().encode(value) { try? data.write(to: url) }
+        guard let data = try? JSONEncoder().encode(value) else { return false }
+        do {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+            return true
+        } catch {
+            return false
+        }
     }
 
     func read<T: Decodable>(_ type: T.Type, from name: String, in dir: URL) -> T? {
@@ -50,12 +72,21 @@ final class FileStore {
     /// Absolute URL for a path relative to the app root (e.g. "Artifacts/song.wav").
     func url(forRelative rel: String) -> URL { root.appendingPathComponent(rel) }
 
+    /// Resolve only paths that remain inside the app container. Files and imported
+    /// JSON are user-visible, so never trust `../` components from persisted data.
+    func validatedURL(forRelative rel: String) -> URL? {
+        let base = root.standardizedFileURL.path
+        let candidate = root.appendingPathComponent(rel).standardizedFileURL
+        guard candidate.path == base || candidate.path.hasPrefix(base + "/") else { return nil }
+        return candidate
+    }
+
     /// Write raw data into a directory, returning the created file URL.
     @discardableResult
     func saveData(_ data: Data, name: String, in dir: URL) -> URL {
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent(name)
-        try? data.write(to: url)
+        try? data.write(to: url, options: .atomic)
         return url
     }
 
@@ -77,15 +108,26 @@ final class FileStore {
     }
 
     func fileSize(atRelative rel: String) -> Int64 {
-        let attrs = try? fm.attributesOfItem(atPath: url(forRelative: rel).path)
+        guard let safe = validatedURL(forRelative: rel) else { return 0 }
+        let attrs = try? fm.attributesOfItem(atPath: safe.path)
         return (attrs?[.size] as? NSNumber)?.int64Value ?? 0
     }
 
-    /// Copy an imported file (security-scoped) into the Models directory. No size limit.
+    /// Copy a supported model file (security-scoped) into the Models directory with a
+    /// bounded size so an accidental import cannot exhaust app storage.
     @discardableResult
     func importModel(from source: URL) throws -> LLMModel {
         let needsScope = source.startAccessingSecurityScopedResource()
         defer { if needsScope { source.stopAccessingSecurityScopedResource() } }
+
+        let ext = source.pathExtension.lowercased()
+        guard ["gguf", "safetensors", "bin"].contains(ext) else {
+            throw FileStoreError.unsupportedModelFormat
+        }
+        let sourceSize = (try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard sourceSize <= 16 * 1024 * 1024 * 1024 else {
+            throw FileStoreError.modelTooLarge
+        }
 
         let fileName = source.lastPathComponent
         let dest = modelsDir.appendingPathComponent(fileName)
@@ -94,7 +136,6 @@ final class FileStore {
 
         let attrs = try? fm.attributesOfItem(atPath: dest.path)
         let size = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
-        let ext = source.pathExtension.lowercased()
         return LLMModel(name: source.deletingPathExtension().lastPathComponent,
                         fileName: fileName,
                         relativePath: "Models/\(fileName)",
@@ -104,15 +145,22 @@ final class FileStore {
     }
 
     func deleteModel(_ model: LLMModel) {
-        let url = root.appendingPathComponent(model.relativePath)
+        guard let url = validatedURL(forRelative: model.relativePath) else { return }
         try? fm.removeItem(at: url)
     }
 
     // MARK: - Raw data helpers
 
-    func writeRaw(_ data: Data, to name: String, in dir: URL) {
+    @discardableResult
+    func writeRaw(_ data: Data, to name: String, in dir: URL) -> Bool {
         let url = dir.appendingPathComponent(name)
-        try? data.write(to: url)
+        do {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+            return true
+        } catch {
+            return false
+        }
     }
 
     func readRaw(from name: String, in dir: URL) -> Data? {

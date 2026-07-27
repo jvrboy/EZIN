@@ -149,6 +149,7 @@ struct ToolRegistry {
         case "news_by_symbol":         return newsBySymbol(args: args)
         case "news_add":               return newsAdd(args: args)
         case "news_latest":            return newsLatest(args: args)
+        case "news_refresh":            return await newsRefresh()
         case "dashboard_summary":      return dashboardSummary()
 
         // AI Chat Pipeline — structured reasoning, thinking, and processing.
@@ -233,7 +234,8 @@ struct ToolRegistry {
 
     private func instruments(_ args: [String: Any]) -> String {
         let q = str(args, "query").lowercased()
-        let matches = DerivSymbols.all.filter { q.isEmpty || DerivSymbols.display($0).lowercased().contains(q) || $0.lowercased().contains(q) }
+        let catalog = Array(Set(DerivSymbols.all + app.deriv.availableSymbols)).sorted()
+        let matches = catalog.filter { q.isEmpty || DerivSymbols.display($0).lowercased().contains(q) || $0.lowercased().contains(q) }
         guard !matches.isEmpty else { return "No instruments match '\(q)'." }
         return matches.prefix(25).map { "\(DerivSymbols.display($0)) [\($0)]" }.joined(separator: "\n")
     }
@@ -255,10 +257,25 @@ struct ToolRegistry {
         guard app.deriv.authorized else {
             return "Not authorized — add your Deriv API token in Settings to place real trades."
         }
+        guard app.botConfig.config.executionMode == .live else {
+            return "Live chat trading is blocked while the bot is in paper mode. Select Live Deriv and arm live trading in Bot settings first."
+        }
+        guard app.bot.liveTradingArmed else {
+            return "Live chat trading is disarmed. Arm live trading in Bot settings, then request a preview again."
+        }
         let sym = resolveSymbol(str(args, "symbol"))
+        guard DerivSymbols.all.contains(sym) else { return "Unknown symbol '\(str(args, "symbol"))'." }
         let dir = str(args, "direction").lowercased()
         let up = dir.contains("buy") || dir.contains("up") || dir.contains("long")
         let stake = (args["stake"] as? Double) ?? Double(str(args, "stake")) ?? app.botConfig.config.fixedLotSize
+        guard stake.isFinite, stake > 0 else { return "Stake must be a positive finite number." }
+        if app.deriv.balance > 0, stake > app.deriv.balance {
+            return "Stake \(stake) exceeds the current account balance of \(app.deriv.balance)."
+        }
+        let confirmed = (args["confirm"] as? Bool) == true || str(args, "confirm").lowercased() == "true"
+        guard confirmed else {
+            return "Trade preview only: \(up ? "BUY" : "SELL") \(DerivSymbols.display(sym)) for \(stake) \(app.deriv.currency). Repeat place_trade with confirm=true to submit the real order."
+        }
         do {
             let prop = try await app.deriv.proposal(symbol: sym, up: up, stake: stake,
                                                     multiplier: app.botConfig.config.multiplier,
@@ -798,8 +815,8 @@ struct ToolRegistry {
 
     private func webScrape(_ args: [String: Any]) async -> String {
         let raw = str(args, "url")
-        guard let url = URL(string: raw), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
-            return "Provide a valid http(s) URL."
+        guard let url = URL(string: raw), url.scheme?.lowercased() == "https" else {
+            return "Provide a valid HTTPS URL. Plain HTTP web scraping is disabled for safety."
         }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
@@ -1227,6 +1244,11 @@ struct ToolRegistry {
         Open the GAMES tab to play them inside the app.
         """
     }
+private func newsRefresh() async -> String {
+    await NewsFeedService.shared.refreshLive()
+    return NewsFeedService.shared.lastRefreshMessage ?? "Live news refresh completed."
+}
+
 private func newsList(args: [String: Any]) -> String {
     let feed = NewsFeedService.shared
     let limit = min((args["limit"] as? Int) ?? 10, 30)

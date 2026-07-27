@@ -66,6 +66,16 @@ struct SettingsView: View {
                                 GlassNavRow(icon: "newspaper.fill", title: "Market News Feed",
                                             value: "\(NewsFeedService.shared.newsItems.count) articles")
                             }.buttonStyle(.plain)
+                            Divider().overlay(Color.white.opacity(0.08))
+                            NavigationLink { PerformanceAnalyticsView() } label: {
+                                GlassNavRow(icon: "chart.bar.xaxis", title: "Performance Analytics",
+                                            value: "Signals, expectancy, export")
+                            }.buttonStyle(.plain)
+                            Divider().overlay(Color.white.opacity(0.08))
+                            NavigationLink { AlertCenterView() } label: {
+                                GlassNavRow(icon: "bell.badge.fill", title: "Alert Center",
+                                            value: "\(AlertStore.shared.unacknowledgedEvents.count) unacknowledged")
+                            }.buttonStyle(.plain)
                         }
 
                         GlassSection(title: "Configuration") {
@@ -99,6 +109,12 @@ struct SettingsView: View {
                             GlassToggle(label: "Push alerts", desc: "Notify when a new signal fires", isOn: $settings.pushAlerts)
                         }
 
+                        GlassSection(title: "Resource usage") {
+                            GlassToggle(label: "Signal scanning", desc: "Run multi-timeframe scans while the app is active", isOn: $settings.signalScanningEnabled)
+                            Text("Scanning uses network, CPU, and battery. iOS does not guarantee continuous background execution.")
+                                .font(.caption2).foregroundStyle(.white.opacity(0.4))
+                        }
+
                         GlassSection(title: "Storage") {
                             HStack {
                                 Image(systemName: "folder.fill").foregroundStyle(Glass.accent2).frame(width: 24)
@@ -110,7 +126,7 @@ struct SettingsView: View {
                             }.padding(.vertical, 6)
                         }
 
-                        Text("EZIN v1.2.0 · Deriv perpetual scalper")
+                        Text("EZIN v1.7.0 · paper-first Deriv signal intelligence")
                             .font(.caption2).foregroundStyle(.white.opacity(0.3)).padding(.top, 4)
                     }
                     .padding(16).padding(.bottom, 24)

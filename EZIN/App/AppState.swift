@@ -24,6 +24,7 @@ final class AppState: ObservableObject {
     @Published var signals: [TradingSignal] = []
     @Published var history: [DerivClosedTrade] = []
     @Published var connectionState: DerivConnectionState = .disconnected
+    @Published var availableSymbols: [String] = DerivSymbols.all
     @Published var booted = false
     @Published var lastAutoRefreshAt: Date?
 
@@ -36,6 +37,7 @@ final class AppState: ObservableObject {
         booted = true
 
         deriv.$connectionState.receive(on: RunLoop.main).assign(to: &$connectionState)
+        deriv.$availableSymbols.receive(on: RunLoop.main).assign(to: &$availableSymbols)
 
         // Push notifications: request authorization on first boot.
         Task { await PushNotificationManager.shared.requestAuthorization() }
@@ -50,9 +52,14 @@ final class AppState: ObservableObject {
                     let price = self?.deriv.prices[signal.symbol] ?? signal.entry
                     self?.signalPerformance.track(signal, currentPrice: price)
                 }
-                // Notify for high-confidence signals.
-                for signal in signals where signal.confidence >= 75 {
-                    PushNotificationManager.shared.notifySignalGenerated(signal)
+                // Notify both the system push layer and user-defined signal alerts.
+                for signal in signals {
+                    AlertEvaluator.shared.notifySignalGenerated(
+                        symbol: signal.symbol, type: signal.type, confidence: signal.confidence
+                    )
+                    if signal.confidence >= 75 {
+                        PushNotificationManager.shared.notifySignalGenerated(signal)
+                    }
                 }
             }
         }
@@ -80,8 +87,17 @@ final class AppState: ObservableObject {
             .store(in: &cancellables)
 
         applyDisabledAgents()
+        settings.$signalScanningEnabled
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                if enabled { self.bot.startScanning() } else { self.bot.stopScanning() }
+            }
+            .store(in: &cancellables)
+        AlertEvaluator.shared.configure(deriv: deriv)
+        AlertEvaluator.shared.start()
         await connect()
-        bot.startScanning()
+        if settings.signalScanningEnabled { bot.startScanning() }
         startAutoRefresh()
 
         // Refresh real closed-trade history periodically.
@@ -125,6 +141,7 @@ final class AppState: ObservableObject {
         let appID = settings.useCustomDeriv ? settings.derivAppID : DerivClient.defaultAppID
         let token = credentials.value(for: .derivToken)
         await deriv.connect(appID: appID, token: token)
+        _ = try? await deriv.refreshActiveSymbols()
     }
 
     func refreshHistory() async {

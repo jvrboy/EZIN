@@ -280,8 +280,8 @@ enum BacktestingFramework {
     ///   - costModel: Commission/slippage model
     ///   - initialCapital: Starting capital (for equity curve)
     /// - Returns: Detailed backtest results
-    static func backtest(
-        strategy: inout some BacktestStrategy,
+    static func backtest<S: BacktestStrategy>(
+        strategy: inout S,
         symbol: String,
         candles: [Candle],
         costModel: CostModel = .default,
@@ -445,8 +445,8 @@ enum BacktestingFramework {
     // MARK: - Walk-Forward Analysis
 
     /// Run a walk-forward analysis across multiple windows.
-    static func walkForward(
-        strategyType: (BacktestingStrategyParameters) -> some BacktestStrategy,
+    static func walkForward<S: BacktestStrategy>(
+        strategyType: (BacktestingStrategyParameters) -> S,
         symbol: String,
         candles: [Candle],
         windows: Int = 3,
@@ -540,8 +540,8 @@ enum BacktestingFramework {
     // MARK: - Genetic Parameter Optimization
 
     /// Optimize strategy parameters using a simple genetic algorithm.
-    static func optimizeGenetic(
-        strategyType: (BacktestingStrategyParameters) -> some BacktestStrategy,
+    static func optimizeGenetic<S: BacktestStrategy>(
+        strategyType: (BacktestingStrategyParameters) -> S,
         candles: [Candle],
         generations: Int = 20,
         population: Int = 30,
@@ -614,8 +614,8 @@ enum BacktestingFramework {
     // MARK: - Comparison Backtest (multiple strategies)
 
     /// Run the same backtest across multiple strategies and compare results.
-    static func compareStrategies(
-        strategies: [some BacktestStrategy],
+    static func compareStrategies<S: BacktestStrategy>(
+        strategies: [S],
         symbol: String,
         candles: [Candle],
         costModel: CostModel = .default
@@ -733,9 +733,9 @@ enum BacktestingFramework {
 
     // MARK: - Private Helpers
 
-    private static func fitness(
+    private static func fitness<S: BacktestStrategy>(
         params: BacktestingStrategyParameters,
-        strategyType: (BacktestingStrategyParameters) -> some BacktestStrategy,
+        strategyType: (BacktestingStrategyParameters) -> S,
         candles: [Candle],
         costModel: CostModel
     ) -> Double {
@@ -754,6 +754,6 @@ enum BacktestingFramework {
     }
 
     static func fmt(_ x: Double, _ places: Int = 2) -> String {
-        String(format: "%%.\(places)f", x)
+        String(format: "%.\(places)f", x)
     }
 }

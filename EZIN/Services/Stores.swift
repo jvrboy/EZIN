@@ -20,6 +20,10 @@ final class SettingsStore: ObservableObject {
         didSet { d.set(pushAlerts, forKey: "pushAlerts") }
     }
 
+    @Published var signalScanningEnabled: Bool = UserDefaults.standard.object(forKey: "signalScanningEnabled") as? Bool ?? true {
+        didSet { d.set(signalScanningEnabled, forKey: "signalScanningEnabled") }
+    }
+
     /// Agent names disabled by the user in Chat → Specialist Agents.
     var disabledAgentNames: [String] {
         get { d.array(forKey: "disabledAgentNames") as? [String] ?? [] }
@@ -57,10 +61,20 @@ final class LLMModelStore: ObservableObject {
     func load() {
         models = FileStore.shared.read([LLMModel].self, from: file, in: FileStore.shared.dataDir) ?? []
     }
-    func add(_ model: LLMModel) { models.insert(model, at: 0); save() }
+    func add(_ model: LLMModel) {
+        // Re-importing the same filename replaces its metadata instead of leaving
+        // duplicate selectable entries pointing at one file.
+        models.removeAll { $0.fileName == model.fileName }
+        models.insert(model, at: 0)
+        save()
+    }
     func remove(_ model: LLMModel) {
         FileStore.shared.deleteModel(model)
-        models.removeAll { $0.id == model.id }; save()
+        models.removeAll { $0.id == model.id }
+        if ChatConfigStore.shared.config.selectedLocalModelID == model.id {
+            ChatConfigStore.shared.config.selectedLocalModelID = nil
+        }
+        save()
     }
     private func save() { FileStore.shared.write(models, to: file, in: FileStore.shared.dataDir) }
 }

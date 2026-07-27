@@ -1,17 +1,35 @@
 import Foundation
 import Combine
 
-/// Perpetual scalper trading bot. Runs 24/7 across the user's chosen instruments,
-/// uses ALL agents/indicators (no single strategy), and — when the bot is switched ON
-/// and the account is authorized — places REAL Deriv Multiplier trades that respect the
-/// user's BotConfig (stake, instruments, max open positions, stops).
+/// Paper-first multi-timeframe signal bot. It scans the user's chosen instruments and
+/// uses the full council/indicator stack. Paper positions are the default; live Deriv
+/// orders require an authorized account, live mode, explicit arming, and the configured
+/// risk limits. iOS background execution is best-effort rather than guaranteed 24/7.
 ///
-/// Signal scanning runs continuously to feed the Signals tab; trade execution only
-/// happens while the bot is running.
+/// Signal scanning feeds the Signals tab; execution only happens while the bot is running.
 ///
 /// Isolated to the main actor so that `running`, `lastVotes` and `placing` are never
 /// mutated concurrently from the background scan `Task` (they previously raced). All
 /// network calls are `await`ed and suspend without blocking the UI.
+struct PaperPosition: Identifiable {
+    let id = UUID()
+    let symbol: String
+    let isBuy: Bool
+    let entryPrice: Double
+    let stopLoss: Double
+    let takeProfit: Double
+    let openedAt: Date
+    let pnlFactor: Double
+    var lastPrice: Double
+    var realizedPnL: Double?
+    var closedAt: Date?
+
+    var isOpen: Bool { realizedPnL == nil }
+    var floatingPnL: Double {
+        (isBuy ? lastPrice - entryPrice : entryPrice - lastPrice) * pnlFactor
+    }
+}
+
 @MainActor
 final class BotRuntime: ObservableObject {
     private let deriv: DerivClient
@@ -20,6 +38,11 @@ final class BotRuntime: ObservableObject {
 
     @Published var running = false
     @Published var sessionLabel = TradingSession.label()
+    @Published private(set) var paperPositions: [PaperPosition] = []
+    @Published private(set) var dailyTradeCount = 0
+    @Published private(set) var dailyPnL = 0.0
+    @Published private(set) var liveTradingArmed = false
+    private var sessionDay = Calendar.current.startOfDay(for: Date())
     private var scanTask: Task<Void, Never>?
 
     var onSignals: (([TradingSignal]) -> Void)?
@@ -38,6 +61,25 @@ final class BotRuntime: ObservableObject {
     }
 
     var config: BotConfig { configStore.config }
+
+    var paperOpenPnL: Double {
+        paperPositions.filter(\.isOpen).reduce(0) { $0 + $1.floatingPnL }
+    }
+
+    func armLiveTrading() {
+        guard config.executionMode == .live, deriv.authorized else { return }
+        liveTradingArmed = true
+    }
+
+    func disarmLiveTrading() {
+        liveTradingArmed = false
+    }
+
+    func resetRiskSession() {
+        sessionDay = Calendar.current.startOfDay(for: Date())
+        dailyTradeCount = 0
+        dailyPnL = 0
+    }
 
     /// Always-on signal scanning (does NOT place trades).
     /// Cadence is session-aware: synthetics are hunted 24/7; FX/crypto scan faster in
@@ -79,19 +121,29 @@ final class BotRuntime: ObservableObject {
     /// Switch the trading bot ON — begins executing trades on scans.
     func startBot() {
         running = true
+        if config.executionMode == .live {
+            liveTradingArmed = !config.requireOrderPreview && deriv.authorized
+        }
         for s in config.instruments { deriv.subscribeTicks(s) }
     }
 
-    func stopBot() { running = false }
+    func stopBot() {
+        running = false
+        liveTradingArmed = false
+    }
 
     // MARK: - Core scan
 
     private func scan() async {
+        if config.executionMode != .live || !deriv.authorized { liveTradingArmed = false }
+        rotateRiskSessionIfNeeded()
+        updatePaperPositions()
         let universe = scanSymbolUniverse()
         let batch = nextBatch(from: universe)
         guard !batch.isEmpty else { onSignals?(sortedLiveSignals()); return }
 
         var newSignals: [TradingSignal] = []
+        for symbol in batch { deriv.subscribeTicks(symbol) }
         for symbol in batch {
             let asset = DerivSymbols.assetClass(symbol)
             let pol = TradingSession.policy(for: asset)
@@ -105,7 +157,9 @@ final class BotRuntime: ObservableObject {
             newSignals.append(sig)
 
             // Execute only when bot is ON, authorized, and the signal clears the user's gate.
-            if running, deriv.authorized, sig.confidence >= config.minConfidence * 100 {
+            if running,
+               (config.executionMode == .paper || deriv.authorized),
+               sig.confidence >= config.minConfidence * 100 {
                 var md = MarketData(symbol: symbol, assetClass: asset, timeframe: pol.baseTimeframe, candles: [])
                 md.currentPrice = report.verdict.entry
                 await maybeTrade(signal: sig, md: md)
@@ -131,6 +185,33 @@ final class BotRuntime: ObservableObject {
     // MARK: - Trade execution
 
     private func maybeTrade(signal: TradingSignal, md: MarketData) async {
+        guard config.dailyTradeLimit <= 0 || dailyTradeCount < config.dailyTradeLimit else { return }
+        let floatingRisk = config.executionMode == .paper ? paperOpenPnL : deriv.totalOpenProfit
+        guard config.dailyLossLimit <= 0 || dailyPnL + floatingRisk > -config.dailyLossLimit else { return }
+
+        let (sl, tp) = computeStops(signal: signal, md: md)
+        guard sl != nil, tp != nil else { return }
+
+        if config.executionMode == .paper {
+            guard paperPositions.filter(\.isOpen).count < config.maxOpenPositions else { return }
+            guard !paperPositions.contains(where: { $0.symbol == md.symbol && $0.isOpen }) else { return }
+            let factor = config.fixedLotSize * Double(config.multiplier) / max(signal.entry, 0.000001)
+            let position = PaperPosition(
+                symbol: md.symbol, isBuy: signal.isBuy, entryPrice: signal.entry,
+                stopLoss: signal.stopLoss, takeProfit: signal.takeProfit,
+                openedAt: Date(), pnlFactor: factor, lastPrice: signal.entry,
+                realizedPnL: nil, closedAt: nil
+            )
+            paperPositions.append(position)
+            dailyTradeCount += 1
+            return
+        }
+
+        guard liveTradingArmed else { return }
+        if config.stalePriceSeconds > 0 {
+            guard let updated = deriv.lastPriceUpdateAt[md.symbol],
+                  Date().timeIntervalSince(updated) <= config.stalePriceSeconds else { return }
+        }
         // Respect max open positions.
         guard deriv.openPositionCount < config.maxOpenPositions else { return }
         // One position per symbol.
@@ -139,16 +220,46 @@ final class BotRuntime: ObservableObject {
         placing.insert(md.symbol)
         defer { placing.remove(md.symbol) }
 
-        let (sl, tp) = computeStops(signal: signal, md: md)
         do {
             let prop = try await deriv.proposal(
                 symbol: md.symbol, up: signal.isBuy,
                 stake: config.fixedLotSize, multiplier: config.multiplier,
                 currency: deriv.currency, stopLoss: sl, takeProfit: tp)
             _ = try await deriv.buy(proposalId: prop.id, price: prop.price)
+            dailyTradeCount += 1
         } catch {
             // Already on the main actor — surface the failure directly.
             deriv.lastError = error.localizedDescription
+        }
+    }
+
+    private func rotateRiskSessionIfNeeded() {
+        let today = Calendar.current.startOfDay(for: Date())
+        if today != sessionDay {
+            sessionDay = today
+            dailyTradeCount = 0
+            dailyPnL = 0
+        }
+    }
+
+    private func updatePaperPositions() {
+        guard !paperPositions.isEmpty else { return }
+        for i in paperPositions.indices where paperPositions[i].isOpen {
+            guard let price = deriv.prices[paperPositions[i].symbol] else { continue }
+            var position = paperPositions[i]
+            position.lastPrice = price
+            let hitTP = position.isBuy ? price >= position.takeProfit : price <= position.takeProfit
+            let hitSL = position.isBuy ? price <= position.stopLoss : price >= position.stopLoss
+            let expired = Date().timeIntervalSince(position.openedAt) >= 30 * 60
+            if hitTP || hitSL || expired {
+                position.realizedPnL = position.floatingPnL
+                position.closedAt = Date()
+                dailyPnL += position.floatingPnL
+            }
+            paperPositions[i] = position
+        }
+        if paperPositions.count > 500 {
+            paperPositions = paperPositions.filter(\.isOpen) + Array(paperPositions.filter { !$0.isOpen }.suffix(500))
         }
     }
 

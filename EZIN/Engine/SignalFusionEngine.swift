@@ -446,6 +446,6 @@ enum SignalFusionEngine {
     }
 
     private static func fmt(_ x: Double, _ places: Int = 3) -> String {
-        String(format: "%%.\(places)f", x)
+        String(format: "%.\(places)f", x)
     }
 }

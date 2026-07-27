@@ -68,7 +68,7 @@ enum BackendToolExpansion {
         Priority: \(priority)
         Deterministic confidence seed: \(confidence)%
 
-        Suggested next step: run `analyze`, `master_confluence`, or `risk_plan` for trade-grade confirmation before acting.
+        This is a virtual capability descriptor, not an executed diagnostic and not a prediction. Run `analyze`, `master_confluence`, or `risk_plan` for real on-device inputs before acting.
         """
     }
 

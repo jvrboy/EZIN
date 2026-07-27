@@ -73,7 +73,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
 }
 
 /// App-wide typography choices. Uses system font designs so no bundled font files
-/// are required and startup remains safe on every iOS 15+ device.
+/// are required and startup remains safe on every supported iOS 16+ device.
 enum AppFontStyle: String, CaseIterable, Identifiable {
     case rounded, defaultSystem, serif, monospaced, condensed, heavy, elegant, traderMono, neonDisplay, compact
     var id: String { rawValue }

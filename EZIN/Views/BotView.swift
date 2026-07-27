@@ -4,10 +4,11 @@ import SwiftUI
 /// All configuration lives in Settings → Trading Bot.
 struct BotView: View {
     @EnvironmentObject var app: AppState
+    @ObservedObject var bot: BotRuntime
     @State private var pulse = false
     @State private var rotate = false
 
-    private var running: Bool { app.bot.running }
+    private var running: Bool { bot.running }
 
     var body: some View {
         VStack {
@@ -42,10 +43,21 @@ struct BotView: View {
             }
             .frame(height: 300)
 
-            Text(running ? "Bot is trading" : "Bot is idle")
+            Text(running ? (bot.config.executionMode == .paper ? "Paper bot is running" : "Live bot is running") : "Bot is idle")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.9))
                 .padding(.top, 4)
+
+            if bot.config.executionMode == .paper {
+                Text("PAPER MODE · no orders leave this device")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Glass.accent2)
+                    .padding(.top, 4)
+                if !bot.paperPositions.filter(\.isOpen).isEmpty {
+                    Text("\(bot.paperPositions.filter(\.isOpen).count) simulated positions · P&L \(String(format: "%+.4f", bot.paperOpenPnL))")
+                        .font(.caption2).foregroundStyle(.white.opacity(0.55))
+                }
+            }
 
             // Compact live readout (real account data)
             if app.deriv.authorized {
@@ -66,7 +78,7 @@ struct BotView: View {
             // Liquid glass Start / Stop button
             Button {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    if running { app.bot.stopBot() } else { app.bot.startBot() }
+                    if running { bot.stopBot() } else { bot.startBot() }
                     pulse.toggle(); rotate.toggle()
                 }
             } label: {

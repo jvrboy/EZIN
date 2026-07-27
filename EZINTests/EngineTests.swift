@@ -35,13 +35,13 @@ final class SignalEngineTests: XCTestCase {
         var candles: [Candle] = []
         var price = 100.0
         for i in 0..<50 {
-            price += Double.random(in: 0.1...0.5)
-            let o = price - Double.random(in: 0...0.3)
+            price += 0.25 + Double(i % 3) * 0.05
+            let o = price - 0.18
             let c = price
-            let h = max(o, c) + Double.random(in: 0...0.2)
-            let l = min(o, c) - Double.random(in: 0...0.2)
+            let h = c + 0.12
+            let l = o - 0.12
             candles.append(Candle(timestamp: Date().addingTimeInterval(-Double(50 - i) * 300),
-                                  open: o, high: h, low: l, close: c, volume: Double.random(in: 50...200)))
+                                  open: o, high: h, low: l, close: c, volume: 100 + Double(i % 5) * 10))
         }
         var md = MarketData(symbol: "R_100", assetClass: .synthetic, timeframe: .m5, candles: candles)
         md.currentPrice = price

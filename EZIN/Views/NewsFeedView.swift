@@ -13,6 +13,24 @@ struct NewsFeedView: View {
                 categoryScroll
 
                 // News List
+                if let message = feed.lastRefreshMessage {
+                    Text(message)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.5))
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 6)
+                }
+                if !feed.newsItems.isEmpty && feed.newsItems.contains(where: { !$0.isVerifiedSource }) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text("Some articles are demo or assistant-generated commentary and have no source URL. Do not use them as live market data.")
+                            .multilineTextAlignment(.leading)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.yellow.opacity(0.9))
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                }
                 if showBookmarks {
                     bookmarksList
                 } else {
@@ -117,16 +135,7 @@ struct NewsFeedView: View {
                     .padding(.bottom, 24)
                 }
                 .refreshable {
-                    // Simulate a refresh — add a fresh generated item
-                    let headlines = [
-                        "Breaking: Major Economic Data Released — Markets React",
-                        "Central Bank Governor Signals Policy Shift Ahead",
-                        "Tech Stocks Rally on AI Earnings Optimism",
-                        "Currency Volatility Spikes After Surprise Rate Decision",
-                    ]
-                    let headline = headlines.randomElement() ?? "Market Update"
-                    let item = NewsFeedService.generateFromHeadline(headline)
-                    feed.addNews(item)
+                    await feed.refreshLive()
                 }
             }
         }
@@ -229,7 +238,7 @@ struct NewsCard: View {
             // Header: Source + Time + Bookmark
             HStack {
                 // Source badge
-                Text(item.source)
+                Text(item.isVerifiedSource ? item.source : "Unverified · \(item.source)")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(Glass.accent2.opacity(0.8))
                     .padding(.horizontal, 8)
