@@ -1,0 +1,1053 @@
+=============================================================================
+CODEX AUTONOMOUS ENGINEERING MISSION — iOS SWIFT TRADING APP
+FULL-STACK PRODUCTION UPGRADE & AGENTIC BACKEND IMPLEMENTATION
+=============================================================================
+
+YOU ARE AN AUTONOMOUS SENIOR ENGINEERING AGENT.
+
+Your mission is to audit, fix, and extend this existing iOS Swift trading app
+GitHub repository into a fully production-ready, enterprise-grade, AI-powered,
+agentic trading platform. You must scan every existing file before writing new
+code. If a feature already exists and is functional, skip it. If it exists but
+has bugs, errors, or poor architecture, fix it first. If it does not exist,
+build it from scratch. Write tests for every module as you go. Never leave
+placeholder comments. Never use TODO. Every line you write must be
+production-grade, deployable, and fully wired up end-to-end.
+
+Work autonomously through each section below, in order. Do not stop between
+sections. Commit logical units of work with descriptive commit messages as you
+progress. Run all tests after each module is complete before moving to the
+next. If a test fails, fix it before proceeding.
+
+=============================================================================
+PHASE 0 — FULL REPO AUDIT
+=============================================================================
+
+0.1 CODEBASE SCAN
+- Scan every Swift, Python, YAML, JSON, and configuration file in the repo.
+- Identify and document: architecture pattern in use, dependency manager
+  (SPM/CocoaPods/Carthage), existing services, existing API integrations,
+  existing data models, existing tests, and any unused or dead code.
+- Generate an internal audit report as a markdown file: AUDIT_REPORT.md
+  stored in the repo root. Include: missing features, broken code, anti-
+  patterns, missing tests, security vulnerabilities, memory leaks, race
+  conditions, and missing error handling.
+
+0.2 DEPENDENCY UPGRADE
+- Update all Swift Package Manager dependencies to their latest stable
+  versions. Resolve all conflicts. Fix all breaking changes introduced by
+  version upgrades.
+- Add missing production dependencies:
+  * Alamofire (networking)
+  * Combine (reactive streams, already in Swift but ensure usage patterns)
+  * SwiftUI + UIKit hybrid where needed
+  * Charts / DGCharts (financial charting)
+  * CryptoKit (encryption)
+  * KeychainSwift (secure storage)
+  * Firebase (Auth, Firestore, Remote Config, Crashlytics, Analytics,
+    Cloud Messaging)
+  * Supabase Swift SDK (as secondary/alternative backend)
+  * RevenueCat (subscriptions and IAP)
+  * Sentry (error monitoring)
+  * WebKit / WKWebView (web automation layer)
+  * Starscream or NWConnection (WebSocket streaming)
+  * SwiftSoup (HTML parsing for web scraping layer)
+  * Realm (local database / offline-first cache)
+  * TCA — The Composable Architecture (state management)
+  * OSLog (structured logging)
+  * XCTest (ensure full coverage)
+
+0.3 ARCHITECTURE MIGRATION
+- If the app is not already using The Composable Architecture (TCA) with
+  MVVM-layered feature modules, migrate it fully.
+- Enforce strict Swift Concurrency: async/await, actors, Sendable conformance.
+  Remove all completion handlers and replace with async/await.
+- Enforce Swift strict concurrency mode (Swift 6 compatible).
+- Split the codebase into modular Swift Packages:
+  * Core (shared models, extensions, utilities)
+  * Networking (API clients, WebSocket managers)
+  * DataLayer (Realm, CoreData, Supabase sync)
+  * AgentEngine (AI/LLM agent orchestration)
+  * TradingEngine (signal generation, execution, risk)
+  * MarketData (price feeds, calendars, news)
+  * WebAutomation (scraping, browser control)
+  * ArtifactEngine (report/chart/PDF/JSON artifact generation)
+  * UI (all SwiftUI views)
+  * Notifications (push, local, alert logic)
+  * Auth (authentication, authorization, session)
+  * BacktestEngine (historical simulation)
+  * RiskManager (position sizing, exposure, drawdown)
+  * Portfolio (holdings, P&L, allocation)
+  * Journal (trade journaling, analytics)
+  * Testing (shared test utilities, mocks, factories)
+
+=============================================================================
+PHASE 1 — AUTHENTICATION & USER MANAGEMENT
+=============================================================================
+
+1.1 MULTI-PROVIDER AUTH
+- Implement Sign in with Apple (required for App Store).
+- Implement email/password auth with Firebase Auth.
+- Implement Google Sign-In via Firebase.
+- Implement biometric unlock (Face ID / Touch ID) using LocalAuthentication
+  framework after initial login.
+- Implement JWT token management with automatic silent refresh.
+- Implement session expiry detection and graceful re-auth flow.
+- All auth tokens must be stored in Keychain, never UserDefaults.
+
+1.2 ROLE-BASED ACCESS CONTROL
+- User roles: Free, Pro, Institutional, Admin.
+- Role-gated features enforced both client-side and verified server-side via
+  Firebase custom claims.
+- RevenueCat integration for Pro and Institutional tier unlocking via IAP.
+- Subscription status must sync on every app foreground event.
+
+1.3 USER PROFILE & PREFERENCES
+- User profile: display name, avatar (stored in Firebase Storage), timezone,
+  preferred currency pairs, risk tolerance setting, notification preferences,
+  agent autonomy level setting (Manual / Semi-Auto / Full-Auto).
+- All preferences stored in Firestore and cached locally in Realm.
+- Offline support: app must be fully functional for read operations when
+  offline, syncing on reconnection.
+
+=============================================================================
+PHASE 2 — REAL-TIME MARKET DATA ENGINE
+=============================================================================
+
+2.1 MULTI-SOURCE PRICE FEED AGGREGATOR
+- Implement a PriceFeedManager actor that aggregates price data from multiple
+  sources simultaneously:
+  * Alpaca Markets WebSocket API (stocks, crypto)
+  * OANDA fxTrade Streaming REST API (forex)
+  * Binance WebSocket Streams (crypto spot and futures)
+  * Coinbase Advanced Trade WebSocket (crypto)
+  * Polygon.io WebSocket (stocks, options, forex, crypto)
+  * Twelve Data WebSocket (forex, stocks, ETFs, crypto, indices)
+  * Yahoo Finance REST polling fallback (when WebSocket unavailable)
+- Implement a smart source selector: prefer lowest-latency source per symbol.
+- Implement a price consensus engine: detect and flag anomalous ticks from
+  any single source by cross-referencing others. Discard outliers.
+- All tick data stored in Realm with circular buffer (configurable max rows).
+- Emit price updates via Combine publishers to all subscribing UI components.
+- Reconnection logic: exponential backoff with jitter for all WebSocket feeds.
+- Heartbeat monitoring: detect stale feeds and auto-reconnect.
+
+2.2 CANDLESTICK / OHLCV DATA
+- Implement OHLCV aggregation from tick data for all standard timeframes:
+  M1, M5, M15, M30, H1, H4, D1, W1, MN.
+- REST historical data backfill on first launch per symbol per timeframe.
+- Store OHLCV in Realm. Never re-fetch data already stored unless explicitly
+  refreshed.
+- Implement data integrity checker: detect and fill gaps in OHLCV history.
+
+2.3 ORDER BOOK & LEVEL 2 DATA
+- Implement Level 2 order book display for supported brokers/exchanges.
+- Maintain a live order book state using a sorted data structure.
+- Visualize bid/ask depth with animated DGCharts bar chart.
+
+2.4 MARKET STATUS ENGINE
+- Track session open/close times for all major markets: Forex, NYSE, NASDAQ,
+  LSE, Tokyo, Sydney, Hong Kong, Euronext.
+- Alert users 5 minutes before each session open they are watching.
+- Display session overlap periods (highest-volatility windows) on the UI.
+- Handle daylight saving time transitions automatically per timezone.
+
+=============================================================================
+PHASE 3 — FOREXFACTORY.COM STREAMING & ECONOMIC CALENDAR ENGINE
+=============================================================================
+
+3.1 FOREXFACTORY CALENDAR SCRAPER SERVICE
+- Since ForexFactory does not offer an official public API, implement a
+  production-grade scraping pipeline:
+  * Primary: Consume the ForexFactory XML calendar feed at the known
+    community-documented XML endpoint (ff_calendar_thisweek.xml and
+    related date-parameterized URLs). Parse XML with XMLParser. Extract:
+    event date, time (UTC-normalized), currency, impact (high/medium/low/none),
+    event title, actual value, forecast value, previous value, revised flag.
+  * Secondary: Use WKWebView headless automation to load ForexFactory calendar
+    pages and extract rendered HTML. Parse with SwiftSoup. Fall back to this
+    when XML feed is stale or unavailable.
+  * Tertiary: Integrate Apify ForexFactory Economic Calendar Actor API as a
+    paid fallback (configurable API key in Remote Config). Apify returns JSON
+    with event date, time, currency, impact rating, title, actual, forecast,
+    previous, revised values.
+  * Quaternary: RapidAPI Forex Factory Scraper (configurable API key).
+  * Quinary: FXStreet Economic Calendar API with OAuth2 for detailed event
+    data when ForexFactory sources are unavailable.
+- Implement a ForexFactoryCalendarManager actor:
+  * Polls on a configurable schedule (default: every 15 minutes when active).
+  * Detects new events and changed actual/forecast values.
+  * Emits change events via Combine publisher.
+  * Persists calendar data in Realm with full history.
+- Implement smart event deduplication across all sources.
+- Calendar events must be normalized to a single CalendarEvent model with
+  a unified impact enum.
+
+3.2 NEWS FEED ENGINE
+- Scrape and aggregate news from:
+  * ForexFactory News section (WKWebView + SwiftSoup)
+  * Reuters Markets RSS
+  * Bloomberg Markets RSS
+  * MarketWatch RSS
+  * Investing.com economic news RSS
+  * CoinDesk RSS (crypto)
+  * Decrypt RSS (crypto)
+  * SEC EDGAR RSS (company filings)
+  * FXStreet News API
+- All news stored in Realm with published timestamp, source, title, summary,
+  full body URL, currency/ticker tags, sentiment score.
+- Implement an NLP sentiment scorer using Apple's Natural Language framework
+  locally on-device for each news headline.
+- Tag each news item with affected currency pairs and ticker symbols using
+  entity extraction (Natural Language framework NER).
+
+3.3 EVENT IMPACT ALERT SYSTEM
+- For every high-impact ForexFactory event, trigger a local notification
+  15 minutes before, 5 minutes before, and at the moment of release.
+- When actual value is released: instantly compare to forecast; classify as
+  beat / miss / in-line. Trigger an alert with classification and color coding
+  (green beat, red miss, yellow in-line).
+- Auto-pause any running automated trade strategies if a high-impact event
+  is within a configurable time window (default: 10 minutes before and after).
+  Resume after event window passes and volatility normalizes.
+- Volatility normalization check: use ATR (Average True Range) to determine
+  when post-news volatility has returned to pre-event baseline.
+
+3.4 ECONOMIC DATA HISTORY
+- Store all scraped ForexFactory historical events permanently.
+- Implement a backtesting correlation tool: given a currency pair and date
+  range, show which event types historically caused the largest price moves,
+  with statistical summary (mean move, median move, win rate for direction).
+
+=============================================================================
+PHASE 4 — WEB AUTOMATION ENGINE
+=============================================================================
+
+4.1 HEADLESS WEB AUTOMATION LAYER
+- Implement a WebAutomationEngine using WKWebView with a JavaScript bridge.
+- Support full JavaScript injection and execution.
+- Support form filling, button clicking, navigation, and page scraping all
+  through a unified Swift API.
+- Implement page-load waiting with configurable timeout and retry.
+- Implement DOM change observation via MutationObserver JS injection.
+- Implement screenshot capture of any loaded web page as UIImage.
+
+4.2 BROWSER SESSION MANAGER
+- Maintain persistent WKWebView sessions with cookie/session storage
+  isolated per target site.
+- Support multiple concurrent sessions via WKProcessPool management.
+- Implement session warm-up: pre-load target pages in background to reduce
+  latency when scraping on schedule.
+
+4.3 SCRAPING TARGETS (implement each as a dedicated scraper service actor):
+- ForexFactory.com:
+  * Calendar, News, Trade Explorer leaderboard, Forum thread monitoring,
+    Market section price table.
+- TradingView.com:
+  * Public chart data, ideas feed, top scripts, screener results.
+- Investing.com:
+  * Economic calendar, market overview, commodity prices, stock screener.
+- Myfxbook.com:
+  * Community outlook (long/short sentiment percentages per pair),
+    Trade Explorer public accounts.
+- DailyFX.com:
+  * Analyst picks, technical analysis articles, sentiment data.
+- CFTC.gov:
+  * Commitments of Traders (COT) report (released every Friday).
+    Parse COT data for all tracked instruments. Store historically.
+    Compute net speculative positioning changes week-over-week.
+- SEC EDGAR:
+  * 13F filings for institutional positioning data.
+    Track major hedge fund and institutional holdings changes.
+
+4.4 RATE LIMITING & POLITENESS
+- All scrapers must implement per-domain rate limiting with configurable
+  minimum delay between requests.
+- Rotate User-Agent strings from a realistic pool.
+- Implement robot.txt compliance checker before scraping any domain.
+- Implement circuit breaker: if a scraper gets HTTP 429 or 403 three times
+  consecutively, pause that scraper for a configurable cooldown period and
+  alert the admin via push notification.
+
+4.5 PROXY SUPPORT
+- Implement optional HTTP/HTTPS proxy configuration per scraper.
+- Support rotating proxy integration (configurable proxy list in Remote Config).
+
+=============================================================================
+PHASE 5 — AGENTIC AI ENGINE
+=============================================================================
+
+5.1 AGENT ORCHESTRATOR
+- Implement an AgentOrchestrator as a Swift actor that manages a pool of
+  specialized sub-agents.
+- Agents communicate via a structured message bus (AgentMessage protocol
+  with Codable conformance).
+- Each agent has: a unique ID, a role enum, a state machine (idle/thinking/
+  acting/waiting/error), a memory store, and a tool registry.
+- The orchestrator assigns tasks to agents, monitors their state, handles
+  failures, and routes results to the appropriate downstream consumer.
+- Agent autonomy is gated by the user's autonomy level setting:
+  * Manual: agents analyze only, never execute. All actions require approval.
+  * Semi-Auto: agents execute low-risk pre-approved action types automatically;
+    flag high-risk actions for human approval via push notification + in-app
+    modal with countdown timer.
+  * Full-Auto: agents execute all approved action types autonomously with
+    full audit logging.
+
+5.2 SPECIALIZED AGENTS (implement each as a separate actor):
+
+  MarketAnalystAgent:
+  - Receives real-time OHLCV data, order book data, and news feeds.
+  - Runs multi-timeframe technical analysis on all watched symbols.
+  - Computes and evaluates: RSI, MACD, Bollinger Bands, ATR, Stochastic,
+    EMA/SMA crossovers, Fibonacci retracements, support/resistance zones,
+    volume profile, VWAP, pivot points.
+  - Emits structured AnalysisResult objects with confidence scores.
+
+  FundamentalAnalystAgent:
+  - Consumes economic calendar events, COT data, institutional flows,
+    news sentiment scores, central bank statements.
+  - Builds a fundamental bias score per currency (bullish/bearish/neutral)
+    updated in real-time as data arrives.
+  - Tracks interest rate differentials and carry trade attractiveness.
+
+  NewsAnalystAgent:
+  - Processes each incoming news item through on-device NLP sentiment.
+  - Classifies impact: high/medium/low.
+  - Identifies which instruments are affected.
+  - Aggregates news sentiment over configurable rolling windows (1h, 4h, 24h).
+  - Emits sentiment shift alerts when aggregated score crosses thresholds.
+
+  SignalGeneratorAgent:
+  - Receives outputs from MarketAnalystAgent and FundamentalAnalystAgent.
+  - Applies a configurable multi-factor signal fusion algorithm.
+  - Supports multiple signal strategies: trend following, mean reversion,
+    breakout, news momentum, carry trade, correlation arbitrage.
+  - Each signal includes: direction (long/short), entry price, stop loss,
+    take profit levels (TP1/TP2/TP3), R:R ratio, confidence score, expiry,
+    and reasoning chain (human-readable explanation of why the signal was
+    generated, referencing specific indicator values and events).
+
+  RiskManagerAgent:
+  - Validates every signal before it reaches execution.
+  - Enforces: max risk per trade (configurable %), max daily drawdown limit,
+    max open position count, max correlated exposure per currency,
+    max position size based on account equity, news event blackout windows.
+  - Automatically reduces position size if account equity has dropped.
+  - Emits RiskViolation events for any rejected signal with full reason.
+
+  ExecutionAgent:
+  - Receives approved signals from RiskManagerAgent.
+  - Connects to broker execution APIs (see Phase 7) and places orders.
+  - Monitors order fill status. Handles partial fills, rejections, slippage.
+  - Reports back actual fill price and slippage to Journal.
+  - Implements smart order routing: tries primary broker first, falls back
+    to secondary if rejected or timed out.
+
+  PortfolioMonitorAgent:
+  - Polls open positions every configurable interval (default: 30 seconds).
+  - Detects positions approaching stop loss or take profit.
+  - Manages trailing stop logic: adjusts stop loss as position moves in favor.
+  - Detects correlation spikes between open positions and alerts user.
+  - Closes hedged positions automatically when configured.
+
+  BacktestAgent:
+  - Receives a strategy configuration and date range.
+  - Runs full historical simulation on locally stored OHLCV data.
+  - Reports: total return, Sharpe ratio, Sortino ratio, max drawdown,
+    win rate, average R:R, profit factor, monthly breakdown, equity curve.
+  - Exports results as an Artifact (see Phase 6).
+
+  CopyTradingAgent:
+  - Scrapes ForexFactory Leaderboard and Myfxbook Trade Explorer.
+  - Identifies top-performing traders by criteria: win rate, drawdown,
+    Sharpe ratio, trade frequency, pair specialization.
+  - Optionally mirrors their trades (with configurable position scaling).
+  - Tracks copy performance separately from manual trades.
+
+  ResearchAgent:
+  - Receives a free-text research query from the user (e.g. "analyze EUR/USD
+    outlook for next week").
+  - Gathers relevant data: recent OHLCV, news sentiment, economic calendar,
+    COT data, analyst picks.
+  - Composes a structured research report using LLM (see Phase 5.3).
+  - Returns the report as a formatted Artifact (PDF + JSON).
+
+  AnomalyDetectionAgent:
+  - Monitors all price feeds for statistical anomalies: flash crashes,
+    abnormal spreads, sudden volume spikes.
+  - Triggers alerts and optionally halts all automated strategies when
+    anomalies are detected.
+  - Uses Z-score and IQR methods to classify outliers.
+
+  SchedulerAgent:
+  - Manages all time-based tasks across the system.
+  - Triggers scraping jobs, analysis runs, report generation, and sync tasks
+    on configurable cron-style schedules.
+  - Supports one-time, repeating, and market-session-aware scheduling.
+
+5.3 LLM INTEGRATION LAYER
+- Implement an LLMGateway actor that abstracts multiple LLM providers:
+  * OpenAI GPT-4o (primary)
+  * Anthropic Claude Sonnet (secondary)
+  * Google Gemini Pro (tertiary)
+  * Local on-device inference via Core ML converted model (offline fallback)
+    using a quantized Llama or Mistral model converted to Core ML format.
+- Implement automatic provider failover: if primary returns error or timeout,
+  retry on secondary, then tertiary.
+- Implement prompt versioning: all system prompts stored in Remote Config
+  with version numbers. Never hardcode prompts.
+- Implement token budget manager: estimate token counts before each call
+  to avoid overflows and control cost.
+- Implement response streaming: stream LLM token output to UI in real time
+  using AsyncSequence.
+- Implement a prompt injection defense layer: sanitize all user-supplied
+  text before including in prompts.
+- All LLM calls fully logged with request hash, provider, token usage,
+  latency, and cost estimate. Store logs in Firestore.
+
+5.4 AGENT MEMORY & CONTEXT
+- Each agent has a MemoryStore with three tiers:
+  * Working Memory: in-memory deque, last N observations (configurable).
+  * Episodic Memory: Realm-persisted timestamped event log per agent.
+  * Semantic Memory: vector embedding store using an on-device FAISS-style
+    index (implement using Apple's vDSP for cosine similarity search).
+    Embeddings generated from OpenAI or on-device embedding model.
+- Agents automatically retrieve semantically relevant past episodes when
+  forming new analyses.
+- Implement context window management: when building LLM prompts, pack
+  the most relevant working + semantic memories within the token budget.
+
+5.5 TOOL USE & FUNCTION CALLING
+- Implement a ToolRegistry where each agent declares available tools.
+- Tools are typed Swift functions decorated with metadata (name, description,
+  parameter schema in JSON Schema format).
+- Implement an OpenAI-compatible function calling serializer: convert Swift
+  tool descriptors to OpenAI tools JSON format automatically.
+- Implement a tool executor: parse LLM function call responses and dispatch
+  to the correct Swift function, capture results, and feed back to LLM.
+- Available tools include (implement all):
+  * get_price(symbol, timeframe, bars) -> OHLCV[]
+  * get_news(keywords, hours_back) -> NewsItem[]
+  * get_calendar_events(currency, hours_ahead) -> CalendarEvent[]
+  * get_cot_data(instrument) -> COTReport
+  * get_sentiment(symbol) -> SentimentScore
+  * get_open_positions() -> Position[]
+  * place_order(symbol, direction, lots, sl, tp) -> OrderResult
+  * close_position(position_id) -> CloseResult
+  * run_backtest(strategy_config, date_from, date_to) -> BacktestResult
+  * search_memory(query) -> MemoryResult[]
+  * create_artifact(type, data) -> Artifact
+  * send_notification(title, body, urgency) -> void
+  * get_account_summary() -> AccountSummary
+  * get_indicator(symbol, indicator_name, params) -> IndicatorResult
+  * scrape_url(url, selector) -> ScrapedContent
+  * get_cot_positioning(instrument) -> COTPositioning
+  * analyze_chart(symbol, timeframe) -> ChartAnalysis
+
+=============================================================================
+PHASE 6 — ARTIFACT CREATOR ENGINE
+=============================================================================
+
+6.1 ARTIFACT TYPES (implement a generator for each):
+
+  TradeSignalCard:
+  - Visual card with: symbol logo, direction badge, entry/SL/TP prices,
+    R:R ratio, confidence meter, reasoning summary, chart thumbnail.
+  - Exportable as: PNG image, PDF, shareable deep link.
+
+  ResearchReport:
+  - Multi-section document: executive summary, technical outlook,
+    fundamental bias, news sentiment, COT positioning, risk factors,
+    trade recommendation.
+  - Exportable as: formatted PDF with charts embedded, JSON structured data.
+
+  BacktestReport:
+  - Full backtest results: equity curve chart, monthly heatmap, drawdown
+    chart, all trades table, performance metrics table.
+  - Exportable as: PDF, CSV (trades), JSON (metrics).
+
+  PortfolioSnapshot:
+  - Current holdings table, allocation pie chart, unrealized P&L bar chart,
+    exposure heatmap per currency.
+  - Exportable as: PDF, PNG, JSON.
+
+  TradeJournalEntry:
+  - Auto-generated from each executed trade: entry screenshot (chart at
+    entry time), exit screenshot, P&L, notes, emotion tag, tag categories.
+  - LLM generates a post-trade analysis: what went right, what went wrong,
+    lessons learned.
+  - Exportable as: PDF journal entry, JSON.
+
+  MarketBriefing:
+  - Daily auto-generated market briefing combining: session highlights,
+    upcoming economic events, top news, sector movers, agent signals.
+  - Delivered via push notification at configurable time each day.
+  - Full PDF exportable. Also available as audio (text-to-speech via AVSpeech).
+
+  ScreenerReport:
+  - Results from multi-criteria screener run: symbol list, scores per
+    criterion, charts thumbnail grid.
+  - Exportable as: PDF, CSV, JSON.
+
+  RiskReport:
+  - Account risk summary: max drawdown progress bar, open position risk
+    breakdown, news event exposure warnings, correlation matrix.
+  - Exportable as: PDF, JSON.
+
+6.2 ARTIFACT STORAGE
+- All generated artifacts stored in Firebase Storage with metadata in
+  Firestore: artifact type, generator agent, generation timestamp,
+  input parameters, file URL, file size.
+- Implement artifact browser in UI: filterable by type, date, agent.
+- Implement artifact sharing: native iOS share sheet with file attachment.
+- Implement artifact versioning: if the same artifact type is regenerated
+  for the same parameters, keep all versions and show version history.
+
+6.3 CHART RENDERING ENGINE
+- Use DGCharts (Charts library) for all chart rendering.
+- Implement: candlestick, OHLCV bar, line, area, histogram, scatter,
+  pie, donut, radar, waterfall, heatmap chart types.
+- All charts must render off-screen to UIImage for embedding in PDFs.
+- PDF generation using PDFKit with proper page layout, headers, footers,
+  page numbers, and embedded charts.
+
+=============================================================================
+PHASE 7 — BROKER & EXCHANGE INTEGRATION
+=============================================================================
+
+7.1 SUPPORTED BROKERS & EXCHANGES (implement each as a BrokerAdapter
+    conforming to a unified BrokerProtocol):
+
+  BrokerProtocol:
+  - connect() async throws
+  - disconnect() async
+  - getAccountSummary() async throws -> AccountSummary
+  - getOpenPositions() async throws -> [Position]
+  - getOrderHistory(from: Date, to: Date) async throws -> [Order]
+  - placeMarketOrder(symbol, direction, lots) async throws -> Order
+  - placeLimitOrder(symbol, direction, lots, price) async throws -> Order
+  - placeStopOrder(symbol, direction, lots, price) async throws -> Order
+  - closePosition(id) async throws -> CloseResult
+  - modifyPosition(id, sl, tp) async throws -> Position
+  - subscribeToPositionUpdates() -> AsyncStream<PositionUpdate>
+
+  Brokers to implement adapters for:
+  * OANDA (REST + WebSocket streaming)
+  * Alpaca Markets (stocks + crypto, REST + WebSocket)
+  * Interactive Brokers (via TWS API bridge)
+  * MetaTrader 4 / MetaTrader 5 (via MTsocketAPI TCP bridge)
+  * Binance (spot, futures, REST + WebSocket)
+  * Coinbase Advanced Trade API
+  * Kraken (REST + WebSocket)
+  * TD Ameritrade / Schwab (REST)
+  * Tradier (REST)
+  * Paper Trading Adapter (fully simulated, for testing):
+    - Simulates fills, slippage, spread, and partial fills realistically.
+    - Must be the default adapter in all non-production configurations.
+
+7.2 SMART ORDER ROUTING
+- Implement a SmartOrderRouter that selects the optimal broker per order based
+  on: symbol availability, current spread, commission rate, connection health,
+  account balance availability.
+- Support split orders: route partial sizes to multiple brokers simultaneously.
+
+7.3 ORDER MANAGEMENT SYSTEM
+- Full OMS: pending orders, open positions, closed positions all stored in
+  Realm + Firestore with real-time sync.
+- Order state machine: new → pending → partially_filled → filled / rejected /
+  cancelled / expired.
+- Position state machine: open → modifying → closing → closed.
+- P&L calculation: unrealized (mark-to-market), realized, swap/rollover,
+  commission, net P&L. All in account currency with conversion.
+
+=============================================================================
+PHASE 8 — TECHNICAL ANALYSIS ENGINE
+=============================================================================
+
+8.1 INDICATOR LIBRARY (implement all in pure Swift, optimized with vDSP
+    where applicable for batch computation on OHLCV arrays):
+
+  Trend:
+  - SMA, EMA, WMA, DEMA, TEMA, HMA (Hull Moving Average)
+  - MACD (with signal line and histogram)
+  - Parabolic SAR
+  - Supertrend
+  - Ichimoku Cloud (Tenkan, Kijun, Senkou A/B, Chikou)
+  - Donchian Channels
+  - Keltner Channels
+
+  Momentum:
+  - RSI (Wilder's method)
+  - Stochastic Oscillator (%K, %D)
+  - CCI (Commodity Channel Index)
+  - Williams %R
+  - Rate of Change (ROC)
+  - Momentum Oscillator
+  - Ultimate Oscillator
+  - TSI (True Strength Index)
+
+  Volatility:
+  - Bollinger Bands (with %B and Bandwidth)
+  - ATR (Average True Range)
+  - Historical Volatility (annualized standard deviation of returns)
+  - Chaikin Volatility
+
+  Volume:
+  - OBV (On-Balance Volume)
+  - VWAP (Volume Weighted Average Price)
+  - Volume Profile (POC, VAH, VAL)
+  - MFI (Money Flow Index)
+  - CMF (Chaikin Money Flow)
+  - A/D Line
+
+  Support & Resistance:
+  - Pivot Points (Classic, Fibonacci, Camarilla, Woodie)
+  - Fibonacci Retracement & Extension auto-detector
+  - Swing High/Low detector
+  - Supply & Demand Zone detector (using volume profile)
+
+  Pattern Recognition:
+  - Single candle: doji, hammer, inverted hammer, hanging man, shooting star,
+    spinning top, marubozu, dragonfly doji, gravestone doji.
+  - Multi-candle: engulfing (bull/bear), harami, piercing line, dark cloud
+    cover, morning star, evening star, three white soldiers, three black
+    crows, inside bar, outside bar, pin bar.
+  - Chart patterns: head and shoulders, inverse head and shoulders,
+    double top, double bottom, triangle (ascending/descending/symmetrical),
+    wedge (rising/falling), flag, pennant, cup and handle.
+
+8.2 MULTI-TIMEFRAME ANALYSIS ENGINE
+- For any symbol, compute and aggregate indicator signals across all
+  timeframes simultaneously.
+- Output: MTF signal grid (matrix of direction calls per indicator per
+  timeframe) with overall score.
+- Display MTF grid as a visual heatmap in UI.
+
+8.3 SCREENER ENGINE
+- Allow users to build custom screener criteria using any indicator,
+  any timeframe, any condition (crosses above/below, is above/below,
+  is between, increased by %, equals).
+- Run screener across all watched symbols on a configurable schedule.
+- Results sorted by composite score. Trigger push notification for
+  new screener matches.
+
+=============================================================================
+PHASE 9 — RISK MANAGEMENT SYSTEM
+=============================================================================
+
+9.1 POSITION SIZING CALCULATOR
+- Fixed risk % model: position size = (equity × risk%) / (entry - stop loss).
+- Kelly Criterion model.
+- Fixed lot model.
+- Volatility-adjusted model (position size inversely proportional to ATR).
+- Account for pip value differences across currency pairs and instruments.
+
+9.2 PORTFOLIO RISK CONTROLS
+- Max open trades: configurable limit.
+- Max risk per trade: configurable %.
+- Max total portfolio risk: configurable % of equity.
+- Max drawdown limit: configurable %; when hit, halt all new entries and
+  alert user.
+- Correlated pair limit: detect when user is over-exposed to a single
+  currency and warn/block new entries.
+- Daily loss limit: stops all trading for the day when reached.
+- News event lock: automatically block new entries during configurable
+  window around high-impact events.
+
+9.3 MARGIN MONITOR
+- Real-time margin level calculation per broker.
+- Alert at configurable margin level thresholds (e.g. 200%, 150%, 120%).
+- Emergency close protocol: if margin level drops below configurable
+  floor, automatically close least-profitable positions to free margin.
+
+=============================================================================
+PHASE 10 — TRADE JOURNAL & ANALYTICS
+=============================================================================
+
+10.1 TRADE JOURNAL
+- Auto-log every trade: entry/exit price, time, symbol, direction, lots,
+  SL, TP, actual exit reason (TP hit / SL hit / manual close / agent close),
+  P&L, fees, slippage, duration.
+- Manual annotation: notes text field, emotion tags (calm/anxious/FOMO/
+  revenge/confident/uncertain), setup tags (custom user-defined tags).
+- Chart screenshot at entry and exit (rendered from stored OHLCV data
+  using DGCharts, not a live web screenshot).
+- LLM post-trade analysis auto-generated and stored as TradeJournalEntry
+  Artifact.
+
+10.2 ANALYTICS DASHBOARD
+- Performance metrics: total trades, win rate, loss rate, average win,
+  average loss, largest win, largest loss, max consecutive wins, max
+  consecutive losses, profit factor, Sharpe ratio, Sortino ratio,
+  Calmar ratio, expectancy per trade.
+- Period breakdown: daily, weekly, monthly, yearly P&L charts.
+- Symbol breakdown: performance heatmap per symbol.
+- Setup tag analytics: which tags correlate with winning trades.
+- Emotion tag analytics: which emotional states correlate with losing trades.
+- Time-of-day heatmap: best and worst trading hours.
+- All charts built with DGCharts. All data exportable as CSV or PDF.
+
+=============================================================================
+PHASE 11 — NOTIFICATION & ALERT SYSTEM
+=============================================================================
+
+11.1 PUSH NOTIFICATIONS
+- Firebase Cloud Messaging (FCM) integration.
+- Notification categories: price alert, signal alert, news alert, calendar
+  event alert, risk alert, agent action, system alert.
+- User can configure per-category: enabled/disabled, quiet hours, sound,
+  urgency level.
+- Rich push notifications: include chart thumbnail image in notification
+  where supported.
+- Deep link every notification to the relevant screen in the app.
+
+11.2 IN-APP ALERTS
+- Persistent in-app notification center: all alerts stored in Realm,
+  displayed in a notification tray accessible from any screen.
+- Unread badge count on app icon.
+- Toast notifications for non-critical real-time events.
+- Modal alerts for critical events (risk limit breached, agent action
+  requiring approval, emergency close triggered).
+
+11.3 CUSTOM PRICE ALERTS
+- User-defined price alerts: price crosses above/below, % change within
+  timeframe, RSI crosses level, MACD crossover, Bollinger Band touch.
+- Persistent alerts survive app restarts (stored in Realm + Firestore).
+- Alert triggered via both push notification and in-app alert.
+
+=============================================================================
+PHASE 12 — CHARTING UI
+=============================================================================
+
+12.1 INTERACTIVE CHART VIEW
+- Full-screen interactive candlestick chart using DGCharts.
+- Pinch-to-zoom, pan, double-tap to reset.
+- Timeframe selector: M1, M5, M15, M30, H1, H4, D1, W1, MN.
+- Indicator overlay panel: add/remove indicators with customizable parameters.
+  Overlays: EMA, SMA, Bollinger Bands, VWAP, Ichimoku, Parabolic SAR,
+  Supertrend, Donchian, Keltner, Fibonacci, Pivot Points.
+  Subcharts: MACD, RSI, Stochastic, CCI, ATR, OBV, MFI, Volume histogram.
+- Drawing tools: horizontal line, trend line, ray, channel, rectangle,
+  Fibonacci retracement, Fibonacci extension, text label. All drawings
+  stored per symbol per timeframe in Realm.
+- Signal markers: entry arrows, SL/TP dotted lines overlaid on chart
+  for all open and closed positions.
+- MTF signal grid panel: togglable sidebar showing MTF heatmap.
+- News event markers: pins on chart timeline at dates of major news events
+  related to the displayed symbol.
+- Dark mode and light mode fully supported. High-contrast accessibility mode.
+
+12.2 WATCHLIST
+- Multi-watchlist support (unlimited user-created lists).
+- Each row: symbol, current bid/ask, spread, daily change %, mini sparkline
+  chart (last 24h), signal badge (if agent has active signal).
+- Drag to reorder. Swipe to remove. Tap to open full chart.
+- Real-time price updates with smooth animation.
+- Group by: asset class, session, signal direction.
+
+=============================================================================
+PHASE 13 — SETTINGS & CONFIGURATION
+=============================================================================
+
+13.1 SETTINGS SCREENS (implement all):
+- Account Settings: profile, password change, linked brokers, subscription.
+- Trading Settings: default lot size, default risk %, default SL/TP methods.
+- Agent Settings: autonomy level, active agents toggle, agent parameters.
+- Notification Settings: per-category toggles, quiet hours, sound.
+- Data Settings: watched symbols, watchlists, data source preferences.
+- Scraper Settings: enable/disable per scraper, schedule intervals, proxy.
+- Display Settings: theme (dark/light/auto), chart defaults, timezone.
+- API Keys Management: encrypted storage of all third-party API keys.
+  Keys stored in Keychain, never in Firestore or UserDefaults.
+  Keys configurable via settings UI with visibility toggle.
+- Debug Settings (admin only): force-trigger any agent, view agent logs,
+  view WebSocket connection status, clear caches, force sync.
+
+13.2 REMOTE CONFIG
+- All configurable parameters driven by Firebase Remote Config.
+- Local defaults defined in a RemoteConfigDefaults.plist.
+- Config refreshed on every app foreground. Applied without restart where
+  possible; flagged for next launch where restart is required.
+
+=============================================================================
+PHASE 14 — BACKEND MICROSERVICES (Node.js / Python on Cloud Run or
+           Firebase Cloud Functions — implement all)
+=============================================================================
+
+14.1 CLOUD FUNCTIONS:
+
+  calendar-sync-worker:
+  - Runs on Cloud Scheduler every 15 minutes.
+  - Fetches ForexFactory XML calendar, Investing.com calendar, FXStreet
+    calendar. Normalizes, deduplicates, and writes to Firestore.
+  - Triggers FCM push to all subscribed users when new high-impact event
+    detected or actual value released.
+
+  price-alert-worker:
+  - Subscribes to Polygon.io WebSocket on server.
+  - Evaluates all user-defined price alerts stored in Firestore.
+  - Sends FCM push notification when alert condition triggers.
+  - Scales horizontally via Cloud Run.
+
+  news-ingestion-worker:
+  - Polls all RSS feeds every 5 minutes.
+  - Performs server-side sentiment analysis using a Python NLP model (FinBERT).
+  - Stores enriched news in Firestore. Broadcasts to subscribed clients
+    via Firebase Realtime Database for near-real-time delivery.
+
+  llm-proxy-worker:
+  - Secures all LLM API calls server-side (keys never in client app).
+  - Implements rate limiting per user per tier.
+  - Logs all LLM usage to Firestore for cost tracking.
+  - Streams responses back to iOS client via HTTP chunked transfer encoding.
+
+  backtest-worker:
+  - Accepts backtest configuration from client.
+  - Runs compute-heavy backtests server-side using Python (Backtrader or
+    VectorBT) for strategies that exceed device capability.
+  - Returns results as JSON, stored in Firestore + Firebase Storage.
+
+  report-generation-worker:
+  - Server-side PDF generation using Python (ReportLab or WeasyPrint)
+    for complex multi-page reports.
+  - Stores generated PDFs in Firebase Storage and returns signed URL.
+
+  risk-monitor-worker:
+  - Polls broker position data for all users with active automated trading.
+  - Enforces server-side risk rules as a safety backstop.
+  - Closes positions and sends emergency alerts if client-side risk engine
+    fails to respond.
+
+  cot-parser-worker:
+  - Downloads CFTC COT reports every Friday after 3:30 PM ET.
+  - Parses CSV. Stores structured data in Firestore.
+  - Computes net positioning changes. Triggers analysis agent update.
+
+14.2 BACKEND INFRASTRUCTURE AS CODE
+- Implement all Cloud Functions using TypeScript (Node.js 20+).
+- Implement Python workers using Python 3.12 with FastAPI on Cloud Run.
+- All infrastructure defined in firebase.json, .firebaserc, and
+  Terraform scripts stored in /infrastructure directory.
+- Implement CI/CD: GitHub Actions workflows for:
+  * Lint + test on every pull request.
+  * Deploy Firebase Functions on merge to main.
+  * Deploy Cloud Run services on merge to main.
+  * Run iOS unit + integration tests on every pull request using
+    GitHub-hosted macOS runners with Xcode.
+  * Fastlane for TestFlight deployment on version tags.
+
+=============================================================================
+PHASE 15 — SECURITY
+=============================================================================
+
+15.1 CLIENT-SIDE SECURITY
+- Certificate pinning for all production API endpoints using TrustKit or
+  custom URLSession delegate implementation.
+- Implement jailbreak detection and disable automated trading features if
+  jailbreak detected. Warn user.
+- All sensitive data (API keys, tokens, secrets): Keychain only.
+- Implement data encryption at rest: Realm database encrypted with a
+  Keychain-stored key.
+- No sensitive data in logs (log scrubbing middleware on all log calls).
+- Implement screenshot prevention on sensitive screens (balance, keys).
+
+15.2 SERVER-SIDE SECURITY
+- All Cloud Functions require Firebase Auth ID token verification.
+- Firestore security rules: users can only read/write their own data.
+  Admin SDK used for all cross-user operations in Cloud Functions.
+- Firestore rules automatically tested with Firebase Emulator in CI.
+- Rate limiting on all Cloud Function HTTP endpoints (per UID, per IP).
+- All API keys for third-party services stored in Google Secret Manager.
+  Never in environment variables in source code.
+- CORS configured to allow only the app's bundle ID origin.
+
+15.3 AUDIT LOGGING
+- All trade executions, agent actions, and configuration changes logged
+  to a Firestore audit_log collection with: user ID, action type, parameters,
+  result, timestamp, device fingerprint.
+- Audit logs are append-only (Firestore rules block update/delete).
+
+=============================================================================
+PHASE 16 — TESTING
+=============================================================================
+
+16.1 UNIT TESTS
+- Every public function, actor, and model must have corresponding unit tests
+  in XCTest. Minimum 80% line coverage enforced via Xcode code coverage.
+- Test all indicator calculations against known reference values.
+- Test all scraper parsers against saved HTML/XML fixture files.
+- Test all data model Codable conformance with round-trip encode/decode.
+- Test all risk rule enforcement logic with edge cases.
+- Test all position sizing calculations with multiple instrument types.
+
+16.2 INTEGRATION TESTS
+- Test all broker adapter implementations against sandbox/paper environments.
+- Test ForexFactory scraper against live site (run in CI with real HTTP,
+  using recorded cassettes/fixtures for determinism where needed).
+- Test Firestore read/write operations using Firebase Emulator Suite.
+- Test LLM gateway against OpenAI and Anthropic sandbox endpoints.
+
+16.3 UI TESTS
+- XCUITest suite covering all critical user flows:
+  * Login, registration, biometric unlock.
+  * Add/remove symbol from watchlist.
+  * Place a paper trade manually.
+  * View chart with indicators.
+  * Trigger and approve an agent signal.
+  * Generate and export an artifact.
+  * Configure a price alert.
+  * View trade journal and analytics.
+
+16.4 PERFORMANCE TESTS
+- Measure and assert maximum acceptable time for:
+  * Cold app launch: < 2 seconds to first meaningful paint.
+  * Chart render for 500 candles with 3 indicators: < 100ms.
+  * Screener run across 50 symbols: < 5 seconds.
+  * Backtest run for 1 year D1 data: < 10 seconds on device.
+- Use XCTest measure blocks. Fail CI if regressions exceed 20%.
+
+16.5 AGENT TESTS
+- Implement a deterministic test harness for each agent using mock data feeds.
+- Each agent test: inject known input data, assert expected output signals,
+  verify tool calls made, verify state transitions.
+- End-to-end agent pipeline test: signal generated → risk validated →
+  paper order placed → journal entry created → artifact generated.
+
+=============================================================================
+PHASE 17 — OBSERVABILITY & MONITORING
+=============================================================================
+
+17.1 CRASH REPORTING
+- Firebase Crashlytics for all uncaught exceptions and Swift errors.
+- Sentry for additional error monitoring with full stack trace and breadcrumbs.
+- All caught errors logged with context to both services.
+
+17.2 ANALYTICS
+- Firebase Analytics: track all user interactions, screen views, feature usage.
+- Custom events: signal_generated, trade_executed, artifact_created,
+  agent_action_approved, agent_action_rejected, backtest_run,
+  calendar_event_viewed, alert_triggered.
+- Funnel analysis: free → pro conversion funnel tracked.
+
+17.3 APP PERFORMANCE MONITORING
+- Firebase Performance Monitoring: HTTP request traces, screen rendering traces.
+- Custom traces around: chart render, screener run, backtest completion,
+  agent analysis cycle, WebSocket connection time.
+
+17.4 SERVER MONITORING
+- Google Cloud Monitoring dashboards for all Cloud Run services.
+- Alerts on: high error rate, high latency, memory usage, cold start frequency.
+- Uptime checks on all public Cloud Run HTTP endpoints.
+
+=============================================================================
+PHASE 18 — ONBOARDING & UX POLISH
+=============================================================================
+
+18.1 ONBOARDING FLOW
+- Interactive multi-step onboarding:
+  Step 1: Welcome + value proposition.
+  Step 2: Connect first broker (with step-by-step guide per broker).
+  Step 3: Add first symbols to watchlist.
+  Step 4: Set risk preferences.
+  Step 5: Configure agent autonomy level with explanation.
+  Step 6: Enable notifications.
+  Step 7: Choose subscription tier (or skip).
+- Onboarding state persisted; can be resumed if interrupted.
+- Skip to main app at any step.
+
+18.2 UI POLISH
+- Haptic feedback on all significant interactions (trade executed, alert
+  triggered, signal received) using UIImpactFeedbackGenerator.
+- Smooth animated transitions on all navigation.
+- Skeleton loading states (shimmer effect) on all data-driven views.
+- Pull-to-refresh on all list views.
+- Empty states: meaningful illustration and action button on every empty list.
+- Error states: clear error message with retry button on every data view.
+- Accessibility: VoiceOver labels on all UI elements. Dynamic Type support.
+  Minimum tap target 44×44 pt everywhere.
+- iPad support: use UISplitViewController / NavigationSplitView for
+  two-column layout on iPad.
+- Landscape orientation fully supported on iPhone and iPad.
+- Widget extension: small widget showing P&L, account balance, and top signal.
+  Medium widget showing watchlist with live prices. WidgetKit implementation.
+
+=============================================================================
+PHASE 19 — LOCALIZATION & ACCESSIBILITY
+=============================================================================
+
+19.1 LOCALIZATION
+- Full String Catalog localization. All user-facing strings must use
+  String(localized:) or LocalizedStringKey. No hardcoded English strings.
+- Implement initial translations for: English, Spanish, French, German,
+  Japanese, Chinese (Simplified), Portuguese (Brazil), Arabic (RTL layout).
+- RTL layout fully supported for Arabic and Hebrew.
+- Number and currency formatting using Locale-aware formatters.
+- Date and time formatting locale-aware throughout.
+
+19.2 ACCESSIBILITY
+- Full VoiceOver support with meaningful accessibility labels and hints.
+- Reduce Motion support: disable all non-essential animations when
+  Reduce Motion is enabled.
+- Reduce Transparency support.
+- High contrast mode support.
+- Dynamic Type: all text scales with system font size settings.
+- Color blind accessibility: never use color alone to convey information.
+  Always pair color with icon, label, or pattern.
+
+=============================================================================
+PHASE 20 — APP STORE READINESS
+=============================================================================
+
+20.1 APP STORE COMPLIANCE
+- Privacy manifest (PrivacyInfo.xcprivacy) declaring all data collected and
+  all required reason APIs used.
+- App Tracking Transparency prompt if any advertising or cross-app tracking.
+- Age rating metadata appropriate for financial application.
+- Export compliance documentation for App Store Connect.
+
+20.2 FASTLANE AUTOMATION
+- Fastlane Matchfile for code signing management (App Store + AdHoc + Development).
+- Fastlane Gymfile for build configuration.
+- Fastlane Deliver for App Store Connect metadata, screenshots, and submission.
+- Fastlane Snapshot for automated screenshot generation in all locales.
+- GitHub Actions workflow triggers TestFlight build on every merge to main.
+  Triggers App Store submission on git tag matching v*.*.*.
+
+20.3 DOCUMENTATION
+- Generate full DocC documentation for all public Swift APIs.
+- README.md: comprehensive setup guide, architecture diagram (ASCII + linked
+  diagram image), environment variables, required API keys, development setup,
+  testing instructions.
+- CONTRIBUTING.md: branching strategy, PR template, code review checklist.
+- CHANGELOG.md: maintained throughout all phases.
+- ARCHITECTURE.md: describes all modules, their responsibilities, and
+  inter-module dependencies.
+
+=============================================================================
+GLOBAL RULES FOR CODEX THROUGHOUT ALL PHASES:
+=============================================================================
+
+- AUDIT FIRST. Scan existing code before writing anything new.
+- SKIP IF EXISTS AND WORKING. Fix if exists and broken.
+- NO PLACEHOLDERS. No TODOs. No fatalError("not implemented").
+- ALL CODE MUST COMPILE. Run a build after every logical commit.
+- ALL TESTS MUST PASS before advancing to the next phase.
+- COMMIT AFTER EACH MODULE with a descriptive conventional commit message.
+- USE ACTORS for all shared mutable state. Swift strict concurrency mode.
+- USE COMBINE for all reactive data flows between modules.
+- USE ASYNC/AWAIT everywhere. No completion handlers.
+- DEPENDENCY INJECTION throughout. No singletons except global actors.
+- LOG EVERY ERROR using OSLog with appropriate log level.
+- NEVER expose secrets in source code. All keys via Keychain or Secret Manager.
+- PAPER TRADING must be the default. Never touch live funds without explicit
+  user confirmation and correct autonomy level settings.
+- EVERY AGENT ACTION must be logged with full context to the audit log.
+- ALL UI UPDATES must occur on the Main actor.
+- ALL NETWORKING must support cancellation via Task cancellation.
+- HANDLE ALL ERROR CASES. Never use try! or as! in production code paths.
+- CLEAN UP RESOURCES. All WebSocket connections, Realm instances, and
+  WKWebView instances must be properly torn down.
+
+BEGIN PHASE 0 NOW.
+=============================================================================
