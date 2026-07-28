@@ -356,6 +356,7 @@ enum VinnyDSP {
 
     /// Simple one-knob compressor/limiter.
     static func compress(_ x: [Float], threshold: Double, ratio: Double, attackMs: Double, releaseMs: Double, sampleRate: Int) -> [Float] {
+        let safeThresh = max(threshold, 0.001)  // guard against division by zero
         let atk = exp(-1.0 / (max(attackMs, 0.1) * 0.001 * Double(sampleRate)))
         let rel = exp(-1.0 / (max(releaseMs, 1) * 0.001 * Double(sampleRate)))
         var env = 0.0
@@ -364,8 +365,8 @@ enum VinnyDSP {
             let a = abs(Double(x[i]))
             env = a > env ? atk * env + (1 - atk) * a : rel * env + (1 - rel) * a
             var gain = 1.0
-            if env > threshold {
-                let over = env / threshold
+            if env > safeThresh {
+                let over = env / safeThresh
                 gain = pow(over, 1.0 / max(ratio, 1) - 1.0)
             }
             out[i] = Float(Double(x[i]) * gain)
@@ -499,7 +500,7 @@ enum VinnyDSP {
             let start = Int(posR * Double(max(0, x.count - grain - 1)))
             let pitch = 1.0 + (rng.next01() - 0.5) * config.pitchRandom
             let outPos = Int(rng.next01() * Double(max(1, outCount - grain)))
-            let amp = 0.9 / sqrt(config.density / 12)
+            let amp = 0.9 / sqrt(max(config.density, 0.1) / 12)
             for g in 0..<grain {
                 let readPos = min(Double(start) + Double(g) * pitch, Double(x.count - 1))
                 let i0 = Int(readPos)
