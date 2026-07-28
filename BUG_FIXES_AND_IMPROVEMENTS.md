@@ -236,3 +236,96 @@ Audit-pass fixes applied while building the DSP core:
 ## Conclusion
 
 These improvements significantly enhance the EZIN application's capabilities, particularly in local LLM support and advanced technical analysis visualization. The modular architecture ensures that future enhancements can be added without disrupting existing functionality.
+
+## 9. v1.8.0 Comprehensive Audit Fixes
+
+### 9.1 "Same Song 6 Times" — Chat Backend Tools Consistency Fix
+
+**Issue 1:** `create_song` tool was completely deterministic — `promptToNotes()` had only
+4 branches (major chord, minor chord, scale, arpeggio), always producing identical notes
+for the same prompt text. Asking for a song multiple times generated the exact same output.
+
+**Issue 2:** VINNY loop seed was deterministic: `seedBase = UInt64(abs(prompt.hashValue) % 100000)`
+produced the same seed for the same prompt, so `vinny_loop` always generated identical loops.
+
+**Issue 3:** `create_song` used primitive sine-wave audio instead of the full VINNY production
+engine (drums + bass + chords + lead), making it the weaker path when the LLM chose it.
+
+**Issue 4:** The chat `runLoop` had no tool-call deduplication — the LLM could call the same
+tool repeatedly in a single turn.
+
+**Fixes:**
+- `create_song` now routes through VINNY Loop Factory for natural-language style prompts,
+  producing rich multi-track audio (drums, bass, chords, lead). Falls back to
+  `AudioGenerationService` only for explicit note notation.
+- All music generation tools (`create_song`, `vinny_loop`, `vinny_patch`, `vinny_reference`,
+  `vinny_stems`) now use time-based seeding (`Date().timeIntervalSince1970 * 1000`) combined
+  with prompt hashing, ensuring every call produces a unique variation.
+- `promptToNotes()` was expanded from 4 patterns to include blues/jazz riffs, multiple
+  pentatonic scales, and varied chord inversions — all modulated by time-based variation
+  in key, tempo, rhythm, and amplitude.
+- `chordPattern()` now accepts `tempo` and `variation` parameters for dynamic rhythm
+  and inversion changes.
+- Artifact filenames now include timestamps to prevent collisions.
+- System prompt updated to direct the LLM to prefer `vinny_loop` for music requests.
+- `runLoop` now tracks tool calls per turn and blocks repeated calls to the same tool
+  (max 2 per tool per user message, max 6 total steps).
+
+**Files:** `EZIN/Chat/ToolRegistry.swift`, `EZIN/Chat/VinnyChatTools.swift`,
+`EZIN/Chat/ChatModels.swift`, `EZIN/Views/ChatView.swift`
+
+### 9.2 Duplicate `skill_import` Switch Case — Compile Error
+
+**Issue:** `ToolRegistry.run()` had two `case "skill_import":` entries (lines 54 and 182),
+which is a Swift compile error. The first mapped to `skillImport(args)` and the second to
+`skillImportTool(args:)`.
+
+**Fix:** Removed the first duplicate at line 54, keeping the enhanced `skillImportTool`
+which routes through `SkillsExtensionService.shared.importSkill`.
+
+**File:** `EZIN/Chat/ToolRegistry.swift`
+
+### 9.3 NSExpression Security Vulnerability — Calculator Tool
+
+**Issue:** `ChatToolExpansion.calculate()` used `NSExpression(format: expr)` with arbitrary
+user input, which can execute arbitrary code (e.g. `FUNCTION(0, "intValue", ...)`) and
+crash the app.
+
+**Fix:** Replaced with a safe recursive-descent `SimpleMathEvaluator` that only permits
+numbers, basic arithmetic (`+`, `-`, `*`, `/`), parentheses, and named math functions
+(`sqrt`, `abs`, `log`, `ln`, `sin`, `cos`, `exp`). Input is whitelisted to reject any
+non-math characters.
+
+**File:** `EZIN/Services/ChatToolExpansionService.swift`
+
+### 9.4 Variable Shadowing — `randomNumbersTool` and `statistics`
+
+**Issue:** `randomNumbersTool` declared `let min = ...` and `let max = ...`, shadowing
+Swift's built-in `Swift.min` and `Swift.max` functions. Similarly, `statistics()` used
+`let min = sorted.first!` and `let max = sorted.last!`.
+
+**Fix:** Renamed to `minVal`/`maxVal` in both locations.
+
+**Files:** `EZIN/Chat/ToolRegistry.swift`, `EZIN/Services/ChatToolExpansionService.swift`
+
+### 9.5 Games Tab Navigation — Dead NavigationLinks
+
+**Issue:** `GamesView` used `NavigationLink` without a `NavigationView` or `NavigationStack`
+wrapper, so tapping games and VINNY did nothing. The BUG_FIXES doc claimed this was fixed
+but the NavigationView wrapper was missing from the actual code.
+
+**Fix:** Wrapped `GamesView`'s body in a `NavigationView` with `.navigationBarHidden(true)`
+so the games list appears normally and pushed views get a navigation bar.
+
+**File:** `EZIN/Games/GamesView.swift`
+
+### 9.6 VINNY `registerArtifact` Access Level
+
+**Issue:** `registerArtifact(data:name:ext:)` in `VinnyChatTools.swift` was marked
+`private`, preventing `ToolRegistry.swift`'s `createSong` from calling it (cross-file
+access within the same struct).
+
+**Fix:** Changed to `internal` (default) access level so it's accessible from all
+`ToolRegistry` extensions.
+
+**File:** `EZIN/Chat/VinnyChatTools.swift`

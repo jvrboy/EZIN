@@ -187,12 +187,13 @@ final class ChatViewModel: ObservableObject {
 
 
         ADDITIONAL TOOLS (current build): \
+        IMPORTANT: For music/song/loop creation, ALWAYS prefer vinny_loop(prompt) which produces rich multi-track audio (drums+bass+chords+lead). create_song(prompt) is a secondary fallback for explicit note notation only. Never call the same music tool more than once per user request. \
         create_file(name,content[,kind,folder]) and create_artifact(kind,name,content) create real local files (HTML/MD/PDF-adjacent text, code, CSV/JSON, audio) directly — never claim an MCP server is required. \
         read_file(name|path[,chars]) and summarize_file(name|path[,sentences]) read imported/uploaded files; summarize_file extracts PDF text with PDFKit. \
         list_files([scope]), rename_file(from,to), delete_file(name|path), app_state(), set_setting(key,value), memory_add(text), memory_search(query), skills_list(), skill_create(name,content[,format,summary,tools]), skill_import(text|content[,name]), web_scrape(url), sentiment_score(text). \
         Advanced hidden backend tools: full_backend_report, math_analysis, forex_math, synthetics_analysis, rng_analysis, neural_inference, chaos_analysis, quantum_inspired, bayesian_update, fuzzy_signal, order_flow, harmonic_patterns, elliott_wave, astro_cycles, deep_risk, walkforward, correlation_matrix, session_liquidity, anomaly_scan, backend_tool_catalog, agentic_pipeline_catalog, agentic_power_plan, connector_catalog, swarm_status, production_health, and backend_tool_001 through backend_tool_1500. \
         APEX analysis layer: master_confluence(symbol,timeframe) runs EVERY engine at once for the deepest verdict; pattern_scan, market_profile, liquidity_map, range_forecast, entropy_analysis (each symbol+timeframe); symbol_scanner([symbols],timeframe) ranks instruments by confluence. \
-        VINNY sound engine: vinny_loop(prompt[,bars,variation]) creates a full playable loop (WAV+MIDI) from a style description; vinny_patch(prompt) grows a synth patch + preview; vinny_reference([file]) analyzes an uploaded reference WAV and generates a similar loop; vinny_stems() exports the last loop as a STEMS ZIP; vinny_library() lists Vault presets. Audio artifacts play inline with skip/rewind. \
+        VINNY sound engine (PREFERRED for music): vinny_loop(prompt[,bars,variation]) creates a full playable loop (WAV+MIDI) from a style description — ALWAYS use this for song/music/loop requests; vinny_patch(prompt) grows a synth patch + preview; vinny_reference([file]) analyzes an uploaded reference WAV and generates a similar loop; vinny_stems() exports the last loop as a STEMS ZIP; vinny_library() lists Vault presets. Audio artifacts play inline with skip/rewind. Every call generates a unique variation. \
         market_overview() lists live prices. \
         Remember: call a tool with a single line `ACTION: {"tool":"<name>","args":{...}}` and nothing else.
         """
@@ -202,8 +203,15 @@ final class ChatViewModel: ObservableObject {
             ($0.role == "assistant" ? "assistant" : "user", $0.text)
         }
 
+        // Track tools called in this loop to prevent the LLM from calling the same tool
+        // repeatedly (e.g. generating the same song 6 times). After a tool is called once,
+        // a second call to the same tool is blocked with an instruction to summarize.
+        var calledTools: [String: Int] = [:]
+        let maxCallsPerTool = 2  // allow at most 2 calls to any single tool per user message
+        let maxTotalSteps = 6    // hard cap on total tool-call iterations
+
         var steps = 0
-        while steps < 5 {
+        while steps < maxTotalSteps {
             steps += 1
             let result = await AIRouter.complete(system: system, messages: turns)
             switch result {
@@ -212,6 +220,17 @@ final class ChatViewModel: ObservableObject {
                 busy = false; return
             case .success(let reply):
                 if let action = parseAction(reply) {
+                    // Dedup: block repeated calls to the same tool to prevent
+                    // the "same song 6 times" and other infinite-loop scenarios.
+                    let callCount = (calledTools[action.tool] ?? 0) + 1
+                    calledTools[action.tool] = callCount
+                    if callCount > maxCallsPerTool {
+                        let msg = "Tool \(action.tool) was already called \(callCount - 1) times in this turn. Please summarize the results you have so far instead of calling the same tool again."
+                        turns.append(("assistant", reply))
+                        turns.append(("user", "SYSTEM: \(msg)"))
+                        continue
+                    }
+
                     store.appendToCurrent(ChatMessage(role: "tool", text: "⚙️ \(action.tool)(\(compact(action.args)))"))
                     // Clear any stale artifact pointer (e.g. a user upload) so only files
                     // actually produced by THIS tool run attach to a bubble.
@@ -233,6 +252,10 @@ final class ChatViewModel: ObservableObject {
                     busy = false; return
                 }
             }
+        }
+        // If we exhausted all steps, emit a summary message
+        if steps >= maxTotalSteps {
+            store.appendToCurrent(ChatMessage(role: "assistant", text: "I've completed the available analysis steps. Let me know if you'd like me to dig deeper into anything specific."))
         }
         busy = false
     }

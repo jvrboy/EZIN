@@ -16,7 +16,7 @@ extension ToolRegistry {
 
     // MARK: helpers
 
-    private func registerArtifact(data: Data, name: String, ext: String) -> Artifact {
+    func registerArtifact(data: Data, name: String, ext: String) -> Artifact {
         let safe = name.replacingOccurrences(of: "[^A-Za-z0-9._-]", with: "-", options: .regularExpression)
         let url = FileStore.shared.saveData(data, name: safe, in: FileStore.shared.artifactsDir)
         let artifact = Artifact(name: safe, relativePath: FileStore.shared.relativePath(url), kind: ext, byteSize: Int64(data.count))
@@ -51,8 +51,11 @@ extension ToolRegistry {
         let variation = max(0, min(50, (args["variation"] as? Int) ?? Int(str(args, "variation")) ?? 0))
 
         let patch = GenesisEngine.patch(fromText: prompt, seed: UInt64(Date().timeIntervalSince1970))
+        // Time-based seed ensures every call produces a unique variation,
+        // even with the same prompt text. Combines prompt hash + current time + variation param.
+        let timeSeed = UInt64(Date().timeIntervalSince1970 * 1000) % 1_000_000
         let seedBase = UInt64(abs(prompt.hashValue) % 100000)
-        let seedVariation = UInt64(variation) &* 977
+        let seedVariation = UInt64(variation) &* 977 &+ timeSeed
         let loopSeed = seedBase &+ seedVariation
         let result: LoopResult = await Task.detached(priority: .userInitiated) {
             LoopFactory.makeLoop(patch: patch, bars: bars, seed: loopSeed, variation: variation)
@@ -81,7 +84,9 @@ extension ToolRegistry {
     func vinnyPatchTool(_ args: [String: Any]) async -> String {
         let prompt = str(args, "prompt")
         guard !prompt.isEmpty else { return "Describe the sound, e.g. \"warm analog bass with a metallic tail\"." }
-        let patch = GenesisEngine.patch(fromText: prompt, seed: UInt64(Date().timeIntervalSince1970))
+        // Time-based seed ensures unique patches even for the same description
+        let patchSeed = UInt64(Date().timeIntervalSince1970 * 1000) % 1_000_000
+        let patch = GenesisEngine.patch(fromText: prompt, seed: patchSeed)
         VinnyChatState.shared.lastPatch = patch
         VinnyStore.shared.savePreset(patch)
 
@@ -130,8 +135,10 @@ extension ToolRegistry {
         VinnyStore.shared.savePreset(patch)
 
         let generationPatch = patch   // immutable copy for safe concurrent capture
+        // Time-based seed ensures unique output even for the same reference file
+        let refSeed = UInt64(Date().timeIntervalSince1970 * 1000) % 1_000_000
         let result: LoopResult = await Task.detached(priority: .userInitiated) {
-            LoopFactory.makeLoop(patch: generationPatch, bars: 4, seed: UInt64(abs(artifact.name.hashValue) % 100000))
+            LoopFactory.makeLoop(patch: generationPatch, bars: 4, seed: refSeed)
         }.value
         VinnyChatState.shared.lastLoop = result
 
@@ -154,8 +161,10 @@ extension ToolRegistry {
         if loop == nil {
             // Generate one on the spot so the tool always delivers.
             let patch = VinnyChatState.shared.lastPatch ?? VinnyPatch.default
+            // Time-based seed for unique stems generation
+            let stemsSeed = UInt64(Date().timeIntervalSince1970 * 1000) % 1_000_000
             let fresh: LoopResult = await Task.detached(priority: .userInitiated) {
-                LoopFactory.makeLoop(patch: patch, bars: 4, seed: 7)
+                LoopFactory.makeLoop(patch: patch, bars: 4, seed: stemsSeed)
             }.value
             loop = fresh
             VinnyChatState.shared.lastLoop = fresh

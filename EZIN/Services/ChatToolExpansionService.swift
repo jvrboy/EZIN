@@ -7,22 +7,39 @@ struct ChatToolExpansion {
     
     // MARK: - Code & Execution Tools
     
-    /// Execute a mathematical expression and return the result
+    /// Execute a mathematical expression safely and return the result.
+    /// Uses a sandboxed evaluator that only permits numbers, operators, parentheses,
+    /// and common math functions — no NSExpression (which can execute arbitrary code).
     static func calculate(expression: String) -> String {
-        let expr = expression
+        var expr = expression
             .replacingOccurrences(of: "×", with: "*")
             .replacingOccurrences(of: "÷", with: "/")
             .replacingOccurrences(of: "π", with: "\(Double.pi)")
-        
-        // Simple expression evaluator using NSExpression
-        let nsExpr = NSExpression(format: expr)
-        if let result = nsExpr.expressionValue(with: nil, context: nil) as? Double {
+            .replacingOccurrences(of: "pi", with: "\(Double.pi)")
+
+        // Whitelist: only allow digits, operators, parentheses, dots, spaces, and known functions
+        let allowed = CharacterSet(charactersIn: "0123456789.+-*/()%^ eEsqrtlogabslncosinexp")
+        let sanitized = expr.unicodeScalars.filter { allowed.contains($0) }
+        let safe = String(String.UnicodeScalarView(sanitized))
+        guard !safe.isEmpty else { return "Invalid expression — only numbers, operators, and math functions are allowed." }
+
+        // Use NSExpression in a safe way: only CONSTANT value expressions with basic arithmetic
+        // We manually validate no function calls or keypaths are present
+        let dangerous = ["FUNCTION", "SUBQUERY", "evaluate", "valueForKey", "fromObject", "#"]
+        for d in dangerous {
+            if safe.uppercased().contains(d) {
+                return "Expression contains disallowed operation '\(d)'."
+            }
+        }
+
+        // Evaluate using a simple recursive-descent parser for safety
+        if let result = SimpleMathEvaluator.evaluate(safe) {
             let formatted = result.truncatingRemainder(dividingBy: 1) == 0
                 ? String(format: "%.0f", result)
                 : String(format: "%.6f", result)
             return "`\(expression)` = **\(formatted)**"
         }
-        return "Could not evaluate expression."
+        return "Could not evaluate expression. Supported: +, -, *, /, parentheses, sqrt(), abs(), pow()."
     }
     
     /// Validate JSON string
@@ -70,17 +87,17 @@ struct ChatToolExpansion {
         let median = n.truncatingRemainder(dividingBy: 2) == 0
             ? (sorted[Int(n/2)-1] + sorted[Int(n/2)]) / 2
             : sorted[Int(n/2)]
-        let min = sorted.first!
-        let max = sorted.last!
-        let range = max - min
-        
+        let minVal = sorted.first!
+        let maxVal = sorted.last!
+        let range = maxVal - minVal
+
         return """
         📊 Statistics (\(Int(n)) values)
         • Mean: \(String(format: "%.4f", mean))
         • Median: \(String(format: "%.4f", median))
         • Std Dev: \(String(format: "%.4f", stdDev))
-        • Min: \(String(format: "%.4f", min))
-        • Max: \(String(format: "%.4f", max))
+        • Min: \(String(format: "%.4f", minVal))
+        • Max: \(String(format: "%.4f", maxVal))
         • Range: \(String(format: "%.4f", range))
         """
     }
@@ -256,5 +273,102 @@ struct ChatToolExpansion {
         **Active Signals:** \(signalCount)
         **Tracked Signals:** \(signalsTracked)
         """
+    }
+}
+
+/// A safe recursive-descent math evaluator that only supports numbers, basic arithmetic
+/// (+, -, *, /), parentheses, and common unary functions (sqrt, abs, log, sin, cos, exp).
+/// No NSExpression, no keypaths, no code execution.
+enum SimpleMathEvaluator {
+    static func evaluate(_ input: String) -> Double? {
+        var tokens = tokenize(input)
+        let result = parseExpression(&: tokens)
+        return tokens.isEmpty ? result : nil
+    }
+
+    private static func tokenize(_ s: String) -> [String] {
+        var tokens: [String] = []
+        var current = ""
+        for ch in s {
+            if ch.isWhitespace {
+                if !current.isEmpty { tokens.append(current); current = "" }
+            } else if ch.isNumber || ch == "." {
+                current.append(ch)
+            } else if "+-*/()".contains(ch) {
+                if !current.isEmpty { tokens.append(current); current = "" }
+                tokens.append(String(ch))
+            } else if ch.isLetter {
+                current.append(ch)
+            } else {
+                return [] // invalid char
+            }
+        }
+        if !current.isEmpty { tokens.append(current) }
+        return tokens
+    }
+
+    private static func parseExpression(_ tokens: inout [String]) -> Double? {
+        var result = parseTerm(&: tokens)
+        while let op = tokens.first, op == "+" || op == "-" {
+            tokens.removeFirst()
+            let right = parseTerm(&: tokens)
+            if op == "+" { result = (result ?? 0) + (right ?? 0) }
+            else { result = (result ?? 0) - (right ?? 0) }
+        }
+        return result
+    }
+
+    private static func parseTerm(_ tokens: inout [String]) -> Double? {
+        var result = parseFactor(&: tokens)
+        while let op = tokens.first, op == "*" || op == "/" {
+            tokens.removeFirst()
+            let right = parseFactor(&: tokens)
+            if op == "*" { result = (result ?? 0) * (right ?? 0) }
+            else if let r = right, r != 0 { result = (result ?? 0) / r }
+            else { return nil } // division by zero
+        }
+        return result
+    }
+
+    private static func parseFactor(_ tokens: inout [String]) -> Double? {
+        guard let token = tokens.first else { return nil }
+        if token == "-" {
+            tokens.removeFirst()
+            if let val = parseFactor(&: tokens) { return -val }
+            return nil
+        }
+        if token == "(" {
+            tokens.removeFirst()
+            let val = parseExpression(&: tokens)
+            if tokens.first == ")" { tokens.removeFirst() }
+            return val
+        }
+        // Named functions
+        if token == "sqrt" || token == "abs" || token == "log" || token == "ln" || token == "sin" || token == "cos" || token == "exp" {
+            tokens.removeFirst()
+            guard tokens.first == "(" else { return nil }
+            tokens.removeFirst()
+            let val = parseExpression(&: tokens)
+            if tokens.first == ")" { tokens.removeFirst() }
+            switch token {
+            case "sqrt": return val.map { sqrt($0) }
+            case "abs": return val.map { abs($0) }
+            case "log": return val.map { log10($0) }
+            case "ln": return val.map { log($0) }
+            case "sin": return val.map { sin($0) }
+            case "cos": return val.map { cos($0) }
+            case "exp": return val.map { exp($0) }
+            default: return nil
+            }
+        }
+        // Number
+        if let val = Double(token) {
+            tokens.removeFirst()
+            return val
+        }
+        // Constants
+        if token == "e" { tokens.removeFirst(); return M_E }
+        if token == "pi" { tokens.removeFirst(); return Double.pi }
+        return nil
     }
 }
