@@ -516,3 +516,110 @@ empty closure body. Price updates are already pushed reactively from AppState.
 explaining the reactive architecture.
 
 **File:** `EZIN/Services/SignalPerformanceStore.swift`
+
+## 13. v1.9.2 — Deep Audit Round 2: Hidden Bugs
+
+### 13.1 BotStrategyLibrary — 5 Logic Bugs
+
+**Issue 1:** `RSIMeanReversion.shouldExit()` — both conditions (`rsi > 50` AND
+`rsi < 50`) returned exit, meaning it ALWAYS exited when `currentPrice > 0`.
+Only `rsi == 50` exactly would not trigger exit.
+**Fix:** Changed to only exit when RSI returns to the neutral zone (40–60).
+
+**Issue 2:** `BollingerSqueeze.shouldExit()` — force unwrap `.last!` on
+`bbUpper`/`bbLower` without any guard. Crash if arrays are empty.
+**Fix:** Added `guard let upper = ..., let lower = ...`.
+
+**Issue 3:** `TrendFollower.shouldExit()` — `abs(fast - slow) / slow` divides
+by `slow` which could be 0 with corrupted data.
+**Fix:** Added `slow > 0` guard.
+
+**Issue 4:** `MTFConfluence.shouldExit()` — same `/ smaSlow` division by zero.
+**Fix:** Added `smaSlow > 0` guard.
+
+**Issue 5:** `VolumeSpike.shouldExit()` — divided by constant `9` regardless
+of actual array length, producing wrong averages for short arrays.
+**Fix:** Divide by `recent.count` instead.
+
+**File:** `EZIN/Services/BotStrategyLibrary.swift`
+
+### 13.2 DateFormatter Performance — 4 Views
+
+**Issue:** `DateFormatter()` was created inside view body functions, causing
+a new formatter allocation on every render (60fps during scrolling).
+**Fix:** Cached as `static let` in `HistoryView` (2 instances),
+`TradingDashboardView`, and `EconomicCalendarView`.
+
+**Files:** `HistoryView.swift`, `TradingDashboardView.swift`,
+`EconomicCalendarView.swift`
+
+### 13.3 PositionCalculatorService `fmt()` No-Op
+
+**Issue:** `fmt()` had identical branches: `x > 100 ? format : format` — the
+condition had no effect on the output.
+**Fix:** Large numbers now use `%.2f`, small numbers use `%.Nf`.
+
+**File:** `EZIN/Services/PositionCalculatorService.swift`
+
+### 13.4 AdvancedBackendEngines Kalman Filter `log(0)` Crash
+
+**Issue:** `kalman()` called `log(prices[0])` and `log(price)` without
+checking for zero/negative prices. `log(0) = -inf` corrupts the entire
+filter, producing NaN/Infinity downstream.
+**Fix:** `let safePrices = prices.map { max($0, 1e-10) }` before all log ops.
+
+**File:** `EZIN/Engine/AdvancedBackendEngines.swift`
+
+### 13.5 SignalTracker — 5 Issues
+
+**Issue 1:** Not `@MainActor` but has `@Published` + Timer → data races.
+**Issue 2:** `savePerformanceData()` only saved UUIDs, not signal data.
+All history lost on restart.
+**Issue 3:** `updateActiveSignals()` empty — Timer fires every 5s doing nothing.
+**Issue 4:** Division by zero in accuracy when `takeProfit == stopLoss`.
+**Issue 5:** Unused `updateTimer` property.
+**Fix:** Added `@MainActor`, proper encode/decode, removed timer, guarded division.
+
+**File:** `EZIN/Engine/SignalTracker.swift`
+
+### 13.6 ProviderValidator — OpenAI/Anthropic/Groq Always "Invalid"
+
+**Issue:** Only handled NIM/Cerebras/FreeModel. All other providers returned
+"Provider not supported" — making valid keys appear broken.
+**Fix:** Added `validateOpenAICompatible()` using `AIRouter.endpoint()`.
+
+**Files:** `ProviderValidator.swift`, `AIRouter.swift`
+
+### 13.7 APITokenTracker — 2 Bugs
+
+**Issue 1:** `bestKeyIndex()` used `"key_N"` format but stored keys use hashed
+format — never matched, always returned 0.
+**Issue 2:** `checkDayRollover()` reset cumulative `tokensUsed` instead of
+only `requestsToday`.
+**Fix:** Rewrote key scanning; preserved lifetime counters on rollover.
+
+**File:** `EZIN/Services/APITokenTracker.swift`
+
+### 13.8 SignalEngine.generateAdaptive Dead Code
+
+**Issue:** Forex branch had empty `if` body — complete dead code.
+**Fix:** Functional asset-class-specific agent filtering.
+
+**File:** `EZIN/Engine/SignalEngine.swift`
+
+### 13.9 SignalPerformanceStore Dead Timer
+
+**Issue:** 10-second Timer with empty closure body.
+**Fix:** Removed timer; price updates are reactive.
+
+**File:** `EZIN/Services/SignalPerformanceStore.swift`
+
+### 13.10 VinnyDSP Numerical Safety
+
+**Issue 1:** `compress()` — `env / threshold` divides by threshold which could
+be 0, producing infinity gain.
+**Issue 2:** `granularCloud()` — `0.9 / sqrt(density / 12)` — if density is 0,
+`sqrt(0) = 0`, then division by zero.
+**Fix:** Added `max(threshold, 0.001)` and `max(density, 0.1)` guards.
+
+**File:** `EZIN/Vinny/VinnyDSP.swift`
