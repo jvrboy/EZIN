@@ -18,7 +18,6 @@ struct GamesView: View {
     ]
 
     var body: some View {
-        NavigationView {
             ZStack {
                 AuroraBackground()
                 ScrollView {
@@ -46,8 +45,7 @@ struct GamesView: View {
             }
             .navigationTitle("Games")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarHidden(true)
-        }
+            .navigationBarHidden(false)
     }
 
     private func sectionLabel(_ text: String) -> some View {
