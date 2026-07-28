@@ -345,10 +345,11 @@ struct TradingDashboardView: View {
         }
     }
 
+    private static let dashboardDateFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "EEEE, MMM d"; return f
+    }()
     private var formattedDate: String {
-        let f = DateFormatter()
-        f.dateFormat = "EEEE, MMM d"
-        return f.string(from: Date())
+        Self.dashboardDateFormatter.string(from: Date())
     }
 
     private var sessionLabel: String {

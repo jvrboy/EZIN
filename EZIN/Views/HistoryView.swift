@@ -208,8 +208,11 @@ struct HistoryView: View {
         }
     }
 
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d · HH:mm"; return f
+    }()
     private func dateStr(_ d: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "MMM d · HH:mm"; return f.string(from: d)
+        Self.dateFormatter.string(from: d)
     }
 }
 
@@ -347,8 +350,11 @@ struct ResolvedSignalRow: View {
         v > 100 ? String(format: "%.1f", v) : String(format: "%.4f", v)
     }
 
+    private static let dateFormatter2: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d · HH:mm"; return f
+    }()
     private func dateStr(_ d: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "MMM d · HH:mm"; return f.string(from: d)
+        Self.dateFormatter2.string(from: d)
     }
 
     private func formatDuration(_ ti: TimeInterval) -> String {

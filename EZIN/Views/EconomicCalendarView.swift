@@ -207,10 +207,11 @@ struct EventCard: View {
         return "\(minutes)m"
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f
+    }()
     private var formattedTime: String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: event.date)
+        Self.timeFormatter.string(from: event.date)
     }
 
     private var impactColor: Color {
