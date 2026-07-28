@@ -442,7 +442,7 @@ struct ToolRegistry {
             let bars = max(1, min(16, (args["bars"] as? Int) ?? Int(str(args, "bars")) ?? 4))
             // Time-based seed ensures every call produces a unique variation
             let timeSeed = UInt64(Date().timeIntervalSince1970 * 1000) % 1_000_000
-            let promptHash = UInt64(abs(prompt.hashValue) % 100_000)
+            let promptHash = UInt64(bitPattern: prompt.hashValue) % 100_000
             let seed = timeSeed &+ promptHash
 
             let patch = GenesisEngine.patch(fromText: prompt, seed: timeSeed)
@@ -550,7 +550,7 @@ struct ToolRegistry {
 
         // Random key selection influenced by prompt + time
         let allKeys = ["C", "D", "E", "F", "G", "A", "B"]
-        let keyIndex = (abs(p.hashValue) + timeComponent) % allKeys.count
+        let keyIndex = (Int(UInt64(bitPattern: p.hashValue) % UInt64(allKeys.count)) + timeComponent) % allKeys.count
         let root = extractNote(from: p) ?? "\(allKeys[keyIndex])4"
 
         // Tempo influenced by prompt mood + time variation
@@ -605,7 +605,7 @@ struct ToolRegistry {
             ["D4", "E4", "F#4", "A4", "B4", "D5"],  // D major pent
             ["E4", "G4", "A4", "B4", "D5", "E5"]   // E minor pent
         ]
-        let scaleIdx = (abs(p.hashValue) + timeComponent) % scales.count
+        let scaleIdx = (Int(UInt64(bitPattern: p.hashValue) % UInt64(scales.count)) + timeComponent) % scales.count
         let scale = scales[scaleIdx]
         var lines: [String] = []
         for i in 0..<12 {

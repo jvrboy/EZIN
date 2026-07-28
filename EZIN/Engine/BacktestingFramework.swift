@@ -568,7 +568,10 @@ enum BacktestingFramework {
         }
 
         pop.sort { $0.score > $1.score }
-        var best = pop.first!
+        guard let firstBest = pop.first else {
+            return OptimizationResult(bestParameters: BacktestingStrategyParameters(), bestScore: 0, topResults: [])
+        }
+        var best = firstBest
 
         for _ in 0..<generations {
             // Selection: keep top performers
@@ -597,8 +600,8 @@ enum BacktestingFramework {
             pop = Array(pop.prefix(topSelection)) + children
             pop.sort { $0.score > $1.score }
 
-            if pop.first!.score > best.score {
-                best = pop.first!
+            if let topCandidate = pop.first, topCandidate.score > best.score {
+                best = topCandidate
             }
         }
 

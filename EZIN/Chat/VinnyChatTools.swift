@@ -54,7 +54,7 @@ extension ToolRegistry {
         // Time-based seed ensures every call produces a unique variation,
         // even with the same prompt text. Combines prompt hash + current time + variation param.
         let timeSeed = UInt64(Date().timeIntervalSince1970 * 1000) % 1_000_000
-        let seedBase = UInt64(abs(prompt.hashValue) % 100000)
+        let seedBase = UInt64(bitPattern: prompt.hashValue) % 100000
         let seedVariation = UInt64(variation) &* 977 &+ timeSeed
         let loopSeed = seedBase &+ seedVariation
         let result: LoopResult = await Task.detached(priority: .userInitiated) {

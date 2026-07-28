@@ -376,7 +376,7 @@ enum GenesisEngine {
     /// Text-to-Patch: natural language → fully editable synth patch.
     static func patch(fromText text: String, seed: UInt64? = nil) -> VinnyPatch {
         let t = text.lowercased()
-        var rng = SeededRNG(seed ?? UInt64(abs(t.hashValue)))
+        var rng = SeededRNG(seed ?? UInt64(bitPattern: t.hashValue))
         var p = VinnyPatch.default
         p.name = String(text.prefix(28)).isEmpty ? "Generated Patch" : String(text.prefix(28)).capitalized
         p.tags = t.split(separator: " ").map { String($0).trimmingCharacters(in: .punctuationCharacters) }.filter { $0.count > 2 }
@@ -486,7 +486,7 @@ enum GenesisEngine {
     static func mutations(of base: VinnyPatch, count: Int = 8) -> [VinnyPatch] {
         var out: [VinnyPatch] = []
         for i in 0..<count {
-            var rng = SeededRNG(UInt64(i &+ 1) &* 7919 &+ UInt64(abs(base.name.hashValue) % 1000))
+            var rng = SeededRNG(UInt64(i &+ 1) &* 7919 &+ UInt64(bitPattern: base.name.hashValue) % 1000)
             var p = base
             p.id = UUID()
             p.version = base.version + 1
