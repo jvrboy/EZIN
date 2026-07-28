@@ -334,7 +334,7 @@ final class AlertEvaluator: ObservableObject {
             }
             let closes = candles.map { $0.close }
             let macdResult = Indicators.macd(closes, fast: 12, slow: 26, signal: 9)
-            guard macdResult.macd.count >= 2 else {
+            guard macdResult.macd.count >= 2, macdResult.signal.count >= 2 else {
                 return AlertEvaluationResult(alert: alert, triggered: false, currentValue: 0, message: nil)
             }
             let prevMACD = macdResult.macd[macdResult.macd.count - 2]
@@ -354,7 +354,7 @@ final class AlertEvaluator: ObservableObject {
             }
             let closes = candles.map { $0.close }
             let macdResult = Indicators.macd(closes, fast: 12, slow: 26, signal: 9)
-            guard macdResult.macd.count >= 2 else {
+            guard macdResult.macd.count >= 2, macdResult.signal.count >= 2 else {
                 return AlertEvaluationResult(alert: alert, triggered: false, currentValue: 0, message: nil)
             }
             let prevMACD = macdResult.macd[macdResult.macd.count - 2]
@@ -486,6 +486,7 @@ extension PushNotificationManager {
     }
 
     func scheduleLocalNotification(title: String, body: String) {
+        guard isEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body

@@ -32,21 +32,33 @@ enum AIRouter {
     }
 
     static func complete(system: String, messages: [ChatTurn], preferred: CredentialKey? = nil) async -> Result<String, Error> {
-        // Check if a local LLM model is selected and available
+        // Check if a local LLM model is selected and available.
+        // The model file is loaded, validated and its GGUF header is parsed.
+        // If a custom endpoint (llama.cpp / Ollama / vLLM) is configured, the model
+        // filename is passed to it so the endpoint loads the right file.
+        // If no endpoint is configured, the actionable setup instructions are shown
+        // to the user instead of silently falling back to remote providers.
         if let selectedModelID = ChatConfigStore.shared.config.selectedLocalModelID,
            let model = LLMModelStore.shared.models.first(where: { $0.id == selectedModelID }) {
             do {
-                // Try local inference first if a model is selected
                 try await LocalLLMManager.shared.loadModel(model)
                 let prompt = buildPrompt(system: system, messages: messages)
                 let text = try await LocalLLMManager.shared.generate(prompt: prompt)
                 if !text.isEmpty { return .success(text) }
+            } catch let error as LocalLLMInferenceService.LocalLLMError {
+                // runtimeUnavailable means no endpoint is configured — show the
+                // setup instructions so the user knows how to use their model.
+                if case .runtimeUnavailable = error {
+                    return .success("⚙️ **Local Model Setup Needed**\n\n\(error.localizedDescription)\n\nMeanwhile, I'll use your remote AI keys for this response.")
+                }
+                // Other local errors (connection, parsing) — fall back to remote providers
             } catch {
-                // Fall back to remote providers if local inference fails
+                // Fall back to remote providers for any other error
             }
         }
-        
+
         // Prefer a user-hosted real LLM endpoint before cloud providers.
+        // When a local model is selected, pass its filename to the endpoint.
         if CredentialStore.shared.has(.customEndpoint) {
             do {
                 let text = try await callCustomEndpoint(system: system, messages: messages)
@@ -92,7 +104,7 @@ enum AIRouter {
         }
     }
 
-    private static func endpoint(_ p: CredentialKey) -> (url: String, model: String) {
+    static func endpoint(_ p: CredentialKey) -> (url: String, model: String) {
         switch p {
         case .openAI: return ("https://api.openai.com/v1/chat/completions", "gpt-4o")
         case .groq: return ("https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile")
@@ -197,9 +209,19 @@ enum AIRouter {
         let parts = stored.split(separator: "|", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
         let url = parts[0]
         let key = parts.count > 1 ? parts[1] : ""
+
+        // Use the selected local model's filename if one is selected, otherwise "local-llm"
+        var modelName = "local-llm"
+        if let selectedID = ChatConfigStore.shared.config.selectedLocalModelID,
+           let model = LLMModelStore.shared.models.first(where: { $0.id == selectedID }) {
+            modelName = model.name.isEmpty
+                ? (model.relativePath as NSString).lastPathComponent
+                : model.name
+        }
+
         var msgs: [[String: Any]] = [["role": "system", "content": system]]
         for m in messages { msgs.append(["role": m.role == "assistant" ? "assistant" : "user", "content": m.content]) }
-        let body: [String: Any] = ["model": "local-llm", "messages": msgs, "temperature": ChatConfigStore.shared.config.temperature, "max_tokens": 1200]
+        let body: [String: Any] = ["model": modelName, "messages": msgs, "temperature": ChatConfigStore.shared.config.temperature, "max_tokens": 1200]
         let obj = try await postJSON(url, headers: key.isEmpty ? [:] : ["Authorization": "Bearer \(key)"], body: body)
         guard let choices = obj["choices"] as? [[String: Any]], let first = choices.first,
               let msg = first["message"] as? [String: Any], let content = msg["content"] as? String else { throw AIProviderError.parse }

@@ -1,47 +1,68 @@
 import SwiftUI
 
-/// Root shell — glass tab bar: Chart · Signals · Games · Chat · History · Bot · Tools · Settings.
+/// Root shell — collapsible sidebar navigation with hamburger toggle.
+/// Replaces the old bottom tab bar with a slide-out side panel for more screen real estate.
 struct RootView: View {
     @EnvironmentObject var app: AppState
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab: AppTab = .chart
+    @State private var showSidebar = false
     @ObservedObject private var theme = ThemeStore.shared
 
     var body: some View {
         NavigationStack {
-        ZStack {
-            AuroraBackground()
+            ZStack {
+                AuroraBackground()
 
-            VStack(spacing: 0) {
-                header
-                Group {
-                    switch tab {
-                    case .dashboard: TradingDashboardView(deriv: app.deriv)
-                    case .chart:    ChartView()
-                    case .signals:  SignalsView()
-                    case .games:    GamesView()
-                    case .chat:     ChatView()
-                    case .history:  HistoryView(bot: app.bot)
-                    case .bot:      BotView(bot: app.bot)
-                    case .tools:    ToolsHubView()
-                    case .settings: SettingsView()
+                VStack(spacing: 0) {
+                    header
+                    Group {
+                        switch tab {
+                        case .dashboard: TradingDashboardView(deriv: app.deriv)
+                        case .chart:    ChartView()
+                        case .signals:  SignalsView()
+                        case .games:    GamesView()
+                        case .chat:     ChatView()
+                        case .history:  HistoryView(bot: app.bot)
+                        case .bot:      BotView(bot: app.bot)
+                        case .tools:    ToolsHubView()
+                        case .settings: SettingsView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.opacity)
+                }
+            }
+            .font(theme.fontStyle.font)
+            // Sidebar overlay
+            .overlay(
+                ZStack(alignment: .leading) {
+                    // Dim background — tap to dismiss
+                    if showSidebar {
+                        Color.black.opacity(0.45)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    showSidebar = false
+                                }
+                            }
+                    }
+
+                    // Sidebar panel
+                    if showSidebar {
+                        SidebarView(selection: $tab, isOpen: $showSidebar)
+                            .frame(width: 260)
+                            .transition(.move(edge: .leading))
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.opacity)
-
-                GlassTabBar(selection: $tab)
-            }
-        }
-        .font(theme.fontStyle.font)
+            )
         }
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:
                 if app.settings.signalScanningEnabled { app.bot.startScanning() }
             case .background, .inactive:
-                // iOS may suspend the process; do not burn battery pretending a
-                // foreground task is a guaranteed 24/7 worker.
                 app.bot.stopScanning()
             @unknown default:
                 app.bot.stopScanning()
@@ -50,18 +71,40 @@ struct RootView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 12) {
+            // Hamburger button — toggles sidebar
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    showSidebar.toggle()
+                }
+            } label: {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(Color.white.opacity(0.10)))
+            }
+            .buttonStyle(.plain)
+
             Text("EZIN")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
+
+            // Show current tab name
+            Text(tab.title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.5))
+
             Spacer()
             ConnectionPill(state: app.connectionState)
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.bottom, 10)
     }
 }
+
+// MARK: - Tab Model
 
 enum AppTab: String, CaseIterable {
     case dashboard, chart, signals, games, chat, history, bot, tools, settings
@@ -92,6 +135,139 @@ enum AppTab: String, CaseIterable {
         }
     }
 }
+
+// MARK: - Sidebar
+
+/// Slide-out sidebar with all navigation items. Tap an item to switch tabs; the sidebar
+/// auto-dismisses. The active tab is highlighted with an accent pill.
+struct SidebarView: View {
+    @Binding var selection: AppTab
+    @Binding var isOpen: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Brand header
+            HStack(spacing: 10) {
+                Image(systemName: "bolt.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(Glass.accent)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("EZIN")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("Signal Intelligence")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        isOpen = false
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
+            .padding(.bottom, 14)
+
+            Divider().overlay(Color.white.opacity(0.08))
+
+            // Navigation items
+            ScrollView {
+                VStack(spacing: 2) {
+                    ForEach(AppTab.allCases, id: \.self) { t in
+                        sidebarRow(t)
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+            }
+
+            Spacer(minLength: 0)
+
+            // Footer
+            VStack(spacing: 6) {
+                Divider().overlay(Color.white.opacity(0.08))
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(connectionColor)
+                        .frame(width: 6, height: 6)
+                    Text("v1.8.1")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.3))
+                    Spacer()
+                    Text(DerivClient.defaultAppID.description)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.2))
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 12)
+            }
+        }
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.08, green: 0.08, blue: 0.14), Color(red: 0.05, green: 0.05, blue: 0.10)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
+        .overlay(
+            Rectangle()
+                .frame(width: 1)
+                .foregroundStyle(Color.white.opacity(0.08))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        )
+    }
+
+    private func sidebarRow(_ t: AppTab) -> some View {
+        let isActive = selection == t
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                selection = t
+                isOpen = false
+            }
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: t.icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 28)
+                    .foregroundStyle(isActive ? Glass.accent : .white.opacity(0.5))
+
+                Text(t.title)
+                    .font(.system(size: 15, weight: isActive ? .semibold : .medium))
+                    .foregroundStyle(isActive ? .white : .white.opacity(0.6))
+
+                Spacer()
+
+                if isActive {
+                    Circle()
+                        .fill(Glass.accent)
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isActive ? Color.white.opacity(0.10) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var connectionColor: Color {
+        .green  // sidebar footer uses static color; live status shown in header pill
+    }
+}
+
+// MARK: - Legacy (kept for any external references)
 
 struct GlassTabBar: View {
     @Binding var selection: AppTab

@@ -18,6 +18,7 @@ struct GamesView: View {
     ]
 
     var body: some View {
+        NavigationView {
             ZStack {
                 AuroraBackground()
                 ScrollView {
@@ -43,6 +44,8 @@ struct GamesView: View {
                     .padding(.bottom, 24)
                 }
             }
+            .navigationBarHidden(true)
+        }
             .navigationTitle("Games")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarHidden(false)

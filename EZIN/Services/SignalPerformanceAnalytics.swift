@@ -26,7 +26,8 @@ extension SignalPerformanceStore {
         let resolved = filtered.filter { $0.status != .active }
         let winRate = resolved.isEmpty ? 0 : Double(resolved.filter { $0.isWin }.count) / Double(resolved.count)
         let expectancy = resolved.isEmpty ? 0 : resolved.map { $0.floatingPnL }.reduce(0, +) / Double(resolved.count)
-        let avgHold = resolved.compactMap { $0.holdingTime }.isEmpty ? 0 : resolved.compactMap { $0.holdingTime }.reduce(0, +) / Double(resolved.compactMap { $0.holdingTime }.count) / 60
+        let holdTimes = resolved.compactMap { $0.holdingTime }
+        let avgHold = holdTimes.isEmpty ? 0 : holdTimes.reduce(0, +) / Double(holdTimes.count) / 60
         let avgDD = resolved.isEmpty ? 0 : resolved.map { $0.maxDrawdown }.reduce(0, +) / Double(resolved.count)
         let avgRunup = resolved.isEmpty ? 0 : resolved.map { $0.maxRunup }.reduce(0, +) / Double(resolved.count)
 

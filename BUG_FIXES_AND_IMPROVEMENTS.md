@@ -236,3 +236,390 @@ Audit-pass fixes applied while building the DSP core:
 ## Conclusion
 
 These improvements significantly enhance the EZIN application's capabilities, particularly in local LLM support and advanced technical analysis visualization. The modular architecture ensures that future enhancements can be added without disrupting existing functionality.
+
+## 9. v1.8.0 Comprehensive Audit Fixes
+
+### 9.1 "Same Song 6 Times" — Chat Backend Tools Consistency Fix
+
+**Issue 1:** `create_song` tool was completely deterministic — `promptToNotes()` had only
+4 branches (major chord, minor chord, scale, arpeggio), always producing identical notes
+for the same prompt text. Asking for a song multiple times generated the exact same output.
+
+**Issue 2:** VINNY loop seed was deterministic: `seedBase = UInt64(abs(prompt.hashValue) % 100000)`
+produced the same seed for the same prompt, so `vinny_loop` always generated identical loops.
+
+**Issue 3:** `create_song` used primitive sine-wave audio instead of the full VINNY production
+engine (drums + bass + chords + lead), making it the weaker path when the LLM chose it.
+
+**Issue 4:** The chat `runLoop` had no tool-call deduplication — the LLM could call the same
+tool repeatedly in a single turn.
+
+**Fixes:**
+- `create_song` now routes through VINNY Loop Factory for natural-language style prompts,
+  producing rich multi-track audio (drums, bass, chords, lead). Falls back to
+  `AudioGenerationService` only for explicit note notation.
+- All music generation tools (`create_song`, `vinny_loop`, `vinny_patch`, `vinny_reference`,
+  `vinny_stems`) now use time-based seeding (`Date().timeIntervalSince1970 * 1000`) combined
+  with prompt hashing, ensuring every call produces a unique variation.
+- `promptToNotes()` was expanded from 4 patterns to include blues/jazz riffs, multiple
+  pentatonic scales, and varied chord inversions — all modulated by time-based variation
+  in key, tempo, rhythm, and amplitude.
+- `chordPattern()` now accepts `tempo` and `variation` parameters for dynamic rhythm
+  and inversion changes.
+- Artifact filenames now include timestamps to prevent collisions.
+- System prompt updated to direct the LLM to prefer `vinny_loop` for music requests.
+- `runLoop` now tracks tool calls per turn and blocks repeated calls to the same tool
+  (max 2 per tool per user message, max 6 total steps).
+
+**Files:** `EZIN/Chat/ToolRegistry.swift`, `EZIN/Chat/VinnyChatTools.swift`,
+`EZIN/Chat/ChatModels.swift`, `EZIN/Views/ChatView.swift`
+
+### 9.2 Duplicate `skill_import` Switch Case — Compile Error
+
+**Issue:** `ToolRegistry.run()` had two `case "skill_import":` entries (lines 54 and 182),
+which is a Swift compile error. The first mapped to `skillImport(args)` and the second to
+`skillImportTool(args:)`.
+
+**Fix:** Removed the first duplicate at line 54, keeping the enhanced `skillImportTool`
+which routes through `SkillsExtensionService.shared.importSkill`.
+
+**File:** `EZIN/Chat/ToolRegistry.swift`
+
+### 9.3 NSExpression Security Vulnerability — Calculator Tool
+
+**Issue:** `ChatToolExpansion.calculate()` used `NSExpression(format: expr)` with arbitrary
+user input, which can execute arbitrary code (e.g. `FUNCTION(0, "intValue", ...)`) and
+crash the app.
+
+**Fix:** Replaced with a safe recursive-descent `SimpleMathEvaluator` that only permits
+numbers, basic arithmetic (`+`, `-`, `*`, `/`), parentheses, and named math functions
+(`sqrt`, `abs`, `log`, `ln`, `sin`, `cos`, `exp`). Input is whitelisted to reject any
+non-math characters.
+
+**File:** `EZIN/Services/ChatToolExpansionService.swift`
+
+### 9.4 Variable Shadowing — `randomNumbersTool` and `statistics`
+
+**Issue:** `randomNumbersTool` declared `let min = ...` and `let max = ...`, shadowing
+Swift's built-in `Swift.min` and `Swift.max` functions. Similarly, `statistics()` used
+`let min = sorted.first!` and `let max = sorted.last!`.
+
+**Fix:** Renamed to `minVal`/`maxVal` in both locations.
+
+**Files:** `EZIN/Chat/ToolRegistry.swift`, `EZIN/Services/ChatToolExpansionService.swift`
+
+### 9.5 Games Tab Navigation — Dead NavigationLinks
+
+**Issue:** `GamesView` used `NavigationLink` without a `NavigationView` or `NavigationStack`
+wrapper, so tapping games and VINNY did nothing. The BUG_FIXES doc claimed this was fixed
+but the NavigationView wrapper was missing from the actual code.
+
+**Fix:** Wrapped `GamesView`'s body in a `NavigationView` with `.navigationBarHidden(true)`
+so the games list appears normally and pushed views get a navigation bar.
+
+**File:** `EZIN/Games/GamesView.swift`
+
+### 9.6 VINNY `registerArtifact` Access Level
+
+**Issue:** `registerArtifact(data:name:ext:)` in `VinnyChatTools.swift` was marked
+`private`, preventing `ToolRegistry.swift`'s `createSong` from calling it (cross-file
+access within the same struct).
+
+**Fix:** Changed to `internal` (default) access level so it's accessible from all
+`ToolRegistry` extensions.
+
+**File:** `EZIN/Chat/VinnyChatTools.swift`
+
+## 10. v1.8.1 Deep Audit — Additional Fixes
+
+### 10.1 AlertsEngine MACD Signal Array Crash
+
+**Issue:** Both MACD cross-evaluation cases (`.macdCrossAbove` and `.macdCrossBelow`) guarded
+only `macdResult.macd.count >= 2` before accessing `macdResult.signal[count - 2]` and
+`macdResult.signal.last!`. If the signal array was shorter than the MACD array (possible
+with short data series), this caused an index-out-of-bounds crash.
+
+**Fix:** Added `macdResult.signal.count >= 2` to both guard conditions.
+
+**File:** `EZIN/Services/AlertsEngine.swift`
+
+### 10.2 ChartView DateFormatter Performance (render stutter)
+
+**Issue:** `CandleChart.timeLabel()` created a new `DateFormatter` on every call inside the
+Canvas `render` function, which runs at 60fps during pan/zoom gestures. `DateFormatter`
+initialization is notoriously expensive on iOS, causing visible frame drops.
+
+**Fix:** Replaced per-call `DateFormatter()` with two `static let` cached formatters
+(`timeFormatter` for HH:mm, `dayFormatter` for MMM d).
+
+**File:** `EZIN/Views/ChartView.swift`
+
+### 10.3 SignalFusionEngine `closes.last!` Crash Safety
+
+**Issue:** `bayesianDirection()` used `closes.last!` which force-unwraps an optional.
+Although the caller guards `closes.count >= 30`, defensive programming requires a safe
+fallback to prevent any future code path from crashing.
+
+**Fix:** Replaced `closes.last!` with `guard let lastClose = closes.last else { return .neutral }`.
+
+**File:** `EZIN/Engine/SignalFusionEngine.swift`
+
+### 10.4 AIPipelineService Unbounded Log Growth
+
+**Issue:** `pipelineLog` grew without limit — every stage of every pipeline execution was
+appended, causing unbounded memory growth over long sessions.
+
+**Fix:** Added a 200-entry cap: after each append, if `pipelineLog.count > 200`, trim to
+the most recent 200 entries.
+
+**File:** `EZIN/Services/AIPipelineService.swift`
+
+### 10.5 Alert Push Notification Missing Permission Check
+
+**Issue:** `PushNotificationManager.scheduleLocalNotification()` (called from the alert
+evaluator) did not check `isEnabled` before scheduling, so notifications were silently
+queued even when the user had denied permission.
+
+**Fix:** Added `guard isEnabled else { return }` at the top of the method.
+
+**File:** `EZIN/Services/AlertsEngine.swift`
+
+## 11. v1.9.0 — Sidebar Navigation + GGUF LLM Fix
+
+### 11.1 Bottom Tab Bar → Collapsible Sidebar Navigation
+
+**Issue:** The bottom `GlassTabBar` consumed valuable vertical screen space and crowded
+9 tabs into a narrow strip with tiny labels.
+
+**Fix:** Replaced the bottom tab bar with a slide-out sidebar triggered by a hamburger
+(☰) button in the header. The sidebar:
+- Slides in from the left with spring animation
+- Shows brand header, all 9 navigation items with icons and labels
+- Highlights the active tab with an accent pill indicator
+- Auto-dismisses on item selection or tap-outside
+- Has a dimmed backdrop overlay
+- Shows connection status and version in the footer
+
+**Files:** `EZIN/App/RootView.swift` (complete rewrite of navigation shell)
+
+### 11.2 GGUF LLM File — Imported Models Now Actually Used
+
+**Issue:** When a user imported a .gguf model file and selected it, the app silently
+fell back to remote API providers. The `LocalLLMInferenceService.generate()` threw
+`runtimeUnavailable` and the AIRouter caught it without telling the user. The imported
+file was catalogued but never used.
+
+**Fix:**
+1. **GGUF header parser** — reads the magic bytes, version, tensor count, and scans
+   for architecture (llama, mistral, gemma, etc.), context length, embedding length,
+   and block count from the binary metadata.
+2. **Model filename passed to endpoint** — when a custom endpoint (llama.cpp, Ollama,
+   vLLM) is configured, the model's filename is sent in the `model` field so the
+   server loads the correct imported file.
+3. **Clear setup instructions** — when no endpoint is configured, the error message
+   now includes step-by-step instructions for setting up llama.cpp or Ollama with
+   the imported model file, instead of silently falling back.
+4. **LLMModelsView shows status** — each model shows whether an endpoint is configured
+   (green ✓) or setup is needed (orange ⚠️) with specific commands.
+5. **Metadata displayed** — model format badge (GGUF/SAFETENSORS), file size, and
+   selection state are clearly shown.
+
+**Files:** `EZIN/Services/LocalLLMInferenceService.swift` (rewritten),
+`EZIN/Chat/AIRouter.swift`, `EZIN/Views/LLMModelsView.swift`
+
+### 11.3 AppState Retain Cycle Fix
+
+**Issue:** `restartBackend()` created a `Task` that captured `self` strongly,
+potentially extending the lifetime of the AppState beyond the view hierarchy.
+
+**Fix:** Added `[weak self]` capture with early `guard let self else { return }`.
+
+**File:** `EZIN/App/AppState.swift`
+
+## 12. v1.9.1 — Deep Audit Hidden Issues
+
+### 12.1 Kalman Filter `log(0)` Crash
+
+**Issue:** `AdvancedBackendEngines.kalman()` called `log(prices[0])` and `log(price)`
+without checking for zero/negative prices. If any price was 0, `log(0) = -inf`
+corrupted the entire filter output, producing NaN/Infinity downstream.
+
+**Fix:** Added `let safePrices = prices.map { max($0, 1e-10) }` guard before all
+log operations.
+
+**File:** `EZIN/Engine/AdvancedBackendEngines.swift`
+
+### 12.2 SignalTracker — 5 Issues Fixed
+
+**Issue 1:** Not `@MainActor` but had `@Published` properties and a Timer — potential
+data races.
+**Issue 2:** `savePerformanceData()` only saved UUIDs, not actual signal data. All
+tracking history was lost on every app restart.
+**Issue 3:** `updateActiveSignals()` was empty — Timer fired every 5 seconds doing
+nothing (wasted CPU).
+**Issue 4:** Division by zero in accuracy calculation when `takeProfit == stopLoss`.
+**Issue 5:** `updateTimer` property was unused after the timer removal.
+
+**Fixes:**
+- Added `@MainActor` annotation
+- `savePerformanceData()` now encodes the full `[SignalPerformance]` array
+- `loadPerformanceData()` restores both active and closed signal arrays
+- Removed dead timer and `updateActiveSignals()`
+- Added `totalDistance > 0` guard in accuracy calculation
+
+**File:** `EZIN/Engine/SignalTracker.swift`
+
+### 12.3 ProviderValidator — OpenAI/Anthropic/Groq Always "Invalid"
+
+**Issue:** `validateKey()` only handled Nvidia NIM, Cerebras, FreeModel, and custom
+endpoints. All other providers (OpenAI, Anthropic, Groq, Mistral, etc.) returned
+"Provider not supported for validation" — making valid keys appear broken.
+
+**Fix:** Added `validateOpenAICompatible()` that uses `AIRouter.endpoint()` to get
+the correct URL and model for any OpenAI-compatible provider. Made `AIRouter.endpoint()`
+`static` (was `private static`) so ProviderValidator can access it.
+
+**Files:** `EZIN/Services/ProviderValidator.swift`, `EZIN/Chat/AIRouter.swift`
+
+### 12.4 APITokenTracker — Two Bugs Fixed
+
+**Issue 1:** `bestKeyIndex()` constructed key IDs as `"key_\(i)"` but stored stats
+use hashed key IDs like `"sk-abc1...wxyz"`. Never matched, always returned 0.
+**Issue 2:** `checkDayRollover()` reset `tokensUsed` (a lifetime counter) along
+with `requestsToday`. Only daily counters should reset.
+
+**Fixes:**
+- `bestKeyIndex()` now scans stats by provider prefix; round-robin in APIKeyStore
+  handles fair distribution
+- `checkDayRollover()` now only resets `requestsToday`, `requestsThisMinute`,
+  and rate-limit flags; preserves `tokensUsed` and `totalRequests`
+
+**File:** `EZIN/Services/APITokenTracker.swift`
+
+### 12.5 SignalEngine.generateAdaptive Dead Code
+
+**Issue:** The `case .forex:` branch had a loop that checked for "Macro" agent but
+did nothing inside the `if` block — complete dead code.
+
+**Fix:** Replaced with functional asset-class-specific agent filtering: forex
+activates trend/momentum/session/macro agents; crypto activates momentum/
+volatility/mean-reversion agents; synthetics use the dedicated council.
+
+**File:** `EZIN/Engine/SignalEngine.swift`
+
+### 12.6 SignalPerformanceStore Dead Timer
+
+**Issue:** `startMonitoring()` created a Timer that fired every 10 seconds with an
+empty closure body. Price updates are already pushed reactively from AppState.
+
+**Fix:** Removed the `updateTimer` property and replaced the timer with a comment
+explaining the reactive architecture.
+
+**File:** `EZIN/Services/SignalPerformanceStore.swift`
+
+## 13. v1.9.2 — Deep Audit Round 2: Hidden Bugs
+
+### 13.1 BotStrategyLibrary — 5 Logic Bugs
+
+**Issue 1:** `RSIMeanReversion.shouldExit()` — both conditions (`rsi > 50` AND
+`rsi < 50`) returned exit, meaning it ALWAYS exited when `currentPrice > 0`.
+Only `rsi == 50` exactly would not trigger exit.
+**Fix:** Changed to only exit when RSI returns to the neutral zone (40–60).
+
+**Issue 2:** `BollingerSqueeze.shouldExit()` — force unwrap `.last!` on
+`bbUpper`/`bbLower` without any guard. Crash if arrays are empty.
+**Fix:** Added `guard let upper = ..., let lower = ...`.
+
+**Issue 3:** `TrendFollower.shouldExit()` — `abs(fast - slow) / slow` divides
+by `slow` which could be 0 with corrupted data.
+**Fix:** Added `slow > 0` guard.
+
+**Issue 4:** `MTFConfluence.shouldExit()` — same `/ smaSlow` division by zero.
+**Fix:** Added `smaSlow > 0` guard.
+
+**Issue 5:** `VolumeSpike.shouldExit()` — divided by constant `9` regardless
+of actual array length, producing wrong averages for short arrays.
+**Fix:** Divide by `recent.count` instead.
+
+**File:** `EZIN/Services/BotStrategyLibrary.swift`
+
+### 13.2 DateFormatter Performance — 4 Views
+
+**Issue:** `DateFormatter()` was created inside view body functions, causing
+a new formatter allocation on every render (60fps during scrolling).
+**Fix:** Cached as `static let` in `HistoryView` (2 instances),
+`TradingDashboardView`, and `EconomicCalendarView`.
+
+**Files:** `HistoryView.swift`, `TradingDashboardView.swift`,
+`EconomicCalendarView.swift`
+
+### 13.3 PositionCalculatorService `fmt()` No-Op
+
+**Issue:** `fmt()` had identical branches: `x > 100 ? format : format` — the
+condition had no effect on the output.
+**Fix:** Large numbers now use `%.2f`, small numbers use `%.Nf`.
+
+**File:** `EZIN/Services/PositionCalculatorService.swift`
+
+### 13.4 AdvancedBackendEngines Kalman Filter `log(0)` Crash
+
+**Issue:** `kalman()` called `log(prices[0])` and `log(price)` without
+checking for zero/negative prices. `log(0) = -inf` corrupts the entire
+filter, producing NaN/Infinity downstream.
+**Fix:** `let safePrices = prices.map { max($0, 1e-10) }` before all log ops.
+
+**File:** `EZIN/Engine/AdvancedBackendEngines.swift`
+
+### 13.5 SignalTracker — 5 Issues
+
+**Issue 1:** Not `@MainActor` but has `@Published` + Timer → data races.
+**Issue 2:** `savePerformanceData()` only saved UUIDs, not signal data.
+All history lost on restart.
+**Issue 3:** `updateActiveSignals()` empty — Timer fires every 5s doing nothing.
+**Issue 4:** Division by zero in accuracy when `takeProfit == stopLoss`.
+**Issue 5:** Unused `updateTimer` property.
+**Fix:** Added `@MainActor`, proper encode/decode, removed timer, guarded division.
+
+**File:** `EZIN/Engine/SignalTracker.swift`
+
+### 13.6 ProviderValidator — OpenAI/Anthropic/Groq Always "Invalid"
+
+**Issue:** Only handled NIM/Cerebras/FreeModel. All other providers returned
+"Provider not supported" — making valid keys appear broken.
+**Fix:** Added `validateOpenAICompatible()` using `AIRouter.endpoint()`.
+
+**Files:** `ProviderValidator.swift`, `AIRouter.swift`
+
+### 13.7 APITokenTracker — 2 Bugs
+
+**Issue 1:** `bestKeyIndex()` used `"key_N"` format but stored keys use hashed
+format — never matched, always returned 0.
+**Issue 2:** `checkDayRollover()` reset cumulative `tokensUsed` instead of
+only `requestsToday`.
+**Fix:** Rewrote key scanning; preserved lifetime counters on rollover.
+
+**File:** `EZIN/Services/APITokenTracker.swift`
+
+### 13.8 SignalEngine.generateAdaptive Dead Code
+
+**Issue:** Forex branch had empty `if` body — complete dead code.
+**Fix:** Functional asset-class-specific agent filtering.
+
+**File:** `EZIN/Engine/SignalEngine.swift`
+
+### 13.9 SignalPerformanceStore Dead Timer
+
+**Issue:** 10-second Timer with empty closure body.
+**Fix:** Removed timer; price updates are reactive.
+
+**File:** `EZIN/Services/SignalPerformanceStore.swift`
+
+### 13.10 VinnyDSP Numerical Safety
+
+**Issue 1:** `compress()` — `env / threshold` divides by threshold which could
+be 0, producing infinity gain.
+**Issue 2:** `granularCloud()` — `0.9 / sqrt(density / 12)` — if density is 0,
+`sqrt(0) = 0`, then division by zero.
+**Fix:** Added `max(threshold, 0.001)` and `max(density, 0.1)` guards.
+
+**File:** `EZIN/Vinny/VinnyDSP.swift`

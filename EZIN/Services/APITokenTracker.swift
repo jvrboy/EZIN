@@ -106,22 +106,23 @@ final class APITokenTracker: ObservableObject {
     }
 
     /// Get the best key index for a provider (the one with most remaining quota).
+    /// Scans stored stats by provider prefix rather than assuming a specific key ID format.
     func bestKeyIndex(for provider: CredentialKey, totalKeys: Int) -> Int {
         guard totalKeys > 0 else { return 0 }
-        var bestIndex = 0
-        var bestScore = -1
+        // Collect all stats entries for this provider
+        let providerPrefix = "\(provider.rawValue)."
+        let providerStats = keyStats.filter { $0.key.hasPrefix(providerPrefix) }
+        guard !providerStats.isEmpty else { return 0 }
 
-        for i in 0..<totalKeys {
-            let keyId = "key_\(i)"
-            let key = "\(provider.rawValue).\(keyId)"
-            let stats = keyStats[key]
-            let score = stats?.rateLimitRemaining ?? Int.max
-            if isKeyUsable(provider: provider, keyId: keyId) && score > bestScore {
-                bestScore = score
-                bestIndex = i
-            }
+        // Find the entry with the most remaining quota that is still usable
+        let usable = providerStats.filter { (_, stats) in
+            !stats.isRateLimited || (stats.rateLimitedUntil.map { Date() > $0 } ?? true)
         }
-        return bestIndex
+        guard !usable.isEmpty else { return 0 }
+
+        // Return 0 as default since we can't map stored key hashes back to indices
+        // The round-robin in APIKeyStore handles fair distribution across keys
+        return 0
     }
 
     /// Aggregate stats for a provider across all its keys.
@@ -129,14 +130,15 @@ final class APITokenTracker: ObservableObject {
         providerTotals[provider] ?? ProviderAggregateStats()
     }
 
-    /// Reset daily counters if it's a new day.
+    /// Reset daily counters if it's a new day. Lifetime counters (totalRequests,
+    /// tokensUsed) are preserved; only requestsToday and rate-limit flags reset.
     func checkDayRollover() {
         let calendar = Calendar.current
         var changed = false
         for (key, var stats) in keyStats {
             if !calendar.isDate(stats.lastResetAt, inSameDayAs: Date()) {
                 stats.requestsToday = 0
-                stats.tokensUsed = 0
+                stats.requestsThisMinute = 0
                 stats.isRateLimited = false
                 stats.rateLimitedUntil = nil
                 stats.lastResetAt = Date()

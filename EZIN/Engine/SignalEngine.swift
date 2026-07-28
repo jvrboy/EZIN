@@ -101,11 +101,16 @@ final class SignalEngine {
         case .synthetic:
             agents = ExtendedAgentFactory.syntheticCouncil()
         case .forex:
-            // Enable macro agent more strongly for forex.
+            // Filter to forex-relevant agents: trend, momentum, session, macro, volatility
+            let forexNames: Set<String> = ["Trend", "Momentum", "Volatility", "Structure", "Ichimoku", "Session", "Macro"]
             for i in agents.indices {
-                if agents[i].name == "Macro" {
-                    // Macro weight is already factored in.
-                }
+                agents[i].isActive = forexNames.contains(agents[i].name) || agents[i].name.contains("Session")
+            }
+        case .crypto:
+            // Filter to crypto-relevant agents: momentum, volatility, mean-reversion
+            let cryptoNames: Set<String> = ["Momentum", "Volatility", "MeanReversion", "Trend", "Breakout"]
+            for i in agents.indices {
+                agents[i].isActive = cryptoNames.contains(agents[i].name)
             }
         default:
             break

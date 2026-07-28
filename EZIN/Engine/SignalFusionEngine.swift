@@ -417,7 +417,8 @@ enum SignalFusionEngine {
         let systematic = BackendQuantEngine.systematic(md)
         let neural = AdvancedBackend.neuralSignal(md)
         let closes = md.closes
-        let prior = closes.last! > (closes.dropLast(20).last ?? closes.last!) ? 0.55 : 0.45
+        guard let lastClose = closes.last else { return .neutral }
+        let prior = lastClose > (closes.dropLast(20).last ?? lastClose) ? 0.55 : 0.45
         var pUp = prior
         pUp = AdvancedBackend.update(prior: pUp, likelihoodPositive: 0.5 + Double(systematic.direction.rawValue) * 0.1, evidence: Double(systematic.confidence) / 100)
         pUp = AdvancedBackend.update(prior: pUp, likelihoodPositive: neural.probabilityUp, evidence: abs(neural.probabilityUp - 0.5) * 2)

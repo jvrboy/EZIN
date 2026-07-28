@@ -573,8 +573,17 @@ struct CandleChart: View {
     }
 
     private func timeLabel(_ d: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = vm.timeframe.granularity >= 86400 ? "MMM d" : "HH:mm"
-        return f.string(from: d)
+        // Cached DateFormatters — creating them on every render call stutters pan/zoom.
+        if vm.timeframe.granularity >= 86400 {
+            return Self.dayFormatter.string(from: d)
+        }
+        return Self.timeFormatter.string(from: d)
     }
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f
+    }()
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d"; return f
+    }()
 }

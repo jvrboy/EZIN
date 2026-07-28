@@ -125,6 +125,10 @@ final class AIPipelineService: ObservableObject {
             )
             stages.append(entry)
             pipelineLog.append(entry)
+            // Keep log bounded to prevent unbounded memory growth
+            if pipelineLog.count > 200 {
+                pipelineLog = Array(pipelineLog.suffix(200))
+            }
             
             // Simulate processing time for visible feedback
             if stage.estimatedDuration > 0.2 {

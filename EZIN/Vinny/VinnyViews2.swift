@@ -965,7 +965,7 @@ struct VinnyAIView: View {
 
     private func colorButton(_ color: Color, _ prompt: String) -> some View {
         Button {
-            let p = GenesisEngine.patch(fromText: prompt, seed: UInt64(abs(prompt.hashValue)))
+            let p = GenesisEngine.patch(fromText: prompt, seed: UInt64(bitPattern: prompt.hashValue))
             session.setPatch(p)
             session.store.savePreset(p)
             session.renderPreview()

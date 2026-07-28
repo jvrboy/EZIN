@@ -155,7 +155,8 @@ final class AppState: ObservableObject {
     }
 
     func restartBackend() {
-        Task {
+        Task { [weak self] in
+            guard let self else { return }
             let wasRunning = bot.running
             bot.stopBot()
             deriv.disconnect()

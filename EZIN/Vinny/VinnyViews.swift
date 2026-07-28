@@ -172,7 +172,7 @@ final class VinnySession: ObservableObject {
         status = "Loop Factory is building your loop…"
         let p = patch
         Task.detached(priority: .userInitiated) {
-            let seedBase = UInt64(abs(p.name.hashValue) % 100000)
+            let seedBase = UInt64(bitPattern: p.name.hashValue) % 100000
             let seedVariation = UInt64(variation) &* 977
             let seed = seedBase &+ seedVariation
             let result = LoopFactory.makeLoop(patch: p, bars: bars, seed: seed, variation: variation, swing: swing)
@@ -731,7 +731,7 @@ struct VinnyOrganicaView: View {
                 .font(.caption).foregroundStyle(.white.opacity(0.55))
             ForEach(["rainforest field recording", "vinyl crackle foley", "cathedral drone", "ocean swell pad"], id: \.self) { name in
                 Button {
-                    let p = GenesisEngine.patch(fromText: "ambient cinematic pad, organic, wide, calm, reverb", seed: UInt64(abs(name.hashValue)))
+                    let p = GenesisEngine.patch(fromText: "ambient cinematic pad, organic, wide, calm, reverb", seed: UInt64(bitPattern: name.hashValue))
                     session.setPatch(p)
                     session.weatherEnabled = true
                     session.renderPreview()

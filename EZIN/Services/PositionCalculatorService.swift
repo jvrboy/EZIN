@@ -276,7 +276,7 @@ final class PositionCalculatorService {
     }
 
     private func fmt(_ x: Double, _ places: Int = 2) -> String {
-        x > 100 ? String(format: "%.\(places)f", x) : String(format: "%.\(places)f", x)
+        x > 100 ? String(format: "%.2f", x) : String(format: "%.\(places)f", x)
     }
 }
 

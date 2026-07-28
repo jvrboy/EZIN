@@ -22,7 +22,7 @@ struct ToolRegistry {
         case "agent_leaderboard":  return agentLeaderboard()
         case "inject_news":        return injectNews(args)
         case "create_artifact":    return createArtifact(args)
-        case "create_song":        return createSong(args)
+        case "create_song":        return await createSong(args)
         case "create_tone":        return createTone(args)
         case "market_overview":    return marketOverview()
         case "brain_insights":     return brainInsights()
@@ -51,7 +51,6 @@ struct ToolRegistry {
         case "memory_search":      return memorySearch(args)
         case "skills_list":        return skillsList()
         case "skill_create":       return skillCreate(args)
-        case "skill_import":       return skillImport(args)
         case "web_scrape":         return await webScrape(args)
         case "sentiment_score":    return sentimentScore(args)
 
@@ -419,25 +418,76 @@ struct ToolRegistry {
 
     // MARK: - Song / Audio Creation
 
-    private func createSong(_ args: [String: Any]) -> String {
+    /// Creates a song. Routes through VINNY Loop Factory for rich multi-track output
+    /// (drums, bass, chords, lead) when a style/genre description is given.
+    /// Falls back to AudioGenerationService for explicit note descriptions.
+    /// Time-based seeding ensures every call produces a unique variation.
+    private func createSong(_ args: [String: Any]) async -> String {
         let prompt = (args["prompt"] as? String) ?? ""
-        let name = (args["name"] as? String) ?? "song"
+        guard !prompt.isEmpty else { return "Provide a prompt, e.g. 'upbeat pop song in C major' or 'melancholy jazz ballad'." }
+        let rawName = (args["name"] as? String) ?? ""
         let format = (args["format"] as? String ?? "wav").lowercased()
-        let tempo = (args["tempo"] as? Double).map { UInt16($0) } ?? 120
+        let tempo = (args["tempo"] as? Double).map { UInt16($0) } ?? 0
 
+        // Time-stamped unique name prevents filename collisions across calls
+        let timestamp = Int(Date().timeIntervalSince1970) % 100000
+        let baseName = rawName.isEmpty ? "song-\(timestamp)" : "\(rawName)-\(timestamp)"
+
+        // Detect whether the prompt is explicit note notation or a natural-language style description
+        let isExplicitNotes = prompt.contains("0.5s") || prompt.contains("1s") || prompt.contains("amp ")
+            || prompt.contains("chord ") || prompt.contains("rest ")
+
+        if !isExplicitNotes {
+            // Route through VINNY Loop Factory for full production audio
+            let bars = max(1, min(16, (args["bars"] as? Int) ?? Int(str(args, "bars")) ?? 4))
+            // Time-based seed ensures every call produces a unique variation
+            let timeSeed = UInt64(Date().timeIntervalSince1970 * 1000) % 1_000_000
+            let promptHash = UInt64(bitPattern: prompt.hashValue) % 100_000
+            let seed = timeSeed &+ promptHash
+
+            let patch = GenesisEngine.patch(fromText: prompt, seed: timeSeed)
+            let variation = Int(timeSeed % 50)
+            let result: LoopResult = await Task.detached(priority: .userInitiated) {
+                LoopFactory.makeLoop(patch: patch, bars: bars, seed: seed, variation: variation)
+            }.value
+
+            VinnyChatState.shared.lastLoop = result
+            VinnyChatState.shared.lastPatch = patch
+            VinnyStore.shared.savePreset(patch)
+
+            let safeName = baseName.replacingOccurrences(of: "[^A-Za-z0-9._-]", with: "-", options: .regularExpression)
+            registerArtifact(data: result.midi, name: "\(safeName).mid", ext: "mid")
+
+            if format == "midi" || format == "mid" {
+                let art = registerArtifact(data: result.midi, name: "\(safeName).mid", ext: "mid")
+                ArtifactStore.shared.lastArtifact = art
+                return "Created \(art.name) (\(art.sizeDisplay)) — \(patch.genre), \(Int(result.bpm)) BPM, \(result.key) \(result.scale), \(bars) bars, \(result.notes.count) notes."
+            }
+
+            let audio = registerArtifact(data: result.wav, name: "\(safeName).wav", ext: "wav")
+            ArtifactStore.shared.lastArtifact = audio
+            return """
+            Created **\(audio.name)** (\(audio.sizeDisplay)):
+            • Style: \(patch.genre) · \(Int(result.bpm)) BPM · \(result.key) \(result.scale)
+            • \(bars) bars, \(result.notes.count) notes (drums + bass + chords + lead)
+            Say **"export stems"** for the STEMS ZIP, or **"make a variation"** for another take.
+            """
+        }
+
+        // Fallback: explicit note descriptions → AudioGenerationService with time-based variation
         let noteDesc = promptToNotes(prompt)
 
         let artifact: Artifact?
         if format == "midi" || format == "mid" {
-            guard let data = AudioGenerationService.generateMIDI(from: noteDesc, tempoBPM: tempo) else {
+            guard let data = AudioGenerationService.generateMIDI(from: noteDesc, tempoBPM: tempo == 0 ? 120 : tempo) else {
                 return "Failed to generate MIDI."
             }
-            artifact = saveAudioArtifact(data: data, name: name, ext: "mid")
+            artifact = saveAudioArtifact(data: data, name: baseName, ext: "mid")
         } else {
             guard let data = AudioGenerationService.generateWAV(from: noteDesc) else {
                 return "Failed to generate WAV."
             }
-            artifact = saveAudioArtifact(data: data, name: name, ext: "wav")
+            artifact = saveAudioArtifact(data: data, name: baseName, ext: "wav")
         }
 
         guard let art = artifact else { return "Failed to save audio file." }
@@ -490,27 +540,93 @@ struct ToolRegistry {
         return artifact
     }
 
+    /// Converts a text prompt into note notation for AudioGenerationService.
+    /// Uses time-based randomization so each call produces a unique musical variation.
     private func promptToNotes(_ prompt: String) -> String {
         let p = prompt.lowercased()
-        if p.contains("major chord") || p.contains("happy") {
-            let root = extractNote(from: p) ?? "C4"
-            return chordPattern(root: root, minor: false)
+        // Time-based variation ensures every call produces unique musical content
+        let timeComponent = Int(Date().timeIntervalSince1970 * 1000) % 1000
+        let variation = Double(timeComponent % 7)
+
+        // Random key selection influenced by prompt + time
+        let allKeys = ["C", "D", "E", "F", "G", "A", "B"]
+        let keyIndex = (Int(UInt64(bitPattern: p.hashValue) % UInt64(allKeys.count)) + timeComponent) % allKeys.count
+        let root = extractNote(from: p) ?? "\(allKeys[keyIndex])4"
+
+        // Tempo influenced by prompt mood + time variation
+        let baseTempo: Double
+        if p.contains("fast") || p.contains("upbeat") || p.contains("energetic") {
+            baseTempo = 0.25 + (variation * 0.02)
+        } else if p.contains("slow") || p.contains("ballad") || p.contains("calm") {
+            baseTempo = 0.8 + (variation * 0.05)
+        } else {
+            baseTempo = 0.4 + (variation * 0.03)
         }
-        if p.contains("minor chord") || p.contains("sad") {
-            let root = extractNote(from: p) ?? "A3"
-            return chordPattern(root: root, minor: true)
+
+        if p.contains("major chord") || p.contains("happy") {
+            return chordPattern(root: root, minor: false, tempo: baseTempo, variation: timeComponent)
+        }
+        if p.contains("minor chord") || p.contains("sad") || p.contains("dark") {
+            return chordPattern(root: root, minor: true, tempo: baseTempo, variation: timeComponent)
         }
         if p.contains("scale") || p.contains("ascending") {
-            return "\(extractNote(from: p) ?? "C4") 0.5s\nD4 0.5s\nE4 0.5s\nF4 0.5s\nG4 0.5s\nA4 0.5s\nB4 0.5s\nC5 0.5s"
+            let scaleNotes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"]
+            let startIdx = timeComponent % 3
+            let rotated = Array(scaleNotes[startIdx...] + scaleNotes[..<startIdx])
+            return rotated.map { "\($0) \(String(format: "%.2f", baseTempo))s amp \(String(format: "%.1f", 0.5 + Double(timeComponent % 5) * 0.1))" }.joined(separator: "\n")
         }
         if p.contains("arpeggio") {
-            return "\(extractNote(from: p) ?? "C4") 0.4s\nE4 0.4s\nG4 0.4s\nC5 0.4s\nG4 0.4s\nE4 0.4s\nC4 0.4s"
+            let arpPatterns = [
+                ["C4", "E4", "G4", "C5", "G4", "E4"],
+                ["A3", "C4", "E4", "A4", "E4", "C4"],
+                ["D4", "F4", "A4", "D5", "A4", "F4"],
+                ["G3", "B3", "D4", "G4", "D4", "B3"]
+            ]
+            let patIdx = timeComponent % arpPatterns.count
+            return arpPatterns[patIdx].map { "\($0) \(String(format: "%.2f", baseTempo * 0.8))s amp \(String(format: "%.1f", 0.4 + Double(timeComponent % 4) * 0.1))" }.joined(separator: "\n")
         }
-        return prompt
+        if p.contains("blues") || p.contains("jazz") {
+            // Blues/jazz riff with varied intervals
+            let bluesNotes = ["C4", "Eb4", "F4", "F#4", "G4", "Bb4", "C5"]
+            let dur = String(format: "%.2f", baseTempo)
+            var lines: [String] = []
+            for i in 0..<8 {
+                let idx = (i + timeComponent) % bluesNotes.count
+                let amp = String(format: "%.1f", 0.4 + Double((i + timeComponent) % 4) * 0.12)
+                lines.append("\(bluesNotes[idx]) \(dur)s amp \(amp)")
+                if i % 3 == 2 { lines.append("rest \(String(format: "%.2f", baseTempo * 0.5))s") }
+            }
+            return lines.joined(separator: "\n")
+        }
+        // Default: generate a short melodic phrase influenced by the prompt
+        let scales = [
+            ["C4", "D4", "E4", "G4", "A4", "C5"],  // pentatonic major
+            ["A3", "C4", "D4", "E4", "G4", "A4"],  // pentatonic minor
+            ["D4", "E4", "F#4", "A4", "B4", "D5"],  // D major pent
+            ["E4", "G4", "A4", "B4", "D5", "E5"]   // E minor pent
+        ]
+        let scaleIdx = (Int(UInt64(bitPattern: p.hashValue) % UInt64(scales.count)) + timeComponent) % scales.count
+        let scale = scales[scaleIdx]
+        var lines: [String] = []
+        for i in 0..<12 {
+            let idx = (i * 3 + timeComponent) % scale.count
+            let dur = (i % 3 == 0) ? baseTempo * 1.5 : baseTempo
+            let amp = String(format: "%.1f", 0.35 + Double((i + timeComponent) % 5) * 0.1)
+            lines.append("\(scale[idx]) \(String(format: "%.2f", dur))s amp \(amp)")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private func extractNote(from prompt: String) -> String? {
         let notes = ["C", "D", "E", "F", "G", "A", "B"]
+        // Try to find a specific note mention (e.g., "in C", "in D minor")
+        for note in notes {
+            let pattern = "in \(note)"
+            if prompt.lowercased().contains(pattern) {
+                let octave = prompt.contains("3") ? "3" : (prompt.contains("5") ? "5" : "4")
+                return "\(note)\(octave)"
+            }
+        }
         for note in notes {
             if prompt.range(of: note, options: .caseInsensitive) != nil {
                 let octave = prompt.contains("3") ? "3" : (prompt.contains("5") ? "5" : "4")
@@ -1386,10 +1502,10 @@ private func dashboardSummary() -> String {
     }
 
     private func randomNumbersTool(args: [String: Any]) -> String {
-        let min = (args["min"] as? Double) ?? 0
-        let max = (args["max"] as? Double) ?? 100
+        let minVal = (args["min"] as? Double) ?? 0
+        let maxVal = (args["max"] as? Double) ?? 100
         let count = (args["count"] as? Int) ?? 5
-        return ChatToolExpansion.randomNumber(min: min, max: max, count: count)
+        return ChatToolExpansion.randomNumber(min: minVal, max: maxVal, count: count)
     }
 
     private func statisticsTool(args: [String: Any]) -> String {
@@ -1539,17 +1655,34 @@ struct CurrencyRates {
 }
     // MARK: - Song Helpers
 
-    private func chordPattern(root: String, minor: Bool) -> String {
+    /// Generates a chord progression with time-based variation in rhythm, inversion, and dynamics.
+    private func chordPattern(root: String, minor: Bool, tempo: Double = 0.5, variation: Int = 0) -> String {
         let third = minor ? "Eb" : "E"
         let fifth = "G"
-        return """
-        chord \(root) \(third)4 \(fifth)4 1s amp 0.6
-        rest 0.5s
-        chord \(third) \(fifth)4 \(root) 1s amp 0.5
-        rest 0.5s
-        chord \(fifth)4 \(root) \(third) 1s amp 0.5
-        rest 0.5s
-        chord \(root) \(third)4 \(fifth)4 2s amp 0.7
-        """
+        let dur = String(format: "%.2f", tempo * 2)
+        let durHalf = String(format: "%.2f", tempo)
+        let rest = String(format: "%.2f", tempo * 0.6)
+        let ampBase = 0.45 + Double(variation % 4) * 0.08
+        let amp1 = String(format: "%.2f", ampBase)
+        let amp2 = String(format: "%.2f", ampBase + 0.1)
+        let amp3 = String(format: "%.2f", ampBase + 0.15)
+
+        // Vary the inversion order based on time component
+        let inversionSet: [(String, String, String)]
+        switch variation % 4 {
+        case 0: inversionSet = [("\(root)", "\(third)4", "\(fifth)4"), ("\(third)4", "\(fifth)4", "\(root)"), ("\(fifth)4", "\(root)", "\(third)4"), ("\(root)", "\(fifth)4", "\(third)4")]
+        case 1: inversionSet = [("\(third)4", "\(root)", "\(fifth)4"), ("\(root)", "\(fifth)4", "\(third)4"), ("\(fifth)4", "\(third)4", "\(root)"), ("\(root)", "\(third)4", "\(fifth)4")]
+        case 2: inversionSet = [("\(root)", "\(fifth)4", "\(third)4"), ("\(fifth)4", "\(third)4", "\(root)"), ("\(third)4", "\(root)", "\(fifth)4"), ("\(root)", "\(third)4", "\(fifth)4")]
+        default: inversionSet = [("\(root)", "\(third)4", "\(fifth)4"), ("\(root)", "\(fifth)4", "\(third)4"), ("\(third)4", "\(fifth)4", "\(root)"), ("\(fifth)4", "\(root)", "\(third)4")]
+        }
+
+        var lines: [String] = []
+        for (i, inv) in inversionSet.enumerated() {
+            let d = (i == inversionSet.count - 1) ? dur : durHalf
+            let a = (i == 0) ? amp1 : (i == inversionSet.count - 1) ? amp3 : amp2
+            lines.append("chord \(inv.0) \(inv.1) \(inv.2) \(d)s amp \(a)")
+            if i < inversionSet.count - 1 { lines.append("rest \(rest)s") }
+        }
+        return lines.joined(separator: "\n")
     }
 }
