@@ -104,7 +104,7 @@ enum AIRouter {
         }
     }
 
-    private static func endpoint(_ p: CredentialKey) -> (url: String, model: String) {
+    static func endpoint(_ p: CredentialKey) -> (url: String, model: String) {
         switch p {
         case .openAI: return ("https://api.openai.com/v1/chat/completions", "gpt-4o")
         case .groq: return ("https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile")

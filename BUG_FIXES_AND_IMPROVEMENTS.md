@@ -435,3 +435,84 @@ potentially extending the lifetime of the AppState beyond the view hierarchy.
 **Fix:** Added `[weak self]` capture with early `guard let self else { return }`.
 
 **File:** `EZIN/App/AppState.swift`
+
+## 12. v1.9.1 — Deep Audit Hidden Issues
+
+### 12.1 Kalman Filter `log(0)` Crash
+
+**Issue:** `AdvancedBackendEngines.kalman()` called `log(prices[0])` and `log(price)`
+without checking for zero/negative prices. If any price was 0, `log(0) = -inf`
+corrupted the entire filter output, producing NaN/Infinity downstream.
+
+**Fix:** Added `let safePrices = prices.map { max($0, 1e-10) }` guard before all
+log operations.
+
+**File:** `EZIN/Engine/AdvancedBackendEngines.swift`
+
+### 12.2 SignalTracker — 5 Issues Fixed
+
+**Issue 1:** Not `@MainActor` but had `@Published` properties and a Timer — potential
+data races.
+**Issue 2:** `savePerformanceData()` only saved UUIDs, not actual signal data. All
+tracking history was lost on every app restart.
+**Issue 3:** `updateActiveSignals()` was empty — Timer fired every 5 seconds doing
+nothing (wasted CPU).
+**Issue 4:** Division by zero in accuracy calculation when `takeProfit == stopLoss`.
+**Issue 5:** `updateTimer` property was unused after the timer removal.
+
+**Fixes:**
+- Added `@MainActor` annotation
+- `savePerformanceData()` now encodes the full `[SignalPerformance]` array
+- `loadPerformanceData()` restores both active and closed signal arrays
+- Removed dead timer and `updateActiveSignals()`
+- Added `totalDistance > 0` guard in accuracy calculation
+
+**File:** `EZIN/Engine/SignalTracker.swift`
+
+### 12.3 ProviderValidator — OpenAI/Anthropic/Groq Always "Invalid"
+
+**Issue:** `validateKey()` only handled Nvidia NIM, Cerebras, FreeModel, and custom
+endpoints. All other providers (OpenAI, Anthropic, Groq, Mistral, etc.) returned
+"Provider not supported for validation" — making valid keys appear broken.
+
+**Fix:** Added `validateOpenAICompatible()` that uses `AIRouter.endpoint()` to get
+the correct URL and model for any OpenAI-compatible provider. Made `AIRouter.endpoint()`
+`static` (was `private static`) so ProviderValidator can access it.
+
+**Files:** `EZIN/Services/ProviderValidator.swift`, `EZIN/Chat/AIRouter.swift`
+
+### 12.4 APITokenTracker — Two Bugs Fixed
+
+**Issue 1:** `bestKeyIndex()` constructed key IDs as `"key_\(i)"` but stored stats
+use hashed key IDs like `"sk-abc1...wxyz"`. Never matched, always returned 0.
+**Issue 2:** `checkDayRollover()` reset `tokensUsed` (a lifetime counter) along
+with `requestsToday`. Only daily counters should reset.
+
+**Fixes:**
+- `bestKeyIndex()` now scans stats by provider prefix; round-robin in APIKeyStore
+  handles fair distribution
+- `checkDayRollover()` now only resets `requestsToday`, `requestsThisMinute`,
+  and rate-limit flags; preserves `tokensUsed` and `totalRequests`
+
+**File:** `EZIN/Services/APITokenTracker.swift`
+
+### 12.5 SignalEngine.generateAdaptive Dead Code
+
+**Issue:** The `case .forex:` branch had a loop that checked for "Macro" agent but
+did nothing inside the `if` block — complete dead code.
+
+**Fix:** Replaced with functional asset-class-specific agent filtering: forex
+activates trend/momentum/session/macro agents; crypto activates momentum/
+volatility/mean-reversion agents; synthetics use the dedicated council.
+
+**File:** `EZIN/Engine/SignalEngine.swift`
+
+### 12.6 SignalPerformanceStore Dead Timer
+
+**Issue:** `startMonitoring()` created a Timer that fired every 10 seconds with an
+empty closure body. Price updates are already pushed reactively from AppState.
+
+**Fix:** Removed the `updateTimer` property and replaced the timer with a comment
+explaining the reactive architecture.
+
+**File:** `EZIN/Services/SignalPerformanceStore.swift`

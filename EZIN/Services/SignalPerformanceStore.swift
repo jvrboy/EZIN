@@ -13,7 +13,6 @@ final class SignalPerformanceStore: ObservableObject {
     private let file = "signal_performance.json"
     private let metricsFile = "signal_daily_metrics.json"
     private let maxItems = 500
-    private var updateTimer: Timer?
 
     private init() {
         load()

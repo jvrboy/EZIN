@@ -92,16 +92,57 @@ final class ProviderValidator: ObservableObject {
             return await validateFreeModel(key: key, startTime: startTime)
         case .customEndpoint:
             return await validateCustomEndpoint(startTime: startTime)
+        case .openAI, .anthropic, .gemini, .groq, .mistral, .openRouter,
+             .cloudflareAI, .ollamaCloud, .kiloCode, .sambaNova, .huggingFace:
+            return await validateOpenAICompatible(provider: provider, key: key, startTime: startTime)
         default:
             return ProviderValidationResult(
                 provider: provider,
                 isValid: false,
-                message: "Provider not supported for validation",
+                message: "Provider \(provider.display) does not support automated validation.",
                 latencyMs: nil,
                 modelUsed: nil,
                 capabilities: nil
             )
         }
+    }
+
+    /// Generic validation for OpenAI-compatible providers (OpenAI, Groq, Mistral, etc.)
+    private func validateOpenAICompatible(provider: CredentialKey, key: String, startTime: Date) async -> ProviderValidationResult {
+        let testPrompt = "Reply with exactly: VALIDATION_OK"
+        do {
+            let result = try await callOpenAICompatibleForValidation(provider: provider, key: key, prompt: testPrompt)
+            let latency = Int(Date().timeIntervalSince(startTime) * 1000)
+            let ok = !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return ProviderValidationResult(
+                provider: provider,
+                isValid: ok,
+                message: ok ? "\(provider.display) connection successful" : "\(provider.display) returned empty response",
+                latencyMs: latency,
+                modelUsed: AIRouter.endpoint(provider).model,
+                capabilities: ["chat"]
+            )
+        } catch {
+            return ProviderValidationResult(
+                provider: provider,
+                isValid: false,
+                message: "\(provider.display) failed: \(error.localizedDescription)",
+                latencyMs: Int(Date().timeIntervalSince(startTime) * 1000),
+                modelUsed: nil,
+                capabilities: nil
+            )
+        }
+    }
+
+    private func callOpenAICompatibleForValidation(provider: CredentialKey, key: String, prompt: String) async throws -> String {
+        let (urlStr, model) = AIRouter.endpoint(provider)
+        let body: [String: Any] = [
+            "model": model,
+            "messages": [["role": "user", "content": prompt]],
+            "max_tokens": 20,
+            "temperature": 0.1
+        ]
+        return try await callProviderAPI(url: urlStr, key: key, body: body)
     }
 
     // MARK: - Nvidia NIM Validation

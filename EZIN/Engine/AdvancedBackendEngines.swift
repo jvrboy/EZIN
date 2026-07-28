@@ -107,12 +107,14 @@ enum AdvancedBackend {
     /// Constant-velocity Kalman filter over log prices.
     static func kalman(_ prices: [Double]) -> KalmanResult {
         guard prices.count > 3 else { return KalmanResult(estimate: prices.last ?? 0, velocity: 0, uncertainty: 1) }
-        var x = log(prices[0])
+        // Guard against zero/negative prices that would make log() return -inf/NaN
+        let safePrices = prices.map { max($0, 1e-10) }
+        var x = log(safePrices[0])
         var v = 0.0
         var p = 1.0
         let q = 0.00008
-        let r = max(sd(returns(prices)) * 0.15, 0.00001)
-        for price in prices.dropFirst() {
+        let r = max(sd(returns(safePrices)) * 0.15, 0.00001)
+        for price in safePrices.dropFirst() {
             // predict
             x += v
             p += q

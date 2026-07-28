@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 /// Real-time signal performance tracker that monitors signal accuracy and enables self-improvement
+@MainActor
 final class SignalTracker: ObservableObject {
     
     struct SignalPerformance: Codable, Identifiable {
@@ -49,8 +50,7 @@ final class SignalTracker: ObservableObject {
     
     private let storageKey = "signal_tracker.performance"
     private let metricsKey = "signal_tracker.metrics"
-    private var updateTimer: Timer?
-    
+
     init() {
         loadPerformanceData()
         startRealTimeUpdates()
@@ -134,11 +134,11 @@ final class SignalTracker: ObservableObject {
             performance.timeToProfit = exitTime.timeIntervalSince(performance.entryTime)
         }
         
-        // Calculate accuracy (how close to target)
+        // Calculate accuracy (how close to target) — guard against zero distance
         let distanceToTP = abs(performance.signal.takeProfit - exitPrice)
         let distanceToSL = abs(performance.signal.stopLoss - exitPrice)
         let totalDistance = abs(performance.signal.takeProfit - performance.signal.stopLoss)
-        performance.accuracy = max(0, 1 - (min(distanceToTP, distanceToSL) / totalDistance))
+        performance.accuracy = totalDistance > 0 ? max(0, 1 - (min(distanceToTP, distanceToSL) / totalDistance)) : 0
         
         // Update metrics
         if performance.isWinning {
@@ -240,35 +240,33 @@ final class SignalTracker: ObservableObject {
     }
     
     // MARK: - Real-time Updates
-    
+
     private func startRealTimeUpdates() {
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            self?.updateActiveSignals()
-        }
+        // Price updates are pushed reactively from AppState via updateSignalPrice.
+        // No polling timer needed.
     }
-    
+
     private func stopRealTimeUpdates() {
-        updateTimer?.invalidate()
-        updateTimer = nil
+        // No-op: timer removed.
     }
-    
-    private func updateActiveSignals() {
-        // This would be called by the main app loop to update signal prices
-        // Implementation depends on real-time price feed integration
-    }
-    
+
     // MARK: - Persistence
-    
+
     private func savePerformanceData() {
-        let data = (activeSignals + closedSignals).map { $0.id.uuidString }
-        UserDefaults.standard.set(data, forKey: storageKey)
-        
+        if let encoded = try? JSONEncoder().encode(activeSignals + closedSignals) {
+            UserDefaults.standard.set(encoded, forKey: storageKey)
+        }
         if let encoded = try? JSONEncoder().encode(metrics) {
             UserDefaults.standard.set(encoded, forKey: metricsKey)
         }
     }
-    
+
     private func loadPerformanceData() {
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let decoded = try? JSONDecoder().decode([SignalPerformance].self, from: data) {
+            activeSignals = decoded.filter { $0.status == .active }
+            closedSignals = decoded.filter { $0.status != .active }
+        }
         if let encoded = UserDefaults.standard.data(forKey: metricsKey),
            let decoded = try? JSONDecoder().decode(PerformanceMetrics.self, from: encoded) {
             metrics = decoded
