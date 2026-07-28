@@ -3,8 +3,13 @@ import SwiftUI
 /// Consolidated trading dashboard — watchlist prices, P&L overview, recent activity
 struct TradingDashboardView: View {
     @EnvironmentObject var app: AppState
+    @ObservedObject private var deriv: DerivClient
     @ObservedObject private var feed = NewsFeedService.shared
     @ObservedObject private var journal = TradeJournalStore.shared
+
+    init(deriv: DerivClient = DerivClient()) {
+        _deriv = ObservedObject(wrappedValue: deriv)
+    }
 
     var body: some View {
         ZStack {
@@ -32,6 +37,11 @@ struct TradingDashboardView: View {
         }
         .navigationTitle("Dashboard")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            // A watchlist is a live feed, not a snapshot. Keep every row subscribed
+            // even when the chart tab has never been opened.
+            for symbol in app.settings.watchlist { app.deriv.subscribeTicks(symbol) }
+        }
     }
 
     // MARK: - Welcome Header

@@ -5,6 +5,9 @@ struct HistoryView: View {
     @ObservedObject private var signalLog = SignalHistoryStore.shared
     @ObservedObject private var performance = SignalPerformanceStore.shared
     @State private var mode = 0   // 0 = closed trades, 1 = generated signals
+    @ObservedObject var bot: BotRuntime
+
+    init(bot: BotRuntime) { self.bot = bot }
 
     private var wins: Int { app.history.filter { $0.profit > 0 }.count }
     private var winRate: Int { app.history.isEmpty ? 0 : Int(Double(wins) / Double(app.history.count) * 100) }
@@ -70,6 +73,36 @@ struct HistoryView: View {
                     }
                 }
                 .glassCard()
+            }
+
+            paperTradesSection
+        }
+    }
+
+    private var paperTradesSection: some View {
+        let trades = bot.paperPositions.sorted { ($0.closedAt ?? $0.openedAt) > ($1.closedAt ?? $1.openedAt) }
+        return Group {
+            if !trades.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Paper trades").font(.headline).foregroundStyle(.white.opacity(0.85))
+                        Spacer()
+                        Text("\(trades.count)").font(.caption).foregroundStyle(Glass.accent2)
+                    }.padding(14)
+                    ForEach(trades) { trade in
+                        HStack {
+                            Circle().fill(trade.isOpen ? .yellow : (trade.realizedPnL ?? 0) >= 0 ? Glass.buy : Glass.sell).frame(width: 8, height: 8)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(DerivSymbols.display(trade.symbol)) · \(trade.isBuy ? "BUY" : "SELL")").foregroundStyle(.white.opacity(0.88))
+                                Text(trade.isOpen ? "Open · entry \(String(format: "%.4f", trade.entryPrice))" : "Closed · \(dateStr(trade.closedAt ?? trade.openedAt))")
+                                    .font(.caption2).foregroundStyle(.white.opacity(0.4))
+                            }
+                            Spacer()
+                            Text(String(format: "%+.4f", trade.isOpen ? trade.floatingPnL : (trade.realizedPnL ?? 0)))
+                                .foregroundStyle(trade.isOpen ? .yellow : ((trade.realizedPnL ?? 0) >= 0 ? Glass.buy : Glass.sell))
+                        }.padding(.horizontal, 14).padding(.vertical, 10)
+                    }
+                }.glassCard()
             }
         }
     }
