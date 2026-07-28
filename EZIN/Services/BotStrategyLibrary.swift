@@ -95,9 +95,9 @@ struct BotStrategyLibrary {
         
         func shouldExit(data: StrategyInput) -> (Bool, String) {
             let rsi = data.indicators.latestRSI
-            if rsi > 50 && data.currentPrice > 0 { return (true, "RSI returned to neutral") }
-            if rsi < 50 && data.currentPrice > 0 { return (true, "RSI returned to neutral") }
-            return (false, "Holding")
+            // Exit when RSI returns to the neutral zone (40-60) from an extreme
+            if rsi >= 40 && rsi <= 60 { return (true, "RSI returned to neutral zone (\(String(format: "%.1f", rsi)))") }
+            return (false, "Holding — RSI still extreme (\(String(format: "%.1f", rsi)))")
         }
     }
     
@@ -186,7 +186,10 @@ struct BotStrategyLibrary {
         }
         
         func shouldExit(data: StrategyInput) -> (Bool, String) {
-            let width = (data.indicators.bbUpper.last! - data.indicators.bbLower.last!) / data.currentPrice
+            guard let upper = data.indicators.bbUpper.last,
+                  let lower = data.indicators.bbLower.last,
+                  data.currentPrice > 0 else { return (false, "Holding") }
+            let width = (upper - lower) / data.currentPrice
             if width > 0.05 { return (true, "Band widening - momentum exhausting") }
             return (false, "Riding breakout")
         }
@@ -225,7 +228,8 @@ struct BotStrategyLibrary {
             }
             let fast = data.indicators.smaFast.last!
             let slow = data.indicators.smaSlow.last!
-            if abs(fast - slow) / slow < 0.001 { return (true, "MA convergence - trend weakening") }
+            let convergence = slow > 0 ? abs(fast - slow) / slow : 0
+            if convergence < 0.001 { return (true, "MA convergence - trend weakening") }
             return (false, "Trend intact")
         }
     }
@@ -257,8 +261,9 @@ struct BotStrategyLibrary {
     
     func shouldExit(data: StrategyInput) -> (Bool, String) {
         let vol = data.indicators.volume.last ?? 0
-        let avg = data.indicators.volume.suffix(10).dropLast().reduce(0, +) / 9
-        if vol < avg * 0.5 { return (true, "Volume drying up") }
+        let recent = data.indicators.volume.suffix(10).dropLast()
+        let avg = recent.isEmpty ? 0 : recent.reduce(0, +) / Double(recent.count)
+        if avg > 0 && vol < avg * 0.5 { return (true, "Volume drying up") }
         return (false, "Volume sustained")
     }
     }
@@ -387,7 +392,8 @@ struct BotStrategyLibrary {
         func shouldExit(data: StrategyInput) -> (Bool, String) {
             let smaFast = data.indicators.smaFast.last ?? data.currentPrice
             let smaSlow = data.indicators.smaSlow.last ?? data.currentPrice
-            if abs(smaFast - smaSlow) / smaSlow < 0.0005 {
+            let convergence = smaSlow > 0 ? abs(smaFast - smaSlow) / smaSlow : 0
+            if convergence < 0.0005 {
                 return (true, "MA convergence - trend reversal risk")
             }
             return (false, "Confluence holding")
