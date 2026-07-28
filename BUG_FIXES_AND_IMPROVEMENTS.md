@@ -383,3 +383,55 @@ queued even when the user had denied permission.
 **Fix:** Added `guard isEnabled else { return }` at the top of the method.
 
 **File:** `EZIN/Services/AlertsEngine.swift`
+
+## 11. v1.9.0 — Sidebar Navigation + GGUF LLM Fix
+
+### 11.1 Bottom Tab Bar → Collapsible Sidebar Navigation
+
+**Issue:** The bottom `GlassTabBar` consumed valuable vertical screen space and crowded
+9 tabs into a narrow strip with tiny labels.
+
+**Fix:** Replaced the bottom tab bar with a slide-out sidebar triggered by a hamburger
+(☰) button in the header. The sidebar:
+- Slides in from the left with spring animation
+- Shows brand header, all 9 navigation items with icons and labels
+- Highlights the active tab with an accent pill indicator
+- Auto-dismisses on item selection or tap-outside
+- Has a dimmed backdrop overlay
+- Shows connection status and version in the footer
+
+**Files:** `EZIN/App/RootView.swift` (complete rewrite of navigation shell)
+
+### 11.2 GGUF LLM File — Imported Models Now Actually Used
+
+**Issue:** When a user imported a .gguf model file and selected it, the app silently
+fell back to remote API providers. The `LocalLLMInferenceService.generate()` threw
+`runtimeUnavailable` and the AIRouter caught it without telling the user. The imported
+file was catalogued but never used.
+
+**Fix:**
+1. **GGUF header parser** — reads the magic bytes, version, tensor count, and scans
+   for architecture (llama, mistral, gemma, etc.), context length, embedding length,
+   and block count from the binary metadata.
+2. **Model filename passed to endpoint** — when a custom endpoint (llama.cpp, Ollama,
+   vLLM) is configured, the model's filename is sent in the `model` field so the
+   server loads the correct imported file.
+3. **Clear setup instructions** — when no endpoint is configured, the error message
+   now includes step-by-step instructions for setting up llama.cpp or Ollama with
+   the imported model file, instead of silently falling back.
+4. **LLMModelsView shows status** — each model shows whether an endpoint is configured
+   (green ✓) or setup is needed (orange ⚠️) with specific commands.
+5. **Metadata displayed** — model format badge (GGUF/SAFETENSORS), file size, and
+   selection state are clearly shown.
+
+**Files:** `EZIN/Services/LocalLLMInferenceService.swift` (rewritten),
+`EZIN/Chat/AIRouter.swift`, `EZIN/Views/LLMModelsView.swift`
+
+### 11.3 AppState Retain Cycle Fix
+
+**Issue:** `restartBackend()` created a `Task` that captured `self` strongly,
+potentially extending the lifetime of the AppState beyond the view hierarchy.
+
+**Fix:** Added `[weak self]` capture with early `guard let self else { return }`.
+
+**File:** `EZIN/App/AppState.swift`
