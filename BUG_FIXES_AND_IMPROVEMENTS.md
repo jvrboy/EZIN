@@ -329,3 +329,57 @@ access within the same struct).
 `ToolRegistry` extensions.
 
 **File:** `EZIN/Chat/VinnyChatTools.swift`
+
+## 10. v1.8.1 Deep Audit — Additional Fixes
+
+### 10.1 AlertsEngine MACD Signal Array Crash
+
+**Issue:** Both MACD cross-evaluation cases (`.macdCrossAbove` and `.macdCrossBelow`) guarded
+only `macdResult.macd.count >= 2` before accessing `macdResult.signal[count - 2]` and
+`macdResult.signal.last!`. If the signal array was shorter than the MACD array (possible
+with short data series), this caused an index-out-of-bounds crash.
+
+**Fix:** Added `macdResult.signal.count >= 2` to both guard conditions.
+
+**File:** `EZIN/Services/AlertsEngine.swift`
+
+### 10.2 ChartView DateFormatter Performance (render stutter)
+
+**Issue:** `CandleChart.timeLabel()` created a new `DateFormatter` on every call inside the
+Canvas `render` function, which runs at 60fps during pan/zoom gestures. `DateFormatter`
+initialization is notoriously expensive on iOS, causing visible frame drops.
+
+**Fix:** Replaced per-call `DateFormatter()` with two `static let` cached formatters
+(`timeFormatter` for HH:mm, `dayFormatter` for MMM d).
+
+**File:** `EZIN/Views/ChartView.swift`
+
+### 10.3 SignalFusionEngine `closes.last!` Crash Safety
+
+**Issue:** `bayesianDirection()` used `closes.last!` which force-unwraps an optional.
+Although the caller guards `closes.count >= 30`, defensive programming requires a safe
+fallback to prevent any future code path from crashing.
+
+**Fix:** Replaced `closes.last!` with `guard let lastClose = closes.last else { return .neutral }`.
+
+**File:** `EZIN/Engine/SignalFusionEngine.swift`
+
+### 10.4 AIPipelineService Unbounded Log Growth
+
+**Issue:** `pipelineLog` grew without limit — every stage of every pipeline execution was
+appended, causing unbounded memory growth over long sessions.
+
+**Fix:** Added a 200-entry cap: after each append, if `pipelineLog.count > 200`, trim to
+the most recent 200 entries.
+
+**File:** `EZIN/Services/AIPipelineService.swift`
+
+### 10.5 Alert Push Notification Missing Permission Check
+
+**Issue:** `PushNotificationManager.scheduleLocalNotification()` (called from the alert
+evaluator) did not check `isEnabled` before scheduling, so notifications were silently
+queued even when the user had denied permission.
+
+**Fix:** Added `guard isEnabled else { return }` at the top of the method.
+
+**File:** `EZIN/Services/AlertsEngine.swift`
