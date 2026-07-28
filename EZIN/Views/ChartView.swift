@@ -248,6 +248,11 @@ final class ChartViewModel: ObservableObject {
         self.deriv = deriv
         applyCustomizationSettings()
         deriv.subscribeTicks(symbol)
+        // The tab can be opened while the WebSocket handshake is still in flight.
+        // Do not consume the only candle request during that window.
+        for _ in 0..<20 where deriv.connectionState != .connected {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
         await reload()
         startTicker()
     }

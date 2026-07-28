@@ -8,6 +8,7 @@ struct RootView: View {
     @ObservedObject private var theme = ThemeStore.shared
 
     var body: some View {
+        NavigationStack {
         ZStack {
             AuroraBackground()
 
@@ -15,12 +16,12 @@ struct RootView: View {
                 header
                 Group {
                     switch tab {
-                    case .dashboard: TradingDashboardView()
+                    case .dashboard: TradingDashboardView(deriv: app.deriv)
                     case .chart:    ChartView()
                     case .signals:  SignalsView()
                     case .games:    GamesView()
                     case .chat:     ChatView()
-                    case .history:  HistoryView()
+                    case .history:  HistoryView(bot: app.bot)
                     case .bot:      BotView(bot: app.bot)
                     case .tools:    ToolsHubView()
                     case .settings: SettingsView()
@@ -33,6 +34,7 @@ struct RootView: View {
             }
         }
         .font(theme.fontStyle.font)
+        }
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:

@@ -97,6 +97,9 @@ final class AppState: ObservableObject {
         AlertEvaluator.shared.configure(deriv: deriv)
         AlertEvaluator.shared.start()
         await connect()
+        // Subscribe the dashboard watchlist at startup, not only when the dashboard
+        // view happens to be opened. This keeps prices live across every tab.
+        for symbol in settings.watchlist { deriv.subscribeTicks(symbol) }
         if settings.signalScanningEnabled { bot.startScanning() }
         startAutoRefresh()
 
