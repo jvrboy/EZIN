@@ -1,0 +1,37 @@
+name: Backend
+
+on:
+  pull_request:
+    paths:
+      - "backend/functions/**"
+      - "firebase.json"
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - ".github/workflows/backend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/functions/**"
+      - "firebase.json"
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/functions/package-lock.json
+      - name: Install dependencies
+        run: npm --prefix backend/functions ci
+      - name: Lint
+        run: npm --prefix backend/functions run lint
+      - name: Test
+        run: npm --prefix backend/functions test
+      - name: Build
+        run: npm --prefix backend/functions run build

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>calendar_poll_interval_seconds</key>
+	<integer>900</integer>
+	<key>news_poll_interval_seconds</key>
+	<integer>300</integer>
+	<key>price_feed_stale_seconds</key>
+	<integer>30</integer>
+	<key>websocket_reconnect_base_seconds</key>
+	<integer>2</integer>
+	<key>websocket_reconnect_max_seconds</key>
+	<integer>60</integer>
+	<key>high_impact_news_blackout_minutes</key>
+	<integer>10</integer>
+	<key>max_risk_per_trade_percent</key>
+	<real>1.0</real>
+	<key>max_daily_drawdown_percent</key>
+	<real>3.0</real>
+	<key>max_total_portfolio_risk_percent</key>
+	<real>5.0</real>
+	<key>default_agent_autonomy</key>
+	<string>manual</string>
+	<key>paper_trading_default</key>
+	<true/>
+	<key>scraper_domain_min_delay_seconds</key>
+	<integer>15</integer>
+</dict>
+</plist>
