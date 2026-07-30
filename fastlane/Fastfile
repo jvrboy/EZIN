@@ -1,0 +1,25 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Run unit tests for EZIN"
+  lane :test do
+    sh("xcodegen generate")
+    scan(
+      scheme: "EZIN",
+      device: "iPhone 15",
+      clean: true,
+      code_coverage: true
+    )
+  end
+
+  desc "Build an unsigned release archive for validation"
+  lane :build_unsigned do
+    sh("xcodegen generate")
+    gym(
+      scheme: "EZIN",
+      configuration: "Release",
+      skip_codesigning: true,
+      clean: true
+    )
+  end
+end

@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owns(uid) { return signedIn() && request.auth.uid == uid; }
+    function admin() { return signedIn() && request.auth.token.admin == true; }
+    function immutable() { return !exists(resource.__name__) || request.resource.data == resource.data; }
+
+    match /users/{uid} {
+      allow read, create, update: if owns(uid) || admin();
+      allow delete: if admin();
+
+      match /preferences/{docId} {
+        allow read, write: if owns(uid) || admin();
+      }
+
+      match /watchlists/{docId} {
+        allow read, write: if owns(uid) || admin();
+      }
+
+      match /alerts/{docId} {
+        allow read, write: if owns(uid) || admin();
+      }
+
+      match /journal/{docId} {
+        allow read, write: if owns(uid) || admin();
+      }
+
+      match /broker_links/{docId} {
+        allow read, write: if owns(uid) || admin();
+      }
+
+      match /audit_log/{docId} {
+        allow read: if owns(uid) || admin();
+        allow create: if owns(uid) || admin();
+        allow update, delete: if false;
+      }
+    }
+
+    match /calendar_events/{docId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+
+    match /news_items/{docId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+
+    match /server_health/{docId} {
+      allow read: if admin();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

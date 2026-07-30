@@ -1,0 +1,4 @@
+scheme("EZIN")
+configuration("Release")
+clean(true)
+skip_codesigning(true)

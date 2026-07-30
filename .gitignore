@@ -13,3 +13,8 @@ xcuserdata/
 # Swift PM
 .build/
 Package.resolved
+
+# Node / Firebase Functions
+node_modules/
+backend/functions/lib/
+npm-debug.log*
